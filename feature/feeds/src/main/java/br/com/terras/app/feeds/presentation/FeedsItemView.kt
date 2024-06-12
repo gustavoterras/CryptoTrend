@@ -89,7 +89,7 @@ fun FeedsItemView(
 
 @ThemePreviews
 @Composable
-private fun PersonListItemPreview() {
+private fun FeedsItemViewPreview() {
     DSMTheme {
         FeedsItemView(
             "Jasmy coin bate recorde – Criptomoeda IA para moldar o mercado de IoT",

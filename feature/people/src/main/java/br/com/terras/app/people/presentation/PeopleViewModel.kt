@@ -5,9 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.terras.app.people.domain.CoinsListUseCaseImpl
 import br.com.terras.app.people.domain.model.CoinVO
+import br.com.terras.app.people.presentation.PeopleViewModel.CoinsListState.Error
+import br.com.terras.app.people.presentation.PeopleViewModel.CoinsListState.Loading
+import br.com.terras.app.people.presentation.PeopleViewModel.CoinsListState.Success
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -18,8 +22,8 @@ class PeopleViewModel @Inject constructor(
     private val useCase: CoinsListUseCaseImpl
 ) : ViewModel() {
 
-    private val _coinsList: MutableStateFlow<List<CoinVO>> = MutableStateFlow(emptyList())
-    val coinsList: StateFlow<List<CoinVO>> = _coinsList
+    private val _coinsList: MutableStateFlow<CoinsListState> = MutableStateFlow(Loading)
+    val coinsList: StateFlow<CoinsListState> = _coinsList.asStateFlow()
 
     init {
         getUsers()
@@ -29,13 +33,21 @@ class PeopleViewModel @Inject constructor(
         viewModelScope.launch {
             useCase.getCoinsList()
                 .onFailure {
-                    Log.e("TAG", "getCoins: ", it)
+                    _coinsList.update {
+                        Error
+                    }
                 }
                 .onSuccess { result ->
                     _coinsList.update {
-                        result
+                        Success(result)
                     }
                 }
         }
+    }
+
+    interface CoinsListState {
+        data object Loading : CoinsListState
+        data class Success(val coinsList: List<CoinVO>) : CoinsListState
+        data object Error : CoinsListState
     }
 }
