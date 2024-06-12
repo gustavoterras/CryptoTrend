@@ -31,4 +31,6 @@ dependencies {
     implementation(project(":core:common"))
     implementation(libs.dagger.hilt.core)
     ksp(libs.dagger.hilt.compiler)
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.junit)
 }
