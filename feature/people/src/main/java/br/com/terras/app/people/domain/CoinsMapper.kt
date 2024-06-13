@@ -1,7 +1,7 @@
 package br.com.terras.app.people.domain
 
-import br.com.terras.app.feeds.formatMoney
-import br.com.terras.app.feeds.formatPercentage
+import br.com.terras.app.common.formatMoney
+import br.com.terras.app.common.formatPercentage
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.people.data.model.CoinsListResponse
 import br.com.terras.app.people.domain.model.CoinVO

@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.serialization)
     alias(libs.plugins.dagger.hilt)
+    alias(libs.plugins.kover)
     alias(libs.plugins.ksp)
 }
 

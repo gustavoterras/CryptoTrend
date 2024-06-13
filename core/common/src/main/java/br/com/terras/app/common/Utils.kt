@@ -1,4 +1,4 @@
-package br.com.terras.app.feeds
+package br.com.terras.app.common
 
 import java.text.DecimalFormat
 import java.util.Locale

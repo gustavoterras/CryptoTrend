@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.dagger.hilt)
+    alias(libs.plugins.kover)
     alias(libs.plugins.ksp)
 }
 
@@ -55,10 +56,16 @@ android {
 
 dependencies {
     implementation(project(":core:dsm"))
+    implementation(project(":core:common"))
     implementation(project(":core:navigation"))
     implementation(project(":feature:home"))
     implementation(project(":feature:feeds"))
     implementation(project(":feature:people"))
+
+    kover(project(":core:common"))
+    kover(project(":feature:home"))
+    kover(project(":feature:feeds"))
+    kover(project(":feature:people"))
 
     implementation(libs.dagger.hilt.core)
     ksp(libs.dagger.hilt.compiler)
@@ -71,4 +78,19 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+}
+
+kover.reports {
+//    filters {
+//        excludes.classes("kotlinx.kover.examples.merged.utils.*", "kotlinx.kover.examples.merged.subproject.utils.*")
+//        includes.classes("kotlinx.kover.examples.merged.*")
+//    }
+
+    verify {
+        rule {
+            bound {
+                minValue.set(80)
+            }
+        }
+    }
 }
