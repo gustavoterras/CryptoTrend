@@ -53,7 +53,7 @@ jobs:
       uses: actions/upload-artifact@v4.3.3
       with:
           name: UniTest.html
-          path: build/reports/kover/reportDebug.xml
+          path: app/build/reports/kover/reportDebug.xml
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4.3.3
