@@ -24,11 +24,14 @@ jobs:
     - name: Make gradlew executable
       run: chmod +x ./gradlew
       
-    - name: Build with Gradle
+    - name: Build
       run: ./gradlew build
 
-    - name: Run Tests with Gradle
+    - name: Run Tests
       run: ./gradlew test -x koverXmlReportDebug
+
+    - name: Run Converage
+      run: ./gradlew koverXmlReportDebug
     
     # - name: Upload coverage reports to Codecov
     #   uses: codecov/codecov-action@v4.0.1
