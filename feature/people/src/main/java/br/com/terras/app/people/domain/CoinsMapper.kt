@@ -20,7 +20,7 @@ class CoinsMapperImpl @Inject constructor() : CoinsMapper {
                 image = response.image,
                 marketCapRank = response.marketCapRank.toString(),
                 price = response.price.formatMoney(),
-                priceChangePercentage = response.priceChangePercentage.formatPercentage(),
+                priceChangePercentage = (response.priceChangePercentage * 100).formatPercentage(),
                 trendColor = getTrendColor(response.priceChangePercentage)
             )
         }

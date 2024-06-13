@@ -24,8 +24,8 @@ import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 
 @Composable
-fun StickyHeaderView() {
-    ConstraintLayout(modifier = Modifier.padding(start = 18.dp, end = 18.dp)) {
+fun StickyHeaderView(modifier: Modifier = Modifier) {
+    ConstraintLayout(modifier = modifier) {
         val (title, avatar, menu) = createRefs()
 
         Box(
