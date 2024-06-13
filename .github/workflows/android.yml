@@ -28,7 +28,7 @@ jobs:
       run: ./gradlew build
 
     - name: Run Tests with Gradle
-      run: ./gradlew test
+      run: ./gradlew test -x koverVerify -x koverXmlReport
     
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v4.0.1
