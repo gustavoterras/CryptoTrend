@@ -33,16 +33,16 @@ jobs:
     - name: Run Converage
       run: ./gradlew koverXmlReportDebug
     
-    # - name: Upload coverage reports to Codecov
-    #   uses: codecov/codecov-action@v4.0.1
-    #   with:
-    #     slug: gustavoterras/CryptoTrend
-    #     fail_ci_if_error: true # optional (default = false)
-    #     files: build/reports/kover/reportDebug.xml # optional
-    #     flags: unittests # optional
-    #     name: codecov-umbrella # optional
-    #     token: ${{ secrets.CODECOV_TOKEN }} # required
-    #     verbose: true # optional (default = false)
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      with:
+        slug: gustavoterras/CryptoTrend
+        fail_ci_if_error: true # optional (default = false)
+        files: app/build/reports/kover/reportDebug.xml # optional
+        flags: unittests # optional
+        name: codecov-umbrella # optional
+        token: ${{ secrets.CODECOV_TOKEN }} # required
+        verbose: true # optional (default = false)
 
     # - name: SonarCloud Scan
     #   uses: sonarsource/sonarcloud-github-action@v2.3.0
@@ -52,7 +52,7 @@ jobs:
     - name: Upload test report
       uses: actions/upload-artifact@v4.3.3
       with:
-          name: UniTest.html
+          name: reportDebug.xml
           path: app/build/reports/kover/reportDebug.xml
 
     - name: Upload a Build Artifact
