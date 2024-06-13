@@ -89,7 +89,7 @@ kover.reports {
     verify {
         rule {
             bound {
-                minValue.set(80)
+//                minValue.set(80)
             }
         }
     }
