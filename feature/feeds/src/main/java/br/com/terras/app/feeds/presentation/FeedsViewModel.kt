@@ -1,5 +1,6 @@
 package br.com.terras.app.feeds.presentation
 
+import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.terras.app.feeds.domain.FeedsUseCaseImpl
@@ -27,17 +28,19 @@ class FeedsViewModel @Inject constructor(
         getFeeds()
     }
 
-    private fun getFeeds() {
+    @VisibleForTesting
+    fun getFeeds() {
         viewModelScope.launch {
-            useCase.getFeeds("bitcoin").onFailure { error ->
-                _feeds.update {
-                    Error
+            useCase.getFeeds("bitcoin")
+                .onFailure {
+                    _feeds.update {
+                        Error
+                    }
+                }.onSuccess { result ->
+                    _feeds.update {
+                        Success(result)
+                    }
                 }
-            }.onSuccess { result ->
-                _feeds.update {
-                    Success(result)
-                }
-            }
         }
     }
 
