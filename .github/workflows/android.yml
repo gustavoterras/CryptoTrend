@@ -27,6 +27,19 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew build
 
+    - name: Run Tests with Gradle
+      run: ./gradlew test
+    
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v4.0.1
+      with:
+        fail_ci_if_error: true # optional (default = false)
+        files: ./app/build/reports/kover/report.xml # optional
+        flags: unittests # optional
+        name: codecov-umbrella # optional
+        token: ${{ secrets.CODECOV_TOKEN }} # required
+        verbose: true # optional (default = false)
+
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4.3.3
       with:
