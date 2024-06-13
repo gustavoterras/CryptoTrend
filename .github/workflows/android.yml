@@ -30,16 +30,21 @@ jobs:
     - name: Run Tests with Gradle
       run: ./gradlew test -x koverXmlReportDebug
     
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v4.0.1
-      with:
-        slug: gustavoterras/CryptoTrend
-        fail_ci_if_error: true # optional (default = false)
-        files: build/reports/kover/reportDebug.xml # optional
-        flags: unittests # optional
-        name: codecov-umbrella # optional
-        token: ${{ secrets.CODECOV_TOKEN }} # required
-        verbose: true # optional (default = false)
+    # - name: Upload coverage reports to Codecov
+    #   uses: codecov/codecov-action@v4.0.1
+    #   with:
+    #     slug: gustavoterras/CryptoTrend
+    #     fail_ci_if_error: true # optional (default = false)
+    #     files: build/reports/kover/reportDebug.xml # optional
+    #     flags: unittests # optional
+    #     name: codecov-umbrella # optional
+    #     token: ${{ secrets.CODECOV_TOKEN }} # required
+    #     verbose: true # optional (default = false)
+
+    - name: SonarCloud Scan
+      uses: sonarsource/sonarcloud-github-action@2.3.0
+      env:
+        SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4.3.3
