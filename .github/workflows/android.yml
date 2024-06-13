@@ -35,7 +35,7 @@ jobs:
       with:
         slug: gustavoterras/CryptoTrend
         fail_ci_if_error: true # optional (default = false)
-        files: app/build/reports/kover/report.xml # optional
+        files: build/reports/kover/report.xml # optional
         flags: unittests # optional
         name: codecov-umbrella # optional
         token: ${{ secrets.CODECOV_TOKEN }} # required
