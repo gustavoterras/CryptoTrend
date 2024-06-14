@@ -2,9 +2,11 @@ name: Android CI
 
 on:
   push:
-    branches:
-      - 'work/*'
-      - 'master'
+    branches: 
+      - master
+      - work/**/*
+  # pull_request:
+  #   branches: [ master ]
 
 jobs:
   build:
@@ -37,7 +39,7 @@ jobs:
       uses: codecov/codecov-action@v4.0.1
       with:
         slug: gustavoterras/CryptoTrend
-        fail_ci_if_error: false # optional (default = false)
+        fail_ci_if_error: true # optional (default = false)
         files: app/build/reports/kover/reportDebug.xml # optional
         flags: unittests # optional
         name: codecov-umbrella # optional
