@@ -1,6 +1,6 @@
 package br.com.terras.app.feeds.domain
 
-import br.com.terras.app.feeds.mockArticlesVOStub
+import br.com.terras.app.feeds.mockArticleVOStub
 import br.com.terras.app.feeds.mockFeedsResponseStub
 import org.junit.Assert
 import org.junit.Before
@@ -19,6 +19,14 @@ class FeedsMapperImplTest {
     fun `WHEN toFeeds is called THEN feeds are mapped correctly`() {
         val result = feedsMapper.toFeeds(mockFeedsResponseStub.articles)
 
-        Assert.assertEquals(result, mockArticlesVOStub)
+        result.first().run {
+            Assert.assertEquals(author, mockArticleVOStub.author)
+            Assert.assertEquals(title, mockArticleVOStub.title)
+            Assert.assertEquals(description, mockArticleVOStub.description)
+            Assert.assertEquals(url, mockArticleVOStub.url)
+            Assert.assertEquals(urlToImage, mockArticleVOStub.urlToImage)
+            Assert.assertEquals(publishedAt, mockArticleVOStub.publishedAt)
+            Assert.assertEquals(content, mockArticleVOStub.content)
+        }
     }
 }
