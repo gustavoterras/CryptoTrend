@@ -88,8 +88,14 @@ kover.reports {
                 "*Module*",
                 "*Api*",
                 "*Activity*",
-                "*View.*",
+                "*View*",
                 "*Route",
+            )
+        }
+
+        includes {
+            classes = listOf(
+                "*ViewModel*",
             )
         }
     }
