@@ -31,6 +31,7 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:common"))
     implementation(libs.dagger.hilt.core)
+    testImplementation("org.junit.jupiter:junit-jupiter:5.8.1")
     ksp(libs.dagger.hilt.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

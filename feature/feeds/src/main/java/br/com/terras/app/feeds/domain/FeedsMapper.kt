@@ -12,7 +12,7 @@ class FeedsMapperImpl @Inject constructor() : FeedsMapper {
     override fun toFeeds(response: List<Article>): List<ArticleVO> {
         return response.map { article ->
             ArticleVO(
-                author = "Por: " + article.author.orEmpty(),
+                author = article.author.orEmpty(),
                 title = article.title.orEmpty(),
                 description = article.description.orEmpty(),
                 url = article.url.orEmpty(),
