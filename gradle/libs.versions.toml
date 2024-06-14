@@ -20,12 +20,14 @@ hiltVersion = "2.51.1"
 material3= "1.2.1"
 material = "1.12.0"
 koverVersion = "0.8.1"
+turbineVersion = "0.11.0"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockkVersion"}
 coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesVersion"}
 core-testing = { group = "androidx.arch.core", name = "core-testing", version.ref = "coreTestingVersion"}
+turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbineVersion"}
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
