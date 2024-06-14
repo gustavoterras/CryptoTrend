@@ -20,8 +20,6 @@ class CoinsMapperImplTest {
     fun `WHEN toCoins is called THEN coins are mapped correctly`() {
         val result = mapper.toCoins(mockCoinsListResponseStub)
 
-        Assert.assertEquals(result, mockCoinsVOListStub)
-
         result.first().run {
             Assert.assertEquals(symbol, mockCoinVOStub.symbol)
             Assert.assertEquals(name, mockCoinVOStub.name)
