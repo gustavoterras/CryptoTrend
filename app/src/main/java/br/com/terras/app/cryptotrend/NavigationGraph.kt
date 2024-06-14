@@ -8,10 +8,10 @@ import androidx.navigation.navDeepLink
 import br.com.terras.app.dsm.ui.component.WebViewScreen
 import br.com.terras.app.feeds.presentation.FeedsActivityView
 import br.com.terras.app.home.presentation.HomeActivityView
-import br.com.terras.app.navigation.ScreenRoute.COIN_LIST
-import br.com.terras.app.navigation.ScreenRoute.FAVORITE
-import br.com.terras.app.navigation.ScreenRoute.FEEDS
-import br.com.terras.app.navigation.ScreenRoute.WEB_VIEW
+import br.com.terras.app.navigation.ScreenRouter.COIN_LIST
+import br.com.terras.app.navigation.ScreenRouter.FAVORITE
+import br.com.terras.app.navigation.ScreenRouter.FEEDS
+import br.com.terras.app.navigation.ScreenRouter.WEB_VIEW
 import br.com.terras.app.coins.presentation.CoinsActivityView
 
 @Composable
