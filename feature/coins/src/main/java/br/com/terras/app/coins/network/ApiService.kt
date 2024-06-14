@@ -1,6 +1,8 @@
 package br.com.terras.app.coins.network
 
+import br.com.terras.app.coins.data.model.CoinsResponse
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.url
@@ -23,8 +25,8 @@ class ApiService(
         else -> COINS_MARKET_DATA_PARAMS_VALUE_PT
     }
 
-    suspend fun getCoins() = client.get {
+    suspend fun getCoins(): List<CoinsResponse> = client.get {
         url("$baseUrl$COINS_MARKET_DATA_ROUTE")
         parameter(COINS_MARKET_DATA_PARAMS_KEY, Locale.getDefault().getCurrencyParamData())
-    }
+    }.body()
 }
