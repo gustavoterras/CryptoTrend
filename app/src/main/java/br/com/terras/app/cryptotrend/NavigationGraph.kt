@@ -6,13 +6,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navDeepLink
 import br.com.terras.app.dsm.ui.component.WebViewScreen
-import br.com.terras.app.feeds.presentation.FeedsActivityView
-import br.com.terras.app.home.presentation.HomeActivityView
+import br.com.terras.app.feeds.presentation.FeedsActivityCompose
+import br.com.terras.app.home.presentation.HomeActivityCompose
 import br.com.terras.app.navigation.ScreenRouter.COIN_LIST
 import br.com.terras.app.navigation.ScreenRouter.FAVORITE
 import br.com.terras.app.navigation.ScreenRouter.FEEDS
 import br.com.terras.app.navigation.ScreenRouter.WEB_VIEW
-import br.com.terras.app.coins.presentation.CoinsActivityView
+import br.com.terras.app.coins.presentation.CoinsActivityCompose
 
 @Composable
 fun NavigationGraph(navController: NavHostController) {
@@ -25,13 +25,13 @@ fun NavigationGraph(navController: NavHostController) {
             WebViewScreen(url)
         }
         composable(FAVORITE.value) {
-            HomeActivityView()
+            HomeActivityCompose()
         }
         composable(COIN_LIST.value) {
-            CoinsActivityView()
+            CoinsActivityCompose()
         }
         composable(FEEDS.value) {
-            FeedsActivityView {
+            FeedsActivityCompose {
                 navController.navigate(WEB_VIEW.value.replace("{url}", it))
             }
         }

@@ -33,7 +33,7 @@ import br.com.terras.app.coins.presentation.CoinsViewModel.CoinsState.Success
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun CoinsActivityView(
+fun CoinsActivityCompose(
     viewModel: CoinsViewModel = hiltViewModel()
 ) {
 
@@ -106,10 +106,10 @@ private fun OnCoinsListError(
 
 @ThemePreviews
 @Composable
-private fun PeopleActivityPreview() {
+private fun CoinsActivityComposePreview() {
     DSMTheme {
         Surface {
-            CoinsActivityView()
+            CoinsActivityCompose()
         }
     }
 }

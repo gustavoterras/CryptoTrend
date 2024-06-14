@@ -22,7 +22,7 @@ import br.com.terras.app.dsm.ui.theme.DSMTheme
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun FeedsItemShimmerView() {
+fun FeedsItemShimmerCompose() {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(9.dp),
         modifier = Modifier
@@ -56,10 +56,10 @@ fun FeedsItemShimmerView() {
 
 @ThemePreviews
 @Composable
-private fun FeedsItemShimmerViewPreview() {
+private fun FeedsItemShimmerComposePreview() {
     DSMTheme {
         Surface {
-            FeedsItemShimmerView()
+            FeedsItemShimmerCompose()
         }
     }
 }
