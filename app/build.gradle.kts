@@ -88,7 +88,7 @@ kover.reports {
                 "*Module*",
                 "*Api*",
                 "*Activity*",
-                "*View*",
+                "*View.*",
                 "*Route",
             )
         }
