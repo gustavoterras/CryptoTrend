@@ -60,12 +60,12 @@ dependencies {
     implementation(project(":core:navigation"))
     implementation(project(":feature:home"))
     implementation(project(":feature:feeds"))
-    implementation(project(":feature:coins"))
+    implementation(project(":feature:people"))
 
     kover(project(":core:common"))
     kover(project(":feature:home"))
     kover(project(":feature:feeds"))
-    "kover"(project(":feature:coins"))
+    kover(project(":feature:people"))
 
     implementation(libs.dagger.hilt.core)
     ksp(libs.dagger.hilt.compiler)
@@ -84,20 +84,20 @@ kover.reports {
     filters {
         excludes {
             annotatedBy("androidx.compose.runtime.Composable", "androidx.compose.ui.tooling.preview.Preview", "dagger.hilt.android.HiltAndroidApp")
+        }
+        excludes {
             classes = listOf(
                 "*Module*",
                 "*Api*",
                 "*Activity*",
                 "*View*",
-                "*Route",
+                "*Router"
             )
         }
 
-        includes {
-            classes = listOf(
-                "*ViewModel*",
-            )
-        }
+//        includes {
+//
+//        }
     }
 
     verify {
