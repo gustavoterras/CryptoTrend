@@ -33,5 +33,9 @@ dependencies {
     implementation(libs.dagger.hilt.core)
     ksp(libs.dagger.hilt.compiler)
     testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.turbine)
+    testImplementation(libs.coroutines)
+    testImplementation(libs.core.testing)
     androidTestImplementation(libs.androidx.junit)
 }

@@ -27,9 +27,9 @@ import br.com.terras.app.dsm.ui.component.RippleButton
 import br.com.terras.app.dsm.ui.component.StickyHeaderView
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import br.com.terras.app.coins.domain.model.CoinVO
-import br.com.terras.app.coins.presentation.CoinsViewModel.CoinsListState.Error
-import br.com.terras.app.coins.presentation.CoinsViewModel.CoinsListState.Loading
-import br.com.terras.app.coins.presentation.CoinsViewModel.CoinsListState.Success
+import br.com.terras.app.coins.presentation.CoinsViewModel.CoinsState.Error
+import br.com.terras.app.coins.presentation.CoinsViewModel.CoinsState.Loading
+import br.com.terras.app.coins.presentation.CoinsViewModel.CoinsState.Success
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -41,7 +41,7 @@ fun CoinsActivityView(
 
     Scaffold {
 
-        val coinsListState by viewModel.coinsList.collectAsState()
+        val coinsListState by viewModel.coins.collectAsState()
 
         when (coinsListState) {
             is Loading -> CoinListItemShimmerView()

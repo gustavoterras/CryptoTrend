@@ -2,7 +2,6 @@ package br.com.terras.app.coins.data
 
 import br.com.terras.app.coins.data.model.CoinsResponse
 import br.com.terras.app.coins.network.ApiService
-import io.ktor.client.call.body
 import javax.inject.Inject
 
 interface CoinsRepository {
@@ -15,7 +14,7 @@ class CoinsRepositoryImpl @Inject constructor(
 
     override suspend fun getCoins(): Result<List<CoinsResponse>> {
         return try {
-            Result.success(api.getCoins().body())
+            Result.success(api.getCoins())
         } catch (e: Exception) {
             Result.failure(e)
         }
