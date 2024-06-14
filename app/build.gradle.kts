@@ -85,13 +85,11 @@ kover.reports {
         excludes {
             annotatedBy("androidx.compose.runtime.Composable")
             annotatedBy("androidx.compose.ui.tooling.preview.Preview")
-        }
-        excludes {
             classes = listOf(
                 "*Module*",
                 "*Api*",
                 "*Activity*",
-                "*View",
+                "*View.kt",
                 "*Route",
             )
         }
