@@ -2,7 +2,6 @@ package br.com.terras.app.coins.domain
 
 import br.com.terras.app.coins.mockCoinVOStub
 import br.com.terras.app.coins.mockCoinsListResponseStub
-import br.com.terras.app.coins.mockCoinsVOListStub
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
