@@ -83,13 +83,12 @@ dependencies {
 kover.reports {
     filters {
         excludes {
-            annotatedBy("androidx.compose.runtime.Composable")
-            annotatedBy("androidx.compose.ui.tooling.preview.Preview")
+            annotatedBy("androidx.compose.runtime.Composable", "androidx.compose.ui.tooling.preview.Preview")
             classes = listOf(
                 "*Module*",
                 "*Api*",
                 "*Activity*",
-                "*View.kt",
+                "*View.*",
                 "*Route",
             )
         }
