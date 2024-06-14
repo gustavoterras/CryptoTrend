@@ -3,11 +3,8 @@ name: Android CI
 on:
   push:
     branches:
-      - 'work/*'       # matches every branch containing a single '/'
-
-  pull_request:
-    branches:
-      -  'master'
+      - 'work/*'
+      - 'master'
 
 jobs:
   build:
