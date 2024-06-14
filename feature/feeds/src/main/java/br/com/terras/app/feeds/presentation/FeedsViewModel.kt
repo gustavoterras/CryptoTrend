@@ -3,11 +3,11 @@ package br.com.terras.app.feeds.presentation
 import androidx.annotation.VisibleForTesting
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import br.com.terras.app.feeds.domain.FeedsUseCaseImpl
+import br.com.terras.app.feeds.domain.FeedsUseCase
 import br.com.terras.app.feeds.domain.model.ArticleVO
+import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsState.Error
 import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsState.Loading
 import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsState.Success
-import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsState.Error
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +18,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class FeedsViewModel @Inject constructor(
-    private val useCase: FeedsUseCaseImpl
+    private val useCase: FeedsUseCase
 ) : ViewModel() {
 
     private val _feeds: MutableStateFlow<FeedsState> = MutableStateFlow(Loading)

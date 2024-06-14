@@ -23,7 +23,7 @@ class FeedsRepositoryImpl @Inject constructor(
         language: String
     ): Result<FeedsResponse> {
         return try {
-            Result.success(api.getFeeds(query, fromDate, language).body())
+            Result.success(api.getFeeds(query, fromDate, language))
         } catch (e: Exception) {
             Result.failure(e)
         }

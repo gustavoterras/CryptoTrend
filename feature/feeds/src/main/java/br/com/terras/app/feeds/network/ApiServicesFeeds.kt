@@ -1,6 +1,8 @@
 package br.com.terras.app.feeds.network
 
+import br.com.terras.app.feeds.data.model.FeedsResponse
 import io.ktor.client.HttpClient
+import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.url
@@ -21,10 +23,10 @@ class ApiServicesFeeds(
         query: String,
         fromDate: String,
         language: String
-    ) = client.get {
+    ): FeedsResponse = client.get {
         url("$baseUrl$FEEDS_DATA_ROUTE")
         parameter(FEEDS_DATA_PARAMS_QUERY, query)
         parameter(FEEDS_DATA_PARAMS_DATE, fromDate)
         parameter(FEEDS_DATA_PARAMS_LANGUAGE, language)
-    }
+    }.body()
 }
