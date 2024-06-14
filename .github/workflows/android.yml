@@ -7,7 +7,10 @@ on:
 
   pull_request:
     branches: 
-      - work/**/*
+      - '*'         # matches every branch that doesn't contain a '/'
+      - '*/*'       # matches every branch containing a single '/'
+      - '**'        # matches every branch
+      - '!master'   
 
 jobs:
   build:
