@@ -1,4 +1,4 @@
-package br.com.terras.app.people.network
+package br.com.terras.app.coins.network
 
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get

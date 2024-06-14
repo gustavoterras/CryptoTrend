@@ -1,4 +1,4 @@
-package br.com.terras.app.people.domain.model
+package br.com.terras.app.coins.domain.model
 
 import br.com.terras.app.dsm.ui.component.TrendColor
 

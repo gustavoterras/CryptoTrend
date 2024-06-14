@@ -1,4 +1,4 @@
-package br.com.terras.app.people.presentation
+package br.com.terras.app.coins.presentation
 
 import android.annotation.SuppressLint
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -26,15 +26,15 @@ import br.com.terras.app.dsm.ui.component.CoinListItemView
 import br.com.terras.app.dsm.ui.component.RippleButton
 import br.com.terras.app.dsm.ui.component.StickyHeaderView
 import br.com.terras.app.dsm.ui.theme.DSMTheme
-import br.com.terras.app.people.domain.model.CoinVO
-import br.com.terras.app.people.presentation.PeopleViewModel.CoinsListState.Error
-import br.com.terras.app.people.presentation.PeopleViewModel.CoinsListState.Loading
-import br.com.terras.app.people.presentation.PeopleViewModel.CoinsListState.Success
+import br.com.terras.app.coins.domain.model.CoinVO
+import br.com.terras.app.coins.presentation.CoinsViewModel.CoinsListState.Error
+import br.com.terras.app.coins.presentation.CoinsViewModel.CoinsListState.Loading
+import br.com.terras.app.coins.presentation.CoinsViewModel.CoinsListState.Success
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun PeopleActivityView(
-    viewModel: PeopleViewModel = hiltViewModel()
+fun CoinsActivityView(
+    viewModel: CoinsViewModel = hiltViewModel()
 ) {
 
     var showDialog by remember { mutableStateOf(true) }
@@ -109,7 +109,7 @@ private fun OnCoinsListError(
 private fun PeopleActivityPreview() {
     DSMTheme {
         Surface {
-            PeopleActivityView()
+            CoinsActivityView()
         }
     }
 }

@@ -1,10 +1,10 @@
-package br.com.terras.app.people.data.model
+package br.com.terras.app.coins.data.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class CoinsListResponse(
+data class CoinsResponse(
     @SerialName("id") val id: String,
     @SerialName("symbol") val symbol: String,
     @SerialName("name") val name: String,
