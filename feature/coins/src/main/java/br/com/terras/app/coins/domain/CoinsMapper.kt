@@ -1,19 +1,19 @@
-package br.com.terras.app.people.domain
+package br.com.terras.app.coins.domain
 
 import br.com.terras.app.common.formatMoney
 import br.com.terras.app.common.formatPercentage
 import br.com.terras.app.dsm.ui.component.TrendColor
-import br.com.terras.app.people.data.model.CoinsListResponse
-import br.com.terras.app.people.domain.model.CoinVO
+import br.com.terras.app.coins.data.model.CoinsResponse
+import br.com.terras.app.coins.domain.model.CoinVO
 import javax.inject.Inject
 
 interface CoinsMapper {
-    fun toCoinsList(coinsListResponse: List<CoinsListResponse>): List<CoinVO>
+    fun toCoins(coinsResponse: List<CoinsResponse>): List<CoinVO>
 }
 
 class CoinsMapperImpl @Inject constructor() : CoinsMapper {
-    override fun toCoinsList(coinsListResponse: List<CoinsListResponse>): List<CoinVO> {
-        return coinsListResponse.map { response ->
+    override fun toCoins(coinsResponse: List<CoinsResponse>): List<CoinVO> {
+        return coinsResponse.map { response ->
             CoinVO(
                 symbol = response.symbol.uppercase(),
                 name = response.name,

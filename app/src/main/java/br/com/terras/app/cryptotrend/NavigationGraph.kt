@@ -12,7 +12,7 @@ import br.com.terras.app.navigation.ScreenRoute.COIN_LIST
 import br.com.terras.app.navigation.ScreenRoute.FAVORITE
 import br.com.terras.app.navigation.ScreenRoute.FEEDS
 import br.com.terras.app.navigation.ScreenRoute.WEB_VIEW
-import br.com.terras.app.people.presentation.PeopleActivityView
+import br.com.terras.app.coins.presentation.CoinsActivityView
 
 @Composable
 fun NavigationGraph(navController: NavHostController) {
@@ -28,7 +28,7 @@ fun NavigationGraph(navController: NavHostController) {
             HomeActivityView()
         }
         composable(COIN_LIST.value) {
-            PeopleActivityView()
+            CoinsActivityView()
         }
         composable(FEEDS.value) {
             FeedsActivityView {

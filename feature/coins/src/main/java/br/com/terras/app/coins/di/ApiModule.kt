@@ -1,8 +1,8 @@
-package br.com.terras.app.people.di
+package br.com.terras.app.coins.di
 
 import br.com.terras.app.network.di.NetworkModule.provideBaseUrl
 import br.com.terras.app.network.di.NetworkModule.provideHttpClient
-import br.com.terras.app.people.network.ApiService
+import br.com.terras.app.coins.network.ApiService
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
