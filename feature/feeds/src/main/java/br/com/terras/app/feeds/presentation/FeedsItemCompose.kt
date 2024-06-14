@@ -24,7 +24,7 @@ import com.bumptech.glide.integration.compose.GlideImage
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
-fun FeedsItemView(
+fun FeedsItemCompose(
     articleTitle: String,
     articleDescription: String,
     articleImage: String,
@@ -89,9 +89,9 @@ fun FeedsItemView(
 
 @ThemePreviews
 @Composable
-private fun FeedsItemViewPreview() {
+private fun FeedsItemComposePreview() {
     DSMTheme {
-        FeedsItemView(
+        FeedsItemCompose(
             "Jasmy coin bate recorde – Criptomoeda IA para moldar o mercado de IoT",
             "JASMY é uma criptomoeda que se concentra nas necessidades modernas e de gestão de dados. Além disso, perante o seu roadmap e whitepaper, esta nova criptomoeda integra tecnologia blockchain com “Internet das Coisas” (IoT)....",
             "BTC",

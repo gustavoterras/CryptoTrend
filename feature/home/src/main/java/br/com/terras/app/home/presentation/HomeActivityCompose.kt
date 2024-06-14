@@ -24,7 +24,7 @@ import br.com.terras.app.dsm.ui.theme.DSMTheme
 @OptIn(ExperimentalFoundationApi::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun HomeActivityView() {
+fun HomeActivityCompose() {
     Scaffold {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(9.dp),
@@ -59,10 +59,10 @@ fun HomeActivityView() {
 
 @ThemePreviews
 @Composable
-private fun PersonListItemPreview() {
+private fun HomeActivityComposePreview() {
     DSMTheme {
         Surface {
-            HomeActivityView()
+            HomeActivityCompose()
         }
     }
 }

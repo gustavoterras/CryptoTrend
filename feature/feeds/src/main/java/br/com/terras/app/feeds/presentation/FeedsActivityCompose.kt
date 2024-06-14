@@ -29,6 +29,29 @@ import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsState.Loading
 import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsState.Success
 import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsState.Error
 
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@Composable
+fun FeedsActivityCompose(
+    viewModel: FeedsViewModel = hiltViewModel(),
+    onItemClick: (String) -> Unit
+) {
+
+    var showDialog by remember { mutableStateOf(true) }
+
+    Scaffold {
+
+        val feedsState by viewModel.feeds.collectAsState()
+
+        when (feedsState) {
+            is Loading -> FeedsItemShimmerCompose()
+            is Success -> OnFeedsSuccess((feedsState as Success).coinsList, onItemClick)
+            is Error -> OnCoinsListError(
+                showDialog
+            ) { showDialog = false }
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun OnFeedsSuccess(feeds: List<ArticleVO>, onItemClick: (String) -> Unit) {
@@ -48,7 +71,7 @@ private fun OnFeedsSuccess(feeds: List<ArticleVO>, onItemClick: (String) -> Unit
 
         items(feeds.size) {
             feeds[it].run {
-                FeedsItemView(
+                FeedsItemCompose(
                     title,
                     description,
                     urlToImage,
@@ -57,29 +80,6 @@ private fun OnFeedsSuccess(feeds: List<ArticleVO>, onItemClick: (String) -> Unit
                     onItemClick(url)
                 }
             }
-        }
-    }
-}
-
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
-@Composable
-fun FeedsActivityView(
-    viewModel: FeedsViewModel = hiltViewModel(),
-    onItemClick: (String) -> Unit
-) {
-
-    var showDialog by remember { mutableStateOf(true) }
-
-    Scaffold {
-
-        val feedsState by viewModel.feeds.collectAsState()
-
-        when (feedsState) {
-            is Loading -> FeedsItemShimmerView()
-            is Success -> OnFeedsSuccess((feedsState as Success).coinsList, onItemClick)
-            is Error -> OnCoinsListError(
-                showDialog
-            ) { showDialog = false }
         }
     }
 }
@@ -103,10 +103,10 @@ private fun OnCoinsListError(
 
 @ThemePreviews
 @Composable
-private fun FeedsActivityViewPreview() {
+private fun FeedsActivityComposePreview() {
     DSMTheme {
         Surface {
-            FeedsActivityView {}
+            FeedsActivityCompose {}
         }
     }
 }
