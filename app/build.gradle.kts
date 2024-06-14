@@ -87,7 +87,7 @@ kover.reports {
                 "*Module*",
                 "*Api*",
                 "*Activity*",
-                "*View",
+                "*Compose*",
                 "*Graph*",
             )
             annotatedBy(
