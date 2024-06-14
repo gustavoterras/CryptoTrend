@@ -81,10 +81,23 @@ dependencies {
 }
 
 kover.reports {
-//    filters {
-//        excludes.classes("kotlinx.kover.examples.merged.utils.*", "kotlinx.kover.examples.merged.subproject.utils.*")
-//        includes.classes("kotlinx.kover.examples.merged.*")
-//    }
+    filters {
+        excludes {
+            annotatedBy("androidx.compose.runtime.Composable")
+        }
+        excludes {
+            classes = listOf(
+                "*Module*",
+                "*Api*",
+                "*Activity*",
+                "*View*",
+            )
+        }
+
+//        includes {
+//
+//        }
+    }
 
     verify {
         rule {
