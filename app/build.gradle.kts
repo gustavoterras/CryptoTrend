@@ -96,12 +96,9 @@ kover.reports {
                 "*Activity*",
                 "*View",
                 "*Router",
+                "*Graph",
             )
         }
-
-//        includes {
-//
-//        }
     }
 
     verify {
