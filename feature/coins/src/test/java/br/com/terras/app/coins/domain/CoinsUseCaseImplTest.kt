@@ -1,7 +1,10 @@
 package br.com.terras.app.coins.domain
 
 import br.com.terras.app.coins.MainDispatcherRule
-import br.com.terras.app.coins.data.CoinsRepository
+import br.com.terras.app.coins.list.data.CoinsRepository
+import br.com.terras.app.coins.list.domain.CoinsMapper
+import br.com.terras.app.coins.list.domain.CoinsUseCase
+import br.com.terras.app.coins.list.domain.CoinsUseCaseImpl
 import br.com.terras.app.coins.mockCoinsListResponseStub
 import br.com.terras.app.coins.mockCoinsVOListStub
 import io.mockk.coEvery

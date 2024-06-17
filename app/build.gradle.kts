@@ -61,11 +61,13 @@ dependencies {
     implementation(project(":feature:home"))
     implementation(project(":feature:feeds"))
     implementation(project(":feature:coins"))
+    implementation(project(":feature:search"))
 
     kover(project(":core:common"))
     kover(project(":feature:home"))
     kover(project(":feature:feeds"))
     kover(project(":feature:coins"))
+    kover(project(":feature:search"))
 
     implementation(libs.dagger.hilt.core)
     ksp(libs.dagger.hilt.compiler)

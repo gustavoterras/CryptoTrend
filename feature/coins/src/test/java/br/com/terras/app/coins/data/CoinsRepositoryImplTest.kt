@@ -1,8 +1,10 @@
 package br.com.terras.app.coins.data
 
 import br.com.terras.app.coins.MainDispatcherRule
+import br.com.terras.app.coins.list.data.CoinsRepository
+import br.com.terras.app.coins.list.data.CoinsRepositoryImpl
 import br.com.terras.app.coins.mockCoinsListResponseStub
-import br.com.terras.app.coins.network.ApiService
+import br.com.terras.app.coins.list.network.ApiService
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi

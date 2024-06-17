@@ -1,5 +1,7 @@
 package br.com.terras.app.coins.domain
 
+import br.com.terras.app.coins.list.domain.CoinsMapper
+import br.com.terras.app.coins.list.domain.CoinsMapperImpl
 import br.com.terras.app.coins.mockCoinVOStub
 import br.com.terras.app.coins.mockCoinsListResponseStub
 import org.junit.Assert

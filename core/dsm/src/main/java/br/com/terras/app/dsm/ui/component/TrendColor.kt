@@ -6,6 +6,7 @@ import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.ui.graphics.Color
 
 enum class TrendColor {
+    NONE,
     UP,
     DOWN,
     FLAT;
@@ -18,6 +19,7 @@ enum class TrendColor {
                 UP -> MaterialTheme.colorScheme.scrim
                 DOWN -> MaterialTheme.colorScheme.error
                 FLAT -> MaterialTheme.colorScheme.primary
+                else -> Color.Transparent
             }
         }
 }

@@ -16,6 +16,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Visibility
+import androidx.constraintlayout.compose.Visibility.Companion.Gone
+import androidx.constraintlayout.compose.Visibility.Companion.Invisible
+import androidx.constraintlayout.compose.Visibility.Companion.Visible
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
@@ -24,13 +28,13 @@ import com.bumptech.glide.integration.compose.GlideImage
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 fun CoinListItemView(
-    coinPosition: String,
     coinLogo: String,
     coinName: String,
     coinSymbol: String,
-    coinPrice: String,
-    coinPriceChancePercentage: String,
-    trendColor: TrendColor
+    coinPosition: String? = null,
+    coinPrice: String? = null,
+    coinPriceChancePercentage: String? = null,
+    trendColor: TrendColor = TrendColor.NONE
 ) {
     ConstraintLayout(
         modifier = Modifier
@@ -50,7 +54,8 @@ fun CoinListItemView(
                     top.linkTo(parent.top, 18.dp)
                     bottom.linkTo(parent.bottom, 18.dp)
                     start.linkTo(parent.start, 18.dp)
-                })
+                }
+        )
 
         Text(text = coinName,
             style = MaterialTheme.typography.bodyLarge,
@@ -58,7 +63,8 @@ fun CoinListItemView(
             modifier = Modifier.constrainAs(nick) {
                 start.linkTo(avatar.end, 9.dp)
                 bottom.linkTo(guideCenterVertically)
-            })
+            }
+        )
 
         Box(modifier = Modifier
             .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(3.dp))
@@ -66,33 +72,37 @@ fun CoinListItemView(
             .constrainAs(position) {
                 top.linkTo(guideCenterVertically)
                 start.linkTo(avatar.end, 9.dp)
+                visibility = if (coinPosition.isNullOrEmpty()) Invisible else Visible
             }) {
             Text(
-                text = coinPosition,
+                text = coinPosition.orEmpty(),
                 style = MaterialTheme.typography.labelLarge,
-                color = Color.White,
-                overflow = TextOverflow.Ellipsis,
+                color = Color.White
             )
         }
+
+        val spacingNull = if (coinPosition.isNullOrEmpty()) (-5).dp else 3.dp
 
         Text(text = coinSymbol,
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.surface,
-            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.constrainAs(name) {
                 centerVerticallyTo(position)
-                start.linkTo(position.end, 3.dp)
-            })
+                start.linkTo(position.end, spacingNull)
+            }
+        )
 
-        Text(text = coinPrice,
+        Text(text = coinPrice.orEmpty(),
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.surface,
-            overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center,
             modifier = Modifier.constrainAs(price) {
                 end.linkTo(parent.end, 18.dp)
                 bottom.linkTo(guideCenterVertically)
-            })
+                visibility = if (coinPrice.isNullOrEmpty()) Gone else Visible
+            }
+        )
+
 
         Box(modifier = Modifier
             .background(trendColor.color, RoundedCornerShape(9.dp))
@@ -100,9 +110,10 @@ fun CoinListItemView(
             .constrainAs(percentage) {
                 end.linkTo(parent.end, 18.dp)
                 top.linkTo(guideCenterVertically)
+                visibility = if (coinPriceChancePercentage.isNullOrEmpty()) Gone else Visible
             }) {
             Text(
-                text = coinPriceChancePercentage,
+                text = coinPriceChancePercentage.orEmpty(),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.surface,
                 textAlign = TextAlign.Center
@@ -119,7 +130,7 @@ private fun PersonListItemPreview() {
             "1",
             "teste",
             "Bitcoin",
-            "BTC",
+            "1",
             "$ 10,000.00",
             "10%",
             TrendColor.DOWN
