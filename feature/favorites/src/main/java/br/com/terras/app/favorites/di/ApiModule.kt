@@ -1,8 +1,8 @@
-package br.com.terras.app.coins.list.di
+package br.com.terras.app.favorites.di
 
+import br.com.terras.app.favorites.network.ApiServiceFavorites
 import br.com.terras.app.network.di.NetworkModule.provideBaseUrl
 import br.com.terras.app.network.di.NetworkModule.provideHttpClient
-import br.com.terras.app.coins.list.network.ApiServiceCoins
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -15,5 +15,5 @@ object ApiModule {
 
     @Provides
     @Singleton
-    fun provideApiService(): ApiServiceCoins = ApiServiceCoins(provideBaseUrl(), provideHttpClient())
+    fun provideApiService(): ApiServiceFavorites = ApiServiceFavorites(provideBaseUrl(), provideHttpClient())
 }

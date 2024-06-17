@@ -7,7 +7,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.navDeepLink
 import br.com.terras.app.dsm.ui.component.WebViewScreen
 import br.com.terras.app.feeds.presentation.FeedsActivityCompose
-import br.com.terras.app.home.presentation.HomeActivityCompose
+import br.com.terras.app.favorites.presentation.HomeActivityCompose
 import br.com.terras.app.navigation.ScreenRouter.COIN_LIST
 import br.com.terras.app.navigation.ScreenRouter.FAVORITE
 import br.com.terras.app.navigation.ScreenRouter.FEEDS

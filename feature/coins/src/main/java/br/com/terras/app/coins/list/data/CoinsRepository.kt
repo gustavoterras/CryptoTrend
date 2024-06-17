@@ -1,7 +1,7 @@
 package br.com.terras.app.coins.list.data
 
 import br.com.terras.app.coins.list.data.model.CoinsResponse
-import br.com.terras.app.coins.list.network.ApiService
+import br.com.terras.app.coins.list.network.ApiServiceCoins
 import javax.inject.Inject
 
 interface CoinsRepository {
@@ -9,7 +9,7 @@ interface CoinsRepository {
 }
 
 class CoinsRepositoryImpl @Inject constructor(
-    private val api: ApiService
+    private val api: ApiServiceCoins
 ) : CoinsRepository {
 
     override suspend fun getCoins(): Result<List<CoinsResponse>> {
