@@ -21,25 +21,19 @@ import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.component.StickyHeaderView
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 
-@OptIn(ExperimentalFoundationApi::class)
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun HomeActivityCompose() {
-    Scaffold {
+    Scaffold(
+        topBar = {
+            StickyHeaderView()
+        }
+    ) {
         LazyColumn(
             verticalArrangement = Arrangement.spacedBy(9.dp),
             modifier = Modifier.padding(start = 18.dp, end = 18.dp)
         ) {
-            stickyHeader {
-                Surface(
-                    modifier = Modifier
-                        .fillParentMaxWidth()
-                        .height(100.dp),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    StickyHeaderView()
-                }
-            }
+            //TODO
         }
 
         Column(

@@ -2,11 +2,12 @@ package br.com.terras.app.coins.presentation
 
 import app.cash.turbine.test
 import br.com.terras.app.coins.MainDispatcherRule
-import br.com.terras.app.coins.domain.CoinsUseCase
+import br.com.terras.app.coins.list.domain.CoinsUseCase
+import br.com.terras.app.coins.list.presentation.CoinsViewModel
 import br.com.terras.app.coins.mockCoinsVOListStub
-import br.com.terras.app.coins.presentation.CoinsViewModel.CoinsState.Error
-import br.com.terras.app.coins.presentation.CoinsViewModel.CoinsState.Loading
-import br.com.terras.app.coins.presentation.CoinsViewModel.CoinsState.Success
+import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Error
+import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Loading
+import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Success
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk

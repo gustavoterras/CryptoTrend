@@ -36,7 +36,8 @@ class MainActivity : ComponentActivity() {
         val bottomNavItems = listOf(
             BottomNavItem("Mercado", R.drawable.storefront_24dp, ScreenRouter.COIN_LIST.value),
             BottomNavItem("Favoritos", R.drawable.star_24dp, ScreenRouter.FAVORITE.value),
-            BottomNavItem("Notícias", R.drawable.newspaper_24dp, ScreenRouter.FEEDS.value)
+            BottomNavItem("Pesquisar", R.drawable.search_24dp, ScreenRouter.SEARCH.value),
+            BottomNavItem("Notícias", R.drawable.newspaper_24dp, ScreenRouter.FEEDS.value),
         )
 
         Scaffold(
