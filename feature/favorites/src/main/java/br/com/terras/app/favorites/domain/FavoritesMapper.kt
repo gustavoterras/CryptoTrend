@@ -15,6 +15,7 @@ class FavoritesMapperImpl @Inject constructor() : FavoritesMapper {
     override fun toCoins(response: List<CoinsResponse>): List<CoinVO> {
         return response.map {
             CoinVO(
+                id = it.id,
                 symbol = it.symbol.uppercase(),
                 name = it.name,
                 image = it.image,

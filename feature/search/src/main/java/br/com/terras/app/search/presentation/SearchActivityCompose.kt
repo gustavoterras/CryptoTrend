@@ -37,7 +37,8 @@ import br.com.terras.app.search.presentation.SearchViewModel.SearchState.Success
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun SearchActivityCompose(
-    viewModel: SearchViewModel = hiltViewModel()
+    viewModel: SearchViewModel = hiltViewModel(),
+    onItemClick: (String) -> Unit
 ) {
 
     var showDialog by remember { mutableStateOf(true) }
@@ -53,7 +54,7 @@ fun SearchActivityCompose(
 
         when (coinsListState) {
             is Loading -> CoinListItemShimmerView(shouldShowSearchBar = true)
-            is Success -> OnSearchSuccess((coinsListState as Success).coinsList)
+            is Success -> OnSearchSuccess((coinsListState as Success).coinsList, onItemClick)
             is Empty -> OnSearchEmpty()
             is Error -> OnSearchError(showDialog) {
                 showDialog = false
@@ -63,7 +64,7 @@ fun SearchActivityCompose(
 }
 
 @Composable
-private fun OnSearchSuccess(coinsList: List<CoinVO>) {
+private fun OnSearchSuccess(coinsList: List<CoinVO>, onItemClick: (String) -> Unit) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(9.dp),
         modifier = Modifier.padding(top = 150.dp,start = 18.dp, end = 18.dp, bottom = 100.dp)
@@ -71,9 +72,11 @@ private fun OnSearchSuccess(coinsList: List<CoinVO>) {
         items(coinsList.size) {
             coinsList[it].run {
                 CoinListItemView(
+                    coinId = id,
                     coinLogo = thumb,
                     coinName = name,
-                    coinSymbol = symbol
+                    coinSymbol = symbol,
+                    onItemClick = onItemClick
                 )
             }
         }
@@ -119,7 +122,7 @@ private fun OnSearchEmpty() {
 private fun SearchActivityComposePreview() {
     DSMTheme {
         Surface {
-            SearchActivityCompose()
+            SearchActivityCompose {}
         }
     }
 }

@@ -1,6 +1,7 @@
 package br.com.terras.app.dsm.ui.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,10 +14,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.Visibility
 import androidx.constraintlayout.compose.Visibility.Companion.Gone
 import androidx.constraintlayout.compose.Visibility.Companion.Invisible
 import androidx.constraintlayout.compose.Visibility.Companion.Visible
@@ -28,16 +27,19 @@ import com.bumptech.glide.integration.compose.GlideImage
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
 fun CoinListItemView(
+    coinId: String,
     coinLogo: String,
     coinName: String,
     coinSymbol: String,
     coinPosition: String? = null,
     coinPrice: String? = null,
     coinPriceChancePercentage: String? = null,
-    trendColor: TrendColor = TrendColor.NONE
+    trendColor: TrendColor = TrendColor.NONE,
+    onItemClick: (String) -> Unit
 ) {
     ConstraintLayout(
         modifier = Modifier
+            .clickable { onItemClick(coinId) }
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(18.dp))
     ) {
@@ -127,6 +129,7 @@ fun CoinListItemView(
 private fun PersonListItemPreview() {
     DSMTheme {
         CoinListItemView(
+            "id",
             "1",
             "teste",
             "Bitcoin",
@@ -134,6 +137,6 @@ private fun PersonListItemPreview() {
             "$ 10,000.00",
             "10%",
             TrendColor.DOWN
-        )
+        ) {}
     }
 }

@@ -5,6 +5,7 @@ import br.com.terras.app.favorites.data.model.CoinsResponse
 import br.com.terras.app.favorites.domain.model.CoinVO
 
 val mockCoinVOStub = CoinVO(
+    id = "id",
     symbol = "SYMBOL",
     name = "name",
     image = "image",

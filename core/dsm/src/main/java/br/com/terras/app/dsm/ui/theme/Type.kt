@@ -4,20 +4,31 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import br.com.terras.app.cryptotrend.core.dsm.R
 
 val avenirNextFontFamily = FontFamily(
-    Font(R.font.avenir_next_ultra_light),
-    Font(R.font.avenir_next_light),
-    Font(R.font.avenir_next_regular),
-    Font(R.font.avenir_next_medium),
-    Font(R.font.avenir_next_bold),
-    Font(R.font.avenir_next_italic)
+    Font(R.font.avenir_next_ultra_light, FontWeight.ExtraLight, FontStyle.Normal),
+    Font(R.font.avenir_next_light, FontWeight.Light, FontStyle.Normal),
+    Font(R.font.avenir_next_regular, FontWeight.Normal, FontStyle.Normal),
+    Font(R.font.avenir_next_medium, FontWeight.Medium, FontStyle.Normal),
+    Font(R.font.avenir_next_bold, FontWeight.Bold, FontStyle.Normal),
+    Font(R.font.avenir_next_italic, FontWeight.Normal, style = FontStyle.Italic)
 )
 
 val typography = Typography(
+    headlineLarge = TextStyle(
+        fontFamily = avenirNextFontFamily,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 28.sp
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = avenirNextFontFamily,
+        fontWeight = FontWeight.Bold,
+        fontSize = 26.sp
+    ),
     headlineSmall = TextStyle(
         fontFamily = avenirNextFontFamily,
         fontWeight = FontWeight.SemiBold,
