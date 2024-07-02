@@ -15,12 +15,13 @@ class CoinsMapperImpl @Inject constructor() : CoinsMapper {
     override fun toCoins(coinsResponse: List<CoinsResponse>): List<CoinVO> {
         return coinsResponse.map { response ->
             CoinVO(
+                id =  response.id,
                 symbol = response.symbol.uppercase(),
                 name = response.name,
                 image = response.image,
                 marketCapRank = response.marketCapRank.toString(),
                 price = response.price.formatMoney(),
-                priceChangePercentage = (response.priceChangePercentage * 100).formatPercentage(),
+                priceChangePercentage = response.priceChangePercentage.formatPercentage(),
                 trendColor = getTrendColor(response.priceChangePercentage)
             )
         }

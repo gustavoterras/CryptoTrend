@@ -30,8 +30,9 @@ import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesStat
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
-fun HomeActivityCompose(
-    viewModel: FavoritesViewModel = hiltViewModel()
+fun FavoriteActivityCompose(
+    viewModel: FavoritesViewModel = hiltViewModel(),
+    onItemClick: (String) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(true) }
 
@@ -45,7 +46,7 @@ fun HomeActivityCompose(
 
         when (coinsListState) {
             is Loading -> CoinListItemShimmerView()
-            is Success -> OnCoinsListSuccess((coinsListState as Success).coinsList)
+            is Success -> OnCoinsListSuccess((coinsListState as Success).coinsList, onItemClick)
             is Error -> OnCoinsListError(
                 showDialog
             ) { showDialog = false }
@@ -54,7 +55,7 @@ fun HomeActivityCompose(
 }
 
 @Composable
-private fun OnCoinsListSuccess(coinsList: List<CoinVO>) {
+private fun OnCoinsListSuccess(coinsList: List<CoinVO>, onItemClick: (String) -> Unit) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(9.dp),
         modifier = Modifier.padding(top = 100.dp, start = 18.dp, end = 18.dp, bottom = 100.dp)
@@ -62,13 +63,15 @@ private fun OnCoinsListSuccess(coinsList: List<CoinVO>) {
         items(coinsList.size) {
             coinsList[it].run {
                 CoinListItemView(
+                    coinId = id,
                     coinPosition = marketCapRank,
                     coinLogo = image,
                     coinName = name,
                     coinSymbol = symbol,
                     coinPrice = price,
                     coinPriceChancePercentage = priceChangePercentage,
-                    trendColor = trendColor
+                    trendColor = trendColor,
+                    onItemClick = onItemClick
                 )
             }
         }
@@ -94,10 +97,10 @@ private fun OnCoinsListError(
 
 @ThemePreviews
 @Composable
-private fun HomeActivityComposePreview() {
+private fun FavoriteActivityComposePreview() {
     DSMTheme {
         Surface {
-            HomeActivityCompose()
+            FavoriteActivityCompose {}
         }
     }
 }
