@@ -20,7 +20,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "CryptoTrend"
-include(":app")
+include(":androidApp")
 include(":core:dsm")
 include(":core:navigation")
 include(":core:network")
@@ -29,3 +29,4 @@ include(":feature:favorites")
 include(":feature:feeds")
 include(":feature:coins")
 include(":feature:search")
+include(":shared")

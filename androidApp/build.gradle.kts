@@ -64,7 +64,7 @@ dependencies {
     implementation(project(":feature:search"))
 
     kover(project(":core:common"))
-    "kover"(project(":feature:favorites"))
+    kover(project(":feature:favorites"))
     kover(project(":feature:feeds"))
     kover(project(":feature:coins"))
     kover(project(":feature:search"))

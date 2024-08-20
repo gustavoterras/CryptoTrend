@@ -18,9 +18,10 @@ composeGlide = "1.0.0-beta01"
 ktorVersion = "2.3.11"
 hiltVersion = "2.51.1"
 material3= "1.2.1"
-material = "1.12.0"
 koverVersion = "0.8.1"
 turbineVersion = "0.11.0"
+compose-plugin = "1.6.11"
+voyager = "1.0.0"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -53,7 +54,8 @@ ktor-client-negotiation = { group = "io.ktor", name = "ktor-client-content-negot
 ktor-serialization = { group = "io.ktor", name = "ktor-serialization-kotlinx-json", version.ref = "ktorVersion" }
 dagger-hilt-core = { group = "com.google.dagger", name = "hilt-android", version.ref = "hiltVersion" }
 dagger-hilt-compiler = { group = "com.google.dagger", name = "hilt-compiler", version.ref = "hiltVersion" }
-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+voyager-navigator = { module = "cafe.adriel.voyager:voyager-navigator", version.ref = "voyager" }
 
 [plugins]
 kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "koverVersion" }
@@ -62,9 +64,12 @@ android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 dagger-hilt = { id = "com.google.dagger.hilt.android", version.ref = "hiltVersion" }
 serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+compose-plugin = { id = "org.jetbrains.compose", version.ref = "compose-plugin" }
+
 
 [bundles]
 playground-network = ["ktor-client-android", "ktor-client-logging", "ktor-client-negotiation", "ktor-client-serialization", "ktor-serialization", "dagger-hilt-core"]
-playground-dsm = ["androidx-ui", "androidx-ui-graphics", "androidx-ui-tooling", "androidx-ui-tooling-preview", "androidx-activity-compose", "androidx-compose-constraintlayout", "androidx-lifecycle-runtime-compose", "androidx-material3", "material", "androidx-lifecycle-viewmodel-compose", "androidx-compose-navigation", "androidx-hilt-compose", "glide-compose"]
+playground-dsm = ["androidx-ui", "androidx-ui-graphics", "androidx-ui-tooling", "androidx-ui-tooling-preview", "androidx-activity-compose", "androidx-compose-constraintlayout", "androidx-lifecycle-runtime-compose", "androidx-material3", "androidx-lifecycle-viewmodel-compose", "androidx-compose-navigation", "androidx-hilt-compose", "glide-compose"]
