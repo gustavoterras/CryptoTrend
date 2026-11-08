@@ -1,12 +1,13 @@
 package br.com.terras.app.feeds.di
 
 import br.com.terras.app.feeds.network.ApiServicesFeeds
-import br.com.terras.app.network.di.NetworkModule.provideBaseUrlNews
-import br.com.terras.app.network.di.NetworkModule.provideHttpClient
+import br.com.terras.app.network.di.NewsApiBaseUrl
+import br.com.terras.app.network.di.NewsApiClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import io.ktor.client.HttpClient
 import javax.inject.Singleton
 
 @Module
@@ -15,5 +16,8 @@ object ApiModule {
 
     @Provides
     @Singleton
-    fun provideApiService(): ApiServicesFeeds = ApiServicesFeeds(provideBaseUrlNews(), provideHttpClient())
+    fun provideApiService(
+        @NewsApiBaseUrl baseUrl: String,
+        @NewsApiClient client: HttpClient
+    ): ApiServicesFeeds = ApiServicesFeeds(baseUrl, client)
 }

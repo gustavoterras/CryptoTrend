@@ -1,12 +1,13 @@
 package br.com.terras.app.search.di
 
+import br.com.terras.app.network.di.CoinGeckoBaseUrl
+import br.com.terras.app.network.di.CoinGeckoClient
 import br.com.terras.app.search.network.ApiServiceSearch
-import br.com.terras.app.network.di.NetworkModule.provideBaseUrl
-import br.com.terras.app.network.di.NetworkModule.provideHttpClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import io.ktor.client.HttpClient
 import javax.inject.Singleton
 
 @Module
@@ -15,5 +16,8 @@ object ApiModule {
 
     @Provides
     @Singleton
-    fun provideApiService(): ApiServiceSearch = ApiServiceSearch(provideBaseUrl(), provideHttpClient())
+    fun provideApiService(
+        @CoinGeckoBaseUrl baseUrl: String,
+        @CoinGeckoClient client: HttpClient
+    ): ApiServiceSearch = ApiServiceSearch(baseUrl, client)
 }

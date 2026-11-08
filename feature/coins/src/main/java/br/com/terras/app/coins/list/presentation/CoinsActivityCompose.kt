@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import br.com.terras.app.coins.list.domain.model.CoinVO
+import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Error
 import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Loading
 import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Success
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews

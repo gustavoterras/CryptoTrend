@@ -5,10 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.terras.app.search.domain.SearchUseCase
 import br.com.terras.app.search.domain.model.CoinVO
-import br.com.terras.app.search.presentation.SearchViewModel.SearchState.Empty
-import br.com.terras.app.search.presentation.SearchViewModel.SearchState.Error
-import br.com.terras.app.search.presentation.SearchViewModel.SearchState.Loading
-import br.com.terras.app.search.presentation.SearchViewModel.SearchState.Success
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,7 +24,20 @@ class SearchViewModel @Inject constructor(
     private val useCase: SearchUseCase
 ) : ViewModel() {
 
-    private val _coins: MutableStateFlow<SearchState> = MutableStateFlow(Success(emptyList()))
+    sealed interface SearchIntent {
+        data class QueryChanged(val query: String) : SearchIntent
+        data class ExecuteSearch(val query: String) : SearchIntent
+        data object ClearSearch : SearchIntent
+    }
+
+    sealed interface SearchState {
+        data object Loading : SearchState
+        data class Success(val coinsList: List<CoinVO>) : SearchState
+        data object Error : SearchState
+        data object Empty : SearchState
+    }
+
+    private val _coins: MutableStateFlow<SearchState> = MutableStateFlow(SearchState.Success(emptyList()))
     val coins: StateFlow<SearchState> = _coins.asStateFlow()
     private val _searchQuery = MutableStateFlow("")
 
@@ -42,9 +51,23 @@ class SearchViewModel @Inject constructor(
                 .distinctUntilChanged()
                 .filter { it.isNotEmpty() }
                 .collectLatest {
-                    _coins.update { Loading }
+                    _coins.update { SearchState.Loading }
                     getCoins(it)
                 }
+        }
+    }
+
+    fun handleIntent(intent: SearchIntent) {
+        when (intent) {
+            is SearchIntent.QueryChanged -> doSearch(intent.query)
+            is SearchIntent.ExecuteSearch -> {
+                _coins.update { SearchState.Loading }
+                getCoins(intent.query)
+            }
+            is SearchIntent.ClearSearch -> {
+                _searchQuery.update { "" }
+                _coins.update { SearchState.Success(emptyList()) }
+            }
         }
     }
 
@@ -54,12 +77,12 @@ class SearchViewModel @Inject constructor(
             useCase.searchCoins(query)
                 .onFailure {
                     _coins.update {
-                        Error
+                        SearchState.Error
                     }
                 }
                 .onSuccess { result ->
                     _coins.update {
-                        if (result.isNotEmpty()) Success(result) else Empty
+                        if (result.isNotEmpty()) SearchState.Success(result) else SearchState.Empty
                     }
                 }
         }
@@ -67,12 +90,5 @@ class SearchViewModel @Inject constructor(
 
     fun doSearch(query: String) {
         _searchQuery.update { query }
-    }
-
-    interface SearchState {
-        data object Loading : SearchState
-        data class Success(val coinsList: List<CoinVO>) : SearchState
-        data object Error : SearchState
-        data object Empty : SearchState
     }
 }

@@ -5,9 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.terras.app.coins.list.domain.CoinsUseCase
 import br.com.terras.app.coins.list.domain.model.CoinVO
-import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Error
-import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Loading
-import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Success
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,33 +18,48 @@ class CoinsViewModel @Inject constructor(
     private val useCase: CoinsUseCase
 ) : ViewModel() {
 
-    private val _coins: MutableStateFlow<CoinsState> = MutableStateFlow(Loading)
+    sealed interface CoinsIntent {
+        data object LoadCoins : CoinsIntent
+        data object Refresh : CoinsIntent
+    }
+
+    sealed interface CoinsState {
+        data object Loading : CoinsState
+        data class Success(val coinsList: List<CoinVO>) : CoinsState
+        data object Error : CoinsState
+    }
+
+    private val _coins: MutableStateFlow<CoinsState> = MutableStateFlow(CoinsState.Loading)
     val coins: StateFlow<CoinsState> = _coins.asStateFlow()
 
     init {
-        getCoins()
+        handleIntent(CoinsIntent.LoadCoins)
+    }
+
+    fun handleIntent(intent: CoinsIntent) {
+        when (intent) {
+            is CoinsIntent.LoadCoins -> fetchCoins()
+            is CoinsIntent.Refresh -> fetchCoins()
+        }
     }
 
     @VisibleForTesting
-    fun getCoins() {
+    fun getCoins() = fetchCoins()
+
+    private fun fetchCoins() {
+        _coins.update { CoinsState.Loading }
         viewModelScope.launch {
             useCase.getCoins()
                 .onFailure {
                     _coins.update {
-                        Error
+                        CoinsState.Error
                     }
                 }
                 .onSuccess { result ->
                     _coins.update {
-                        Success(result)
+                        CoinsState.Success(result)
                     }
                 }
         }
-    }
-
-    interface CoinsState {
-        data object Loading : CoinsState
-        data class Success(val coinsList: List<CoinVO>) : CoinsState
-        data object Error : CoinsState
     }
 }

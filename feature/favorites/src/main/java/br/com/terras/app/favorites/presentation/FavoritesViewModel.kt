@@ -5,8 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.terras.app.favorites.domain.FavoritesUseCase
 import br.com.terras.app.favorites.domain.model.CoinVO
-import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Error
-import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Success
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,33 +18,46 @@ class FavoritesViewModel @Inject constructor(
     private val useCase: FavoritesUseCase
 ) : ViewModel() {
 
+    sealed interface FavoritesIntent {
+        data object LoadFavorites : FavoritesIntent
+        data object Refresh : FavoritesIntent
+    }
+
+    sealed interface FavoritesState {
+        data object Loading : FavoritesState
+        data class Success(val coinsList: List<CoinVO>) : FavoritesState
+        data object Error : FavoritesState
+    }
+
     private val _coins: MutableStateFlow<FavoritesState> = MutableStateFlow(FavoritesState.Loading)
     val coins: StateFlow<FavoritesState> = _coins.asStateFlow()
 
     init {
-        getFavorites()
+        handleIntent(FavoritesIntent.LoadFavorites)
+    }
+
+    fun handleIntent(intent: FavoritesIntent) {
+        when (intent) {
+            is FavoritesIntent.LoadFavorites -> getFavorites()
+            is FavoritesIntent.Refresh -> getFavorites()
+        }
     }
 
     @VisibleForTesting
     fun getFavorites() {
+        _coins.update { FavoritesState.Loading }
         viewModelScope.launch {
             useCase.getCoinsByIds(listOf("bitcoin", "ethereum", "cardano"))
                 .onFailure {
                     _coins.update {
-                        Error
+                        FavoritesState.Error
                     }
                 }
                 .onSuccess { result ->
                     _coins.update {
-                        Success(result)
+                        FavoritesState.Success(result)
                     }
                 }
         }
-    }
-
-    interface FavoritesState {
-        data object Loading : FavoritesState
-        data class Success(val coinsList: List<CoinVO>) : FavoritesState
-        data object Error : FavoritesState
     }
 }

@@ -77,24 +77,25 @@ fun DetailActivityCompose(
     val coinDetailState by viewModel.detail.collectAsState()
     val chartDetailState by viewModel.chart.collectAsState()
 
-    LaunchedEffect(true) {
-        viewModel.getDetailById(id)
-        viewModel.getChartById(id)
+    LaunchedEffect(id) {
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail(id))
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart(id))
     }
 
-    when (coinDetailState) {
+    when (val state = coinDetailState) {
         is Loading -> {}
-        is SuccessDetail -> OnCoinDetailSuccess((coinDetailState as SuccessDetail),
+        is SuccessDetail -> OnCoinDetailSuccess(
+            state,
             chartDetailState,
             {
                 navHostController.popBackStack()
-            }) {
-            viewModel.getChartById(id, it)
+            }) { days ->
+            viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart(id, days))
         }
-
-        is Error -> OnCoinDetailError(
+        is DetailViewModel.DetailState.Error -> OnCoinDetailError(
             showDialog
         ) { showDialog = false }
+        else -> {}
     }
 }
 
@@ -260,6 +261,7 @@ fun OnCoinDetailSuccess(
                             selectedDaysOfChart(DaysOfChart.entries[index].value)
                         }
                     }
+                    else -> {}
                 }
             }
 

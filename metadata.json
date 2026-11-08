@@ -1,0 +1,8 @@
+{
+  "name": "CryptoTrend",
+  "description": "Cryptocurrency tracking and trend analysis app displaying real-time coin metrics, charts, search, favorites, and market feeds.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

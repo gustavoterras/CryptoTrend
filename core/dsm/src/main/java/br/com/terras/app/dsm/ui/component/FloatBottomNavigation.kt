@@ -15,6 +15,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
@@ -23,7 +26,7 @@ import br.com.terras.app.dsm.ui.theme.DSMTheme
 @Composable
 fun FloatBottomNavigation(items: List<BottomNavItem>, navController: NavController) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoute = navBackStackEntry?.destination?.route
+    val currentDestination = navBackStackEntry?.destination
 
     NavigationBar(
         modifier = Modifier
@@ -33,6 +36,10 @@ fun FloatBottomNavigation(items: List<BottomNavItem>, navController: NavControll
         containerColor = MaterialTheme.colorScheme.primary
     ) {
         items.forEach { item ->
+            val isSelected = currentDestination?.hierarchy?.any {
+                it.hasRoute(item.destination::class)
+            } == true
+
             NavigationBarItem(
                 label = {
                     Text(text = item.title)
@@ -45,12 +52,15 @@ fun FloatBottomNavigation(items: List<BottomNavItem>, navController: NavControll
                     )
                 },
 
-                selected = currentRoute == item.route,
+                selected = isSelected,
 
                 onClick = {
-                    navController.navigate(item.route) {
-                        popUpTo(navController.graph.startDestinationId)
+                    navController.navigate(item.destination) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
                         launchSingleTop = true
+                        restoreState = true
                     }
                 },
 
@@ -65,8 +75,8 @@ fun FloatBottomNavigation(items: List<BottomNavItem>, navController: NavControll
 fun FloatBottomNavigationPreview() {
     val items = listOf(
         BottomNavItem("Home", android.R.drawable.star_on, "Home"),
-        BottomNavItem("Home", android.R.drawable.star_off, "Home"),
-        BottomNavItem("Home", android.R.drawable.sym_action_call, "Home")
+        BottomNavItem("Search", android.R.drawable.star_off, "Search"),
+        BottomNavItem("Feeds", android.R.drawable.sym_action_call, "Feeds")
     )
 
     DSMTheme {

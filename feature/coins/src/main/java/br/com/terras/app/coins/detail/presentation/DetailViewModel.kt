@@ -5,10 +5,6 @@ import androidx.lifecycle.viewModelScope
 import br.com.terras.app.coins.detail.domain.DetailUseCase
 import br.com.terras.app.coins.detail.domain.model.CoinChartDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailVO
-import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.Error
-import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.Loading
-import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessChart
-import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessDetail
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,23 +18,42 @@ class DetailViewModel @Inject constructor(
     private val useCase: DetailUseCase
 ) : ViewModel() {
 
-    private val _detail: MutableStateFlow<DetailState> = MutableStateFlow(Loading)
+    sealed interface DetailIntent {
+        data class LoadDetail(val id: String) : DetailIntent
+        data class LoadChart(val id: String, val days: Int = 1) : DetailIntent
+    }
+
+    sealed interface DetailState {
+        data object Loading : DetailState
+        data class SuccessDetail(val coin: CoinDetailVO) : DetailState
+        data class SuccessChart(val chart: CoinChartDetailVO) : DetailState
+        data object Error : DetailState
+    }
+
+    private val _detail: MutableStateFlow<DetailState> = MutableStateFlow(DetailState.Loading)
     val detail: StateFlow<DetailState> = _detail.asStateFlow()
 
-    private val _chart: MutableStateFlow<DetailState> = MutableStateFlow(Loading)
+    private val _chart: MutableStateFlow<DetailState> = MutableStateFlow(DetailState.Loading)
     val chart: StateFlow<DetailState> = _chart.asStateFlow()
+
+    fun handleIntent(intent: DetailIntent) {
+        when (intent) {
+            is DetailIntent.LoadDetail -> getDetailById(intent.id)
+            is DetailIntent.LoadChart -> getChartById(intent.id, intent.days)
+        }
+    }
 
     fun getDetailById(id: String) {
         viewModelScope.launch {
             useCase.getDetailById(id)
                 .onSuccess { result ->
                     _detail.update {
-                        SuccessDetail(result)
+                        DetailState.SuccessDetail(result)
                     }
                 }
                 .onFailure {
                     _detail.update {
-                        Error
+                        DetailState.Error
                     }
                 }
         }
@@ -49,21 +64,14 @@ class DetailViewModel @Inject constructor(
             useCase.getChartDetailById(id, days)
                 .onSuccess { result ->
                     _chart.update {
-                        SuccessChart(result)
+                        DetailState.SuccessChart(result)
                     }
                 }
                 .onFailure {
                     _chart.update {
-                        Error
+                        DetailState.Error
                     }
                 }
         }
-    }
-
-    interface DetailState {
-        data object Loading : DetailState
-        data class SuccessDetail(val coin: CoinDetailVO) : DetailState
-        data class SuccessChart(val chart: CoinChartDetailVO) : DetailState
-        data object Error : DetailState
     }
 }

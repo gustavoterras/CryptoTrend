@@ -13,7 +13,7 @@ import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.component.BottomNavItem
 import br.com.terras.app.dsm.ui.component.FloatBottomNavigation
 import br.com.terras.app.dsm.ui.theme.DSMTheme
-import br.com.terras.app.navigation.ScreenRouter
+import br.com.terras.app.navigation.Screen
 import dagger.hilt.android.AndroidEntryPoint
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
@@ -34,10 +34,10 @@ class MainActivity : ComponentActivity() {
         val navController = rememberNavController()
 
         val bottomNavItems = listOf(
-            BottomNavItem("Mercado", R.drawable.storefront_24dp, ScreenRouter.COIN_LIST.value),
-            BottomNavItem("Favoritos", R.drawable.star_24dp, ScreenRouter.FAVORITE.value),
-            BottomNavItem("Pesquisar", R.drawable.search_24dp, ScreenRouter.SEARCH.value),
-            BottomNavItem("Notícias", R.drawable.newspaper_24dp, ScreenRouter.FEEDS.value),
+            BottomNavItem("Mercado", R.drawable.storefront_24dp, Screen.CoinsList),
+            BottomNavItem("Favoritos", R.drawable.star_24dp, Screen.Favorites),
+            BottomNavItem("Pesquisar", R.drawable.search_24dp, Screen.Search),
+            BottomNavItem("Notícias", R.drawable.newspaper_24dp, Screen.Feeds),
         )
 
         Scaffold(

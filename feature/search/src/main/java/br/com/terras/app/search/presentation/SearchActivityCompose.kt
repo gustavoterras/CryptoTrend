@@ -46,7 +46,7 @@ fun SearchActivityCompose(
     Scaffold(
         topBar = {
             StickyHeaderView(shouldShowSearchBar = true, onValueChangeListener = { query ->
-                viewModel.doSearch(query)
+                viewModel.handleIntent(SearchViewModel.SearchIntent.QueryChanged(query))
             })
         }
     ) {
