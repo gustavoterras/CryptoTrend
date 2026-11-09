@@ -5,6 +5,7 @@ package br.com.terras.app.coins.detail.presentation
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,8 +44,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.constraintlayout.compose.ConstraintLayout
@@ -109,6 +112,8 @@ fun OnCoinDetailSuccess(
     selectedDaysOfChart: (Int) -> Unit
 ) {
 
+    var isBarChart by remember { mutableStateOf(true) }
+
     BackHandler(onBack = onBackPress)
     Scaffold(topBar = {
         CenterAlignedTopAppBar(title = {
@@ -160,12 +165,12 @@ fun OnCoinDetailSuccess(
             ConstraintLayout(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(350.dp)
+                    .height(410.dp)
                     .background(
                         MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(18.dp)
                     ),
             ) {
-                val (name, date, valueAtDate, position, price, percentage, graph, bar) = createRefs()
+                val (name, date, valueAtDate, position, price, percentage, graph, bar, chartTypeToggle) = createRefs()
 
                 Text(text = state.coin.name,
                     style = MaterialTheme.typography.titleLarge,
@@ -221,7 +226,7 @@ fun OnCoinDetailSuccess(
                     is SuccessChart -> {
                         Text(text = chartDetailState.chart.chartData.first().date,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
+                            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
                             modifier = Modifier.constrainAs(date) {
                                 start.linkTo(name.start)
                                 top.linkTo(name.bottom)
@@ -235,20 +240,78 @@ fun OnCoinDetailSuccess(
                                 top.linkTo(date.bottom)
                             })
 
-                        LineChartCompose(
-                            modifier = Modifier.constrainAs(graph) {
-                                start.linkTo(parent.start)
-                                top.linkTo(percentage.bottom, 18.dp)
-                                bottom.linkTo(bar.top, 9.dp)
-                                end.linkTo(parent.end)
-                                height = Dimension.fillToConstraints
-                                width = Dimension.matchParent
+                        Row(
+                            modifier = Modifier.constrainAs(chartTypeToggle) {
+                                start.linkTo(name.start)
+                                top.linkTo(valueAtDate.bottom, 6.dp)
                             },
-                            data = chartDetailState.chart.chartData,
-                            graphColor = MaterialTheme.colorScheme.scrim,
-                            showDashedLine = true,
-                            showYLabels = true
-                        )
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (isBarChart) MaterialTheme.colorScheme.scrim else MaterialTheme.colorScheme.surface.copy(alpha = 0.12f)
+                                    )
+                                    .clickable { isBarChart = true }
+                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_bar_chart_24dp),
+                                    contentDescription = "Gráfico de Barras",
+                                    tint = if (isBarChart) Color(0xFF07381C) else MaterialTheme.colorScheme.surface,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (!isBarChart) MaterialTheme.colorScheme.scrim else MaterialTheme.colorScheme.surface.copy(alpha = 0.12f)
+                                    )
+                                    .clickable { isBarChart = false }
+                                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_show_chart_24dp),
+                                    contentDescription = "Gráfico de Linhas",
+                                    tint = if (!isBarChart) Color(0xFF07381C) else MaterialTheme.colorScheme.surface,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+
+                        if (isBarChart) {
+                            BarChartCompose(
+                                modifier = Modifier.constrainAs(graph) {
+                                    start.linkTo(parent.start)
+                                    top.linkTo(chartTypeToggle.bottom, 8.dp)
+                                    bottom.linkTo(bar.top, 8.dp)
+                                    end.linkTo(parent.end)
+                                    height = Dimension.fillToConstraints
+                                    width = Dimension.matchParent
+                                },
+                                data = chartDetailState.chart.chartData,
+                                coinInfo = state.coin
+                            )
+                        } else {
+                            LineChartCompose(
+                                modifier = Modifier.constrainAs(graph) {
+                                    start.linkTo(parent.start)
+                                    top.linkTo(chartTypeToggle.bottom, 8.dp)
+                                    bottom.linkTo(bar.top, 8.dp)
+                                    end.linkTo(parent.end)
+                                    height = Dimension.fillToConstraints
+                                    width = Dimension.matchParent
+                                },
+                                data = chartDetailState.chart.chartData,
+                                graphColor = MaterialTheme.colorScheme.scrim,
+                                showDashedLine = true,
+                                showYLabels = true
+                            )
+                        }
 
                         SegmentedControl(modifier = Modifier
                             .height(30.dp)
