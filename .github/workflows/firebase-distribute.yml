@@ -17,8 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-      GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
-      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
     steps:
     - name: Checkout
@@ -88,18 +86,24 @@ jobs:
     - name: Upload APK to Firebase App Distribution
       env:
         GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY || secrets.GCP_SA_KEY || secrets.FIREBASE_CREDENTIALS || secrets.GOOGLE_APPLICATION_CREDENTIALS }}
-        FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        RAW_FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         RELEASE_NOTES: ${{ github.event.inputs.release_notes || 'Deploy manual executado via GitHub Actions' }}
         TESTER_GROUPS: ${{ github.event.inputs.tester_groups || '' }}
       run: |
+        CRED_PARAM=""
         if [ -n "$GCP_SA_KEY" ]; then
           echo "$GCP_SA_KEY" > "$RUNNER_TEMP/firebase_credentials.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase_credentials.json"
-          echo "GOOGLE_APPLICATION_CREDENTIALS configurada em $RUNNER_TEMP/firebase_credentials.json"
+          unset FIREBASE_TOKEN
+          CRED_PARAM="-PserviceCredentialsFile=\"$RUNNER_TEMP/firebase_credentials.json\""
+          echo "Service Account configurada em $RUNNER_TEMP/firebase_credentials.json (FIREBASE_TOKEN desativado)"
+        elif [ -n "$RAW_FIREBASE_TOKEN" ]; then
+          export FIREBASE_TOKEN="$RAW_FIREBASE_TOKEN"
+          echo "Usando FIREBASE_TOKEN"
         fi
 
         echo ">>> Iniciando upload via plugin oficial do Firebase App Distribution (Gradle)..."
-        GRADLE_CMD="./gradlew appDistributionUploadDebug -PreleaseNotes=\"$RELEASE_NOTES\""
+        GRADLE_CMD="./gradlew appDistributionUploadDebug -PreleaseNotes=\"$RELEASE_NOTES\" $CRED_PARAM"
         if [ -n "$TESTER_GROUPS" ]; then
           GRADLE_CMD="$GRADLE_CMD -Pgroups=\"$TESTER_GROUPS\""
         fi

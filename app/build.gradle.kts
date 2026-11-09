@@ -75,6 +75,11 @@ android {
         if (!customGroups.isNullOrBlank()) {
             groups = customGroups
         }
+        val credentialsFile = findProperty("serviceCredentialsFile")?.toString()
+            ?: System.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if (!credentialsFile.isNullOrBlank()) {
+            serviceCredentialsFile = credentialsFile
+        }
     }
 }
 
