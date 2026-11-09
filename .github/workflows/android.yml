@@ -41,55 +41,7 @@ jobs:
         if [ -n "$GOOGLE_SERVICES_JSON" ]; then
           echo "$GOOGLE_SERVICES_JSON" > app/google-services.json
         elif [ ! -f "app/google-services.json" ]; then
-          cat << 'EOF' > app/google-services.json
-{
-  "project_info": {
-    "project_number": "942204810323",
-    "project_id": "gen-lang-client-0249381564",
-    "storage_bucket": "gen-lang-client-0249381564.firebasestorage.app"
-  },
-  "client": [
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:942204810323:android:ef2eb8ae55a51e16fdc2a6",
-        "android_client_info": {
-          "package_name": "br.com.terras.app.cryptotrend"
-        }
-      },
-      "oauth_client": [
-        {
-          "client_id": "942204810323-ooom9eeh8cvbq8ergc0t8m3u6qglhko4.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "br.com.terras.app.cryptotrend",
-            "certificate_hash": "0d7395b13478ed0364b4f63aa9ae6c5dd0186d49"
-          }
-        },
-        {
-          "client_id": "942204810323-r0s178g2ccu8qvdtndk2jos22lflbnvv.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyCJpEAIeV3s-SasmWDe930vXV82jImawQE"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "942204810323-r0s178g2ccu8qvdtndk2jos22lflbnvv.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
-    }
-  ],
-  "configuration_version": "1"
-}
-EOF
+          echo "ewogICJwcm9qZWN0X2luZm8iOiB7CiAgICAicHJvamVjdF9udW1iZXIiOiAiOTQyMjA0ODEwMzIzIiwKICAgICJwcm9qZWN0X2lkIjogImdlbi1sYW5nLWNsaWVudC0wMjQ5MzgxNTY0IiwKICAgICJzdG9yYWdlX2J1Y2tldCI6ICJnZW4tbGFuZy1jbGllbnQtMDI0OTM4MTU2NC5maXJlYmFzZXN0b3JhZ2UuYXBwIgogIH0sCiAgImNsaWVudCI6IFsKICAgIHsKICAgICAgImNsaWVudF9pbmZvIjogewogICAgICAgICJtb2JpbGVzZGtfYXBwX2lkIjogIjE6OTQyMjA0ODEwMzIzOmFuZHJvaWQ6ZWYyZWI4YWU1NWE1MWUxNmZkYzJhNiIsCiAgICAgICAgImFuZHJvaWRfY2xpZW50X2luZm8iOiB7CiAgICAgICAgICAicGFja2FnZV9uYW1lIjogImJyLmNvbS50ZXJyYXMuYXBwLmNyeXB0b3RyZW5kIgogICAgICAgIH0KICAgICAgfSwKICAgICAgIm9hdXRoX2NsaWVudCI6IFsKICAgICAgICB7CiAgICAgICAgICAiY2xpZW50X2lkIjogIjk0MjIwNDgxMDMyMy1vb29tOWVlaDhjdmJxOGVyZ2MwdDhtM3U2cWdsaGtvNC5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsCiAgICAgICAgICAiY2xpZW50X3R5cGUiOiAxLAogICAgICAgICAgImFuZHJvaWRfaW5mbyI6IHsKICAgICAgICAgICAgInBhY2thZ2VfbmFtZSI6ICJici5jb20udGVycmFzLmFwcC5jcnlwdG90cmVuZCIsCiAgICAgICAgICAgICJjZXJ0aWZpY2F0ZV9oYXNoIjogIjBkNzM5NWIxMzQ3OGVkMDM2NGI0ZjYzYWE5YWU2YzVkZDAxODZkNDkiCiAgICAgICAgICB9CiAgICAgICAgfSwKICAgICAgICB7CiAgICAgICAgICAiY2xpZW50X2lkIjogIjk0MjIwNDgxMDMyMy1yMHMxNzhnMmNjdThxdmR0bmRrMmpvczIybGZsYm52di5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsCiAgICAgICAgICAiY2xpZW50X3R5cGUiOiAzCiAgICAgICAgfQogICAgICBdLAogICAgICAiYXBpX2tleSI6IFsKICAgICAgICB7CiAgICAgICAgICAiY3VycmVudF9rZXkiOiAiQUl6YVN5Q0pwRUFJZVYzcy1TYXNtV0RlOTMwdlhWODJqSW1hd1FFIgogICAgICAgIH0KICAgICAgXSwKICAgICAgInNlcnZpY2VzIjogewogICAgICAgICJhcHBpbnZpdGVfc2VydmljZSI6IHsKICAgICAgICAgICJvdGhlcl9wbGF0Zm9ybV9vYXV0aF9jbGllbnQiOiBbCiAgICAgICAgICAgIHsKICAgICAgICAgICAgICAiY2xpZW50X2lkIjogIjk0MjIwNDgxMDMyMy1yMHMxNzhnMmNjdThxdmR0bmRrMmpvczIybGZsYm52di5hcHBzLmdvb2dsZXVzZXJjb250ZW50LmNvbSIsCiAgICAgICAgICAgICAgImNsaWVudF90eXBlIjogMwogICAgICAgICAgICB9CiAgICAgICAgICBdCiAgICAgICAgfQogICAgICB9CiAgICB9CiAgXSwKICAiY29uZmlndXJhdGlvbl92ZXJzaW9uIjogIjEiCn0=" | base64 -d > app/google-services.json
         fi
       
     - name: Build APK and Run Tests with Coverage
