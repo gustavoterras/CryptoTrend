@@ -86,9 +86,29 @@ jobs:
         fi
 
     - name: Upload APK to Firebase App Distribution
-      uses: w9jds/firebase-action@v11.16.0
-      with:
-        args: appdistribution:distribute app/build/outputs/apk/debug/app-debug.apk --app 1:942204810323:android:ef2eb8ae55a51e16fdc2a6 --project gen-lang-client-0249381564 --groups "${{ github.event.inputs.tester_groups || 'testers' }}" --release-notes "${{ github.event.inputs.release_notes || 'Deploy manual executado via GitHub Actions' }}" --debug
       env:
         GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY || secrets.GCP_SA_KEY || secrets.FIREBASE_CREDENTIALS || secrets.GOOGLE_APPLICATION_CREDENTIALS }}
         FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        RELEASE_NOTES: ${{ github.event.inputs.release_notes || 'Deploy manual executado via GitHub Actions' }}
+        TESTER_GROUPS: ${{ github.event.inputs.tester_groups || '' }}
+      run: |
+        if [ -n "$GCP_SA_KEY" ]; then
+          echo "$GCP_SA_KEY" > "$RUNNER_TEMP/firebase_credentials.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase_credentials.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS configurada em $RUNNER_TEMP/firebase_credentials.json"
+        fi
+
+        echo ">>> Iniciando upload via plugin oficial do Firebase App Distribution (Gradle)..."
+        GRADLE_CMD="./gradlew appDistributionUploadDebug -PreleaseNotes=\"$RELEASE_NOTES\""
+        if [ -n "$TESTER_GROUPS" ]; then
+          GRADLE_CMD="$GRADLE_CMD -Pgroups=\"$TESTER_GROUPS\""
+        fi
+
+        eval $GRADLE_CMD --info || {
+          echo ">>> Tentando upload via Firebase CLI nativo (npx)..."
+          CLI_CMD="npx --yes firebase-tools appdistribution:distribute app/build/outputs/apk/debug/app-debug.apk --app 1:942204810323:android:ef2eb8ae55a51e16fdc2a6 --project gen-lang-client-0249381564 --release-notes \"$RELEASE_NOTES\" --debug"
+          if [ -n "$TESTER_GROUPS" ]; then
+            CLI_CMD="$CLI_CMD --groups \"$TESTER_GROUPS\""
+          fi
+          eval $CLI_CMD
+        }

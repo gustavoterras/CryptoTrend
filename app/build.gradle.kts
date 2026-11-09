@@ -71,7 +71,10 @@ android {
     firebaseAppDistribution {
         appId = "1:942204810323:android:ef2eb8ae55a51e16fdc2a6"
         artifactType = "APK"
-        groups = "qa, testers"
+        val customGroups = findProperty("groups")?.toString()
+        if (!customGroups.isNullOrBlank()) {
+            groups = customGroups
+        }
     }
 }
 
