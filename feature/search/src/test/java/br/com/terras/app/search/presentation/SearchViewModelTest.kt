@@ -21,7 +21,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest {
-    private val userCase: SearchUseCase = mockk()
+    private val userCase: SearchUseCase = mockk(relaxed = true)
 
     private lateinit var viewModel: SearchViewModel
 

@@ -3,10 +3,10 @@ package br.com.terras.app.coins.detail.presentation
 import app.cash.turbine.test
 import br.com.terras.app.coins.MainDispatcherRule
 import br.com.terras.app.coins.detail.domain.DetailUseCase
-import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.Loading
-import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessDetail
-import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessChart
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.Error
+import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.Loading
+import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessChart
+import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessDetail
 import br.com.terras.app.coins.mockCoinChartDetailVOStub
 import br.com.terras.app.coins.mockCoinDetailVOStub
 import io.mockk.coEvery
@@ -19,10 +19,9 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
-    private val userCase: DetailUseCase = mockk()
+    private val userCase: DetailUseCase = mockk(relaxed = true)
 
     private lateinit var viewModel: DetailViewModel
 

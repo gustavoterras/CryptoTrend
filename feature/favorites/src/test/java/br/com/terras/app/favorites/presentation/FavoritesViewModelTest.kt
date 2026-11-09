@@ -4,9 +4,9 @@ import app.cash.turbine.test
 import br.com.terras.app.favorites.MainDispatcherRule
 import br.com.terras.app.favorites.domain.FavoritesUseCase
 import br.com.terras.app.favorites.mockCoinsVOListStub
-import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Success
-import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Loading
 import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Error
+import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Loading
+import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Success
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -18,10 +18,9 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
-
 @OptIn(ExperimentalCoroutinesApi::class)
 class FavoritesViewModelTest {
-    private val userCase: FavoritesUseCase = mockk()
+    private val userCase: FavoritesUseCase = mockk(relaxed = true)
 
     private lateinit var viewModel: FavoritesViewModel
 

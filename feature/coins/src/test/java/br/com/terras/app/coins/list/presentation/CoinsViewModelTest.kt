@@ -3,11 +3,10 @@ package br.com.terras.app.coins.list.presentation
 import app.cash.turbine.test
 import br.com.terras.app.coins.MainDispatcherRule
 import br.com.terras.app.coins.list.domain.CoinsUseCase
-import br.com.terras.app.coins.list.presentation.CoinsViewModel
-import br.com.terras.app.coins.mockCoinsVOListStub
 import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Error
 import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Loading
 import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Success
+import br.com.terras.app.coins.mockCoinsVOListStub
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -21,7 +20,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CoinsViewModelTest {
-    private val userCase: CoinsUseCase = mockk()
+    private val userCase: CoinsUseCase = mockk(relaxed = true)
 
     private lateinit var viewModel: CoinsViewModel
 
@@ -44,11 +43,11 @@ class CoinsViewModelTest {
             userCase.getCoins()
         } returns Result.failure(IllegalAccessException())
 
+        viewModel.getCoins()
+
         coVerify {
             userCase.getCoins()
         }
-
-        viewModel.getCoins()
 
         viewModel.coins.test {
             Assert.assertEquals(Error, awaitItem())
@@ -64,11 +63,11 @@ class CoinsViewModelTest {
             userCase.getCoins()
         } returns Result.success(result)
 
+        viewModel.getCoins()
+
         coVerify {
             userCase.getCoins()
         }
-
-        viewModel.getCoins()
 
         viewModel.coins.test {
             Assert.assertEquals(Success(result), awaitItem())

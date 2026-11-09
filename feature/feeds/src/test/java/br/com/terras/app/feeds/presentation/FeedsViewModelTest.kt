@@ -19,7 +19,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class FeedsViewModelTest {
 
-    private val userCase: FeedsUseCase = mockk()
+    private val userCase: FeedsUseCase = mockk(relaxed = true)
 
     private lateinit var viewModel: FeedsViewModel
 
@@ -44,11 +44,11 @@ class FeedsViewModelTest {
             userCase.getFeeds(query)
         } returns Result.failure(IllegalAccessException())
 
+        viewModel.getFeeds()
+
         coVerify {
             userCase.getFeeds(query)
         }
-
-        viewModel.getFeeds()
 
         viewModel.feeds.test {
             Assert.assertEquals(FeedsState.Error, awaitItem())
@@ -65,11 +65,11 @@ class FeedsViewModelTest {
             userCase.getFeeds(query)
         } returns Result.success(result)
 
+        viewModel.getFeeds()
+
         coVerify {
             userCase.getFeeds(query)
         }
-
-        viewModel.getFeeds()
 
         viewModel.feeds.test {
             Assert.assertEquals(FeedsState.Success(result), awaitItem())

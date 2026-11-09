@@ -17,22 +17,28 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
     
-    - name: set up JDK 11
+    - name: set up JDK 17
       uses: actions/setup-java@v4.2.1
       with:
-        java-version: '18'
+        java-version: '17'
         distribution: 'corretto'
 
     - name: Make gradlew executable
       run: chmod +x ./gradlew
       
     - name: Build
+      env:
+        GRADLE_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading -Djdk.attach.allowAttachSelf=true"
       run: ./gradlew build
 
     - name: Run Tests
+      env:
+        GRADLE_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading -Djdk.attach.allowAttachSelf=true"
       run: ./gradlew test -x koverXmlReportDebug
 
-    - name: Run Converage
+    - name: Run Coverage
+      env:
+        GRADLE_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading -Djdk.attach.allowAttachSelf=true"
       run: ./gradlew koverXmlReportDebug
     
     - name: Upload coverage reports to Codecov
