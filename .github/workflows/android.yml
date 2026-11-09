@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+      FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
 
     steps:
     - name: Checkout
@@ -105,7 +107,7 @@ EOF
       uses: codecov/codecov-action@v5
       with:
         slug: gustavoterras/CryptoTrend
-        fail_ci_if_error: true # optional (default = false)
+        fail_ci_if_error: false # optional (default = false)
         files: app/build/reports/kover/reportDebug.xml # optional
         flags: unittests # optional
         name: codecov-umbrella # optional
@@ -118,13 +120,13 @@ EOF
     #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     - name: Upload test report
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v4
       with:
         name: reportDebug.xml
         path: app/build/reports/kover/reportDebug.xml
 
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v4
       with:
         name: CryptoTrend.apk
         path: app/build/outputs/apk/debug/app-debug.apk
