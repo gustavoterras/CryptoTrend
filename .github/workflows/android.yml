@@ -70,7 +70,7 @@ jobs:
         path: app/build/outputs/apk/debug/app-debug.apk
 
     - name: Upload APK to Firebase App Distribution
-      if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY != '' || secrets.FIREBASE_TOKEN != '' }}
+      if: env.GCP_SA_KEY != '' || env.FIREBASE_TOKEN != ''
       uses: w9jds/firebase-action@v11.16.0
       with:
         args: appdistribution:distribute app/build/outputs/apk/debug/app-debug.apk --app 1:942204810323:android:ef2eb8ae55a51e16fdc2a6 --groups "testers" --release-notes "Build automático via GitHub Actions CI"
