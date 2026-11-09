@@ -11,3 +11,22 @@ plugins {
     alias(libs.plugins.google.services) apply false
     alias(libs.plugins.firebase.appdistribution) apply false
 }
+
+subprojects {
+    val byteBuddyAgent = configurations.create("byteBuddyAgent")
+    dependencies {
+        byteBuddyAgent("net.bytebuddy:byte-buddy-agent:1.14.17")
+    }
+
+    tasks.withType<Test>().configureEach {
+        doFirst {
+            val agentJar = byteBuddyAgent.singleFile
+            jvmArgs(
+                "-javaagent:${agentJar.absolutePath}",
+                "-XX:+EnableDynamicAgentLoading",
+                "-Dnet.bytebuddy.experimental=true",
+                "-Djdk.attach.allowAttachSelf=true"
+            )
+        }
+    }
+}
