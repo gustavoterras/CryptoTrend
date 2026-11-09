@@ -8,4 +8,6 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.serialization) apply false
     alias(libs.plugins.kover) apply false
+    alias(libs.plugins.google.services) apply false
+    alias(libs.plugins.firebase.appdistribution) apply false
 }

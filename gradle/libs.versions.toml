@@ -21,6 +21,8 @@ material3= "1.2.1"
 material = "1.12.0"
 koverVersion = "0.8.1"
 turbineVersion = "0.11.0"
+googleServices = "4.4.2"
+firebaseAppDistribution = "5.0.0"
 
 [libraries]
 junit = { group = "junit", name = "junit", version.ref = "junit" }
@@ -64,6 +66,8 @@ jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = 
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 dagger-hilt = { id = "com.google.dagger.hilt.android", version.ref = "hiltVersion" }
 serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+firebase-appdistribution = { id = "com.google.firebase.appdistribution", version.ref = "firebaseAppDistribution" }
 
 [bundles]
 playground-network = ["ktor-client-android", "ktor-client-logging", "ktor-client-negotiation", "ktor-client-serialization", "ktor-serialization", "dagger-hilt-core"]

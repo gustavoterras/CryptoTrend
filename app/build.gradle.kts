@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.serialization)
     alias(libs.plugins.kover)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.appdistribution)
 }
 
 android {
@@ -64,6 +66,12 @@ android {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
+    }
+
+    firebaseAppDistribution {
+        appId = "1:942204810323:android:ef2eb8ae55a51e16fdc2a6"
+        artifactType = "APK"
+        groups = "qa, testers"
     }
 }
 
