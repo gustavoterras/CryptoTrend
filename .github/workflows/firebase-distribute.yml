@@ -58,6 +58,33 @@ jobs:
         GRADLE_OPTS: "-Dnet.bytebuddy.experimental=true -XX:+EnableDynamicAgentLoading -Djdk.attach.allowAttachSelf=true"
       run: ./gradlew assembleDebug
 
+    - name: Upload APK as Workflow Artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
+        if-no-files-found: warn
+
+    - name: Validate Firebase Credentials
+      env:
+        GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY || secrets.GCP_SA_KEY || secrets.FIREBASE_CREDENTIALS || secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+        FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      run: |
+        if [ -z "$GCP_SA_KEY" ] && [ -z "$FIREBASE_TOKEN" ]; then
+          echo "::error title=Credenciais do Firebase ausentes::Nao foi encontrado o secret FIREBASE_SERVICE_ACCOUNT_KEY (ou GCP_SA_KEY) nem FIREBASE_TOKEN no repositorio. Configure o secret em Settings > Secrets and variables > Actions no GitHub."
+          echo "=========================================================================="
+          echo "COMO RESOLVER:"
+          echo "1. No Google Cloud Console do projeto gen-lang-client-0249381564:"
+          echo "   Crie uma Service Account com o papel 'Administrador do Firebase App Distribution'"
+          echo "   e gere uma chave JSON."
+          echo "2. No GitHub do repositorio:"
+          echo "   Vá em Settings > Secrets and variables > Actions > New repository secret."
+          echo "   Crie o secret chamado FIREBASE_SERVICE_ACCOUNT_KEY e cole o conteudo JSON."
+          echo "=========================================================================="
+          exit 1
+        fi
+
     - name: Upload APK to Firebase App Distribution
       uses: w9jds/firebase-action@v11.16.0
       with:
@@ -65,10 +92,3 @@ jobs:
       env:
         GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY || secrets.GCP_SA_KEY || secrets.FIREBASE_CREDENTIALS || secrets.GOOGLE_APPLICATION_CREDENTIALS }}
         FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-
-    - name: Upload APK as Workflow Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: app-debug
-        path: app/build/outputs/apk/debug/app-debug.apk
-        if-no-files-found: warn
