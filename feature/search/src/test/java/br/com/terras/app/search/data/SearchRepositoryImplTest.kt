@@ -16,7 +16,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchRepositoryImplTest {
-    private val services: ApiServiceSearch = mockk()
+    private val services: ApiServiceSearch = mockk(relaxed = true)
 
     private lateinit var repository: SearchRepository
 

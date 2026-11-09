@@ -17,8 +17,8 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FavoritesUseCaseImplTest {
-    private val repository: FavoritesRepository = mockk()
-    private val mapper: FavoritesMapper = mockk()
+    private val repository: FavoritesRepository = mockk(relaxed = true)
+    private val mapper: FavoritesMapper = mockk(relaxed = true)
 
     private lateinit var useCase: FavoritesUseCase
 

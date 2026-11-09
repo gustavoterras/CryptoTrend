@@ -15,7 +15,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class FavoritesRepositoryImplTest {
-    private val services: ApiServiceFavorites = mockk()
+    private val services: ApiServiceFavorites = mockk(relaxed = true)
 
     private lateinit var repository: FavoritesRepository
 

@@ -20,8 +20,8 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailUseCaseImplTest {
-    private val repository: DetailRepository = mockk()
-    private val mapper: DetailMapper = mockk()
+    private val repository: DetailRepository = mockk(relaxed = true)
+    private val mapper: DetailMapper = mockk(relaxed = true)
 
     private lateinit var useCase: DetailUseCase
 

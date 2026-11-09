@@ -48,12 +48,6 @@ object NetworkModule {
     @NewsApiBaseUrl
     fun provideNewsApiBaseUrl(): String = BASE_API_URL_NEWS
 
-    @Provides
-    fun provideBaseUrl(): String = BASE_API_URL
-
-    @Provides
-    fun provideBaseUrlNews(): String = BASE_API_URL_NEWS
-
     private fun HttpClientConfig<AndroidEngineConfig>.applyCommonConfiguration() {
         install(ContentNegotiation) {
             json(Json {
@@ -117,7 +111,4 @@ object NetworkModule {
             }
         }
     }
-
-    @Provides
-    fun provideHttpClient(): HttpClient = provideCoinGeckoHttpClient()
 }

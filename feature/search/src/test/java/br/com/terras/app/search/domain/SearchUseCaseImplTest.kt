@@ -18,8 +18,8 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchUseCaseImplTest {
-    private val repository: SearchRepository = mockk()
-    private val mapper: SearchMapper = mockk()
+    private val repository: SearchRepository = mockk(relaxed = true)
+    private val mapper: SearchMapper = mockk(relaxed = true)
 
     private lateinit var useCase: SearchUseCase
 

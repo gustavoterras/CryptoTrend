@@ -17,8 +17,8 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class CoinsUseCaseImplTest {
-    private val repository: CoinsRepository = mockk()
-    private val mapper: CoinsMapper = mockk()
+    private val repository: CoinsRepository = mockk(relaxed = true)
+    private val mapper: CoinsMapper = mockk(relaxed = true)
 
     private lateinit var useCase: CoinsUseCase
 
