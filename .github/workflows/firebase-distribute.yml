@@ -2,6 +2,15 @@ name: Firebase App Distribution (Manual)
 
 on:
   workflow_dispatch:
+    inputs:
+      release_notes:
+        description: 'Notas da versão'
+        required: false
+        default: 'Deploy manual executado via GitHub Actions'
+      tester_groups:
+        description: 'Grupos de testadores (ex: testers, qa)'
+        required: false
+        default: 'testers'
 
 jobs:
   distribute:
@@ -50,10 +59,16 @@ jobs:
       run: ./gradlew assembleDebug
 
     - name: Upload APK to Firebase App Distribution
-      if: env.GCP_SA_KEY != '' || env.FIREBASE_TOKEN != ''
       uses: w9jds/firebase-action@v11.16.0
       with:
-        args: appdistribution:distribute app/build/outputs/apk/debug/app-debug.apk --app 1:942204810323:android:ef2eb8ae55a51e16fdc2a6 --groups "testers" --release-notes "Deploy manual executado via GitHub Actions (workflow_dispatch)" --non-interactive
+        args: appdistribution:distribute app/build/outputs/apk/debug/app-debug.apk --app 1:942204810323:android:ef2eb8ae55a51e16fdc2a6 --project gen-lang-client-0249381564 --groups "${{ github.event.inputs.tester_groups || 'testers' }}" --release-notes "${{ github.event.inputs.release_notes || 'Deploy manual executado via GitHub Actions' }}" --debug
       env:
-        GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY }}
+        GCP_SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_KEY || secrets.GCP_SA_KEY || secrets.FIREBASE_CREDENTIALS || secrets.GOOGLE_APPLICATION_CREDENTIALS }}
         FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+
+    - name: Upload APK as Workflow Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
+        if-no-files-found: warn
