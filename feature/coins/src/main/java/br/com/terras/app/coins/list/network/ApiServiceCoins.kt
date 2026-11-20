@@ -1,6 +1,7 @@
 package br.com.terras.app.coins.list.network
 
 import br.com.terras.app.coins.list.data.model.CoinsResponse
+import br.com.terras.app.coins.list.data.model.TrendingCoinsResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -15,9 +16,11 @@ class ApiServiceCoins(
 
     companion object {
         private const val COINS_MARKET_DATA_ROUTE = "v3/coins/markets"
+        private const val COINS_TRENDING_ROUTE = "v3/search/trending"
         private const val COINS_MARKET_DATA_PARAMS_KEY = "vs_currency"
         private const val COINS_MARKET_DATA_PARAMS_VALUE_EN = "usd"
         private const val COINS_MARKET_DATA_PARAMS_VALUE_PT = "brl"
+        private const val COINS_MARKET_DATA_TOP_LIMIT = 20
     }
 
     private fun Locale.getCurrencyParamData() = when (this.language) {
@@ -28,5 +31,25 @@ class ApiServiceCoins(
     suspend fun getCoins(): List<CoinsResponse> = client.get {
         url("$baseUrl$COINS_MARKET_DATA_ROUTE")
         parameter(COINS_MARKET_DATA_PARAMS_KEY, Locale.getDefault().getCurrencyParamData())
+        parameter("order", "market_cap_desc")
+        parameter("per_page", COINS_MARKET_DATA_TOP_LIMIT)
+        parameter("page", 1)
+        parameter("sparkline", true)
+    }.body()
+
+    suspend fun getCoinsByIds(ids: List<String>): List<CoinsResponse> {
+        if (ids.isEmpty()) return emptyList()
+        return client.get {
+            url("$baseUrl$COINS_MARKET_DATA_ROUTE")
+            parameter(COINS_MARKET_DATA_PARAMS_KEY, Locale.getDefault().getCurrencyParamData())
+            parameter("ids", ids.take(COINS_MARKET_DATA_TOP_LIMIT).joinToString(","))
+            parameter("per_page", COINS_MARKET_DATA_TOP_LIMIT)
+            parameter("page", 1)
+            parameter("sparkline", true)
+        }.body()
+    }
+
+    suspend fun getTrendingCoins(): TrendingCoinsResponse = client.get {
+        url("$baseUrl$COINS_TRENDING_ROUTE")
     }.body()
 }

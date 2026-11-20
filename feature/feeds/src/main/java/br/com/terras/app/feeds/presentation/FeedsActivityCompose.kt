@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -18,10 +19,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
+import br.com.terras.app.dsm.ui.component.PullToRefreshWrapper
 import br.com.terras.app.dsm.ui.component.RippleButton
 import br.com.terras.app.dsm.ui.component.StickyHeaderView
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import br.com.terras.app.feeds.domain.model.ArticleVO
+import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsIntent
 import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsState.Error
 import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsState.Loading
 import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsState.Success
@@ -39,25 +42,45 @@ fun FeedsActivityCompose(
         topBar = {
             StickyHeaderView()
         }
-    ) {
+    ) { innerPadding ->
 
         val feedsState by viewModel.feeds.collectAsState()
+        val isRefreshing by viewModel.isRefreshing.collectAsState()
+        var refreshDialog by remember(feedsState) { mutableStateOf(feedsState is Error) }
 
-        when (feedsState) {
-            is Loading -> FeedsItemShimmerCompose()
-            is Success -> OnFeedsSuccess((feedsState as Success).coinsList, onItemClick)
-            is Error -> OnCoinsListError(
-                showDialog
-            ) { showDialog = false }
+        PullToRefreshWrapper(
+            isRefreshing = isRefreshing,
+            onRefresh = { viewModel.handleIntent(FeedsIntent.Refresh) },
+            indicatorTopPadding = innerPadding.calculateTopPadding(),
+            indicatorTestTag = "feeds_pull_to_refresh"
+        ) {
+            when (feedsState) {
+                is Loading -> FeedsItemShimmerCompose()
+                is Success -> OnFeedsSuccess(
+                    feeds = (feedsState as Success).coinsList,
+                    topPadding = innerPadding.calculateTopPadding(),
+                    onItemClick = onItemClick
+                )
+                is Error -> OnCoinsListError(
+                    refreshDialog
+                ) { refreshDialog = false }
+            }
         }
     }
 }
 
 @Composable
-private fun OnFeedsSuccess(feeds: List<ArticleVO>, onItemClick: (String) -> Unit) {
+private fun OnFeedsSuccess(
+    feeds: List<ArticleVO>,
+    topPadding: androidx.compose.ui.unit.Dp,
+    onItemClick: (String) -> Unit
+) {
     LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(9.dp),
-        modifier = Modifier.padding(top = 100.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            top = topPadding + 4.dp,
+            bottom = 112.dp
+        )
     ) {
         items(feeds.size) {
             feeds[it].run {
@@ -83,6 +106,9 @@ private fun OnCoinsListError(
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
+        containerColor = MaterialTheme.colorScheme.primary,
+        titleContentColor = MaterialTheme.colorScheme.surface,
+        textContentColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
         title = { Text(text = "Alerta") },
         text = { Text(text = "Erro ao carregar os dados, tente novamente mais tarde.") },
         confirmButton = {

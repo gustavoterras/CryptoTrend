@@ -31,9 +31,14 @@ android {
 }
 
 dependencies {
+    // implementation(platform(libs.firebase.bom))
+    // implementation(libs.firebase.ai)
     implementation(project(":core:dsm"))
     implementation(project(":core:network"))
     implementation(project(":core:common"))
+    implementation(project(":core:navigation"))
+    implementation(project(":feature:feeds"))
+    implementation(project(":feature:search"))
     implementation(libs.dagger.hilt.core)
     ksp(libs.dagger.hilt.compiler)
     testImplementation(libs.junit)

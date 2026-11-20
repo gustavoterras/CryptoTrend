@@ -84,6 +84,9 @@ android {
 }
 
 dependencies {
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.ai)
+    implementation(libs.firebase.appcheck.debug)
     implementation(project(":core:dsm"))
     implementation(project(":core:common"))
     implementation(project(":core:navigation"))

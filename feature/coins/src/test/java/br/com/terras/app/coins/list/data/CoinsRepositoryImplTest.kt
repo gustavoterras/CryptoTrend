@@ -3,6 +3,7 @@ package br.com.terras.app.coins.list.data
 import br.com.terras.app.coins.MainDispatcherRule
 import br.com.terras.app.coins.list.network.ApiServiceCoins
 import br.com.terras.app.coins.mockCoinsListResponseStub
+import br.com.terras.app.coins.mockTrendingCoinsResponseStub
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -36,5 +37,28 @@ class CoinsRepositoryImplTest {
         val result = repository.getCoins()
 
         Assert.assertEquals(result, Result.success(mockCoinsListResponseStub))
+    }
+
+    @Test
+    fun `WHEN getTrendingCoins THEN should return success response`() = runBlocking {
+        coEvery {
+            services.getTrendingCoins()
+        } returns mockTrendingCoinsResponseStub
+
+        val result = repository.getTrendingCoins()
+
+        Assert.assertEquals(Result.success(mockTrendingCoinsResponseStub), result)
+    }
+
+    @Test
+    fun `WHEN getCoinsByIds THEN should return success response`() = runBlocking {
+        val ids = listOf("id")
+        coEvery {
+            services.getCoinsByIds(ids)
+        } returns mockCoinsListResponseStub
+
+        val result = repository.getCoinsByIds(ids)
+
+        Assert.assertEquals(Result.success(mockCoinsListResponseStub), result)
     }
 }

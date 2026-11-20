@@ -1,5 +1,7 @@
 package br.com.terras.app.favorites.domain
 
+import br.com.terras.app.common.downsampleSparkline
+import br.com.terras.app.common.formatAxisMoney
 import br.com.terras.app.common.formatMoney
 import br.com.terras.app.common.formatPercentage
 import br.com.terras.app.dsm.ui.component.TrendColor
@@ -14,6 +16,8 @@ interface FavoritesMapper {
 class FavoritesMapperImpl @Inject constructor() : FavoritesMapper {
     override fun toCoins(response: List<CoinsResponse>): List<CoinVO> {
         return response.map {
+            val rawVolume = it.totalVolume ?: 0.0
+            val formattedVolume = rawVolume.takeIf { vol -> vol > 0.0 }?.formatAxisMoney().orEmpty()
             CoinVO(
                 id = it.id,
                 symbol = it.symbol.uppercase(),
@@ -22,7 +26,12 @@ class FavoritesMapperImpl @Inject constructor() : FavoritesMapper {
                 marketCapRank = it.marketCapRank.toString(),
                 price = it.price.formatMoney(),
                 priceChangePercentage = it.priceChangePercentage.formatPercentage(),
-                trendColor = getTrendColor(it.priceChangePercentage)
+                trendColor = getTrendColor(it.priceChangePercentage),
+                volume = formattedVolume,
+                rawVolume = rawVolume,
+                rawPrice = it.price,
+                rawPriceChangePercentage = it.priceChangePercentage,
+                sparklinePrices = it.sparklineIn7d?.price.orEmpty().downsampleSparkline()
             )
         }
     }

@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,13 +40,19 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.terras.app.coins.detail.domain.model.CoinDetailVO
 import br.com.terras.app.coins.detail.domain.model.DataPoint
+import br.com.terras.app.common.formatAxisMoney
 import br.com.terras.app.common.formatMoney
 import br.com.terras.app.common.formatPercentage
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
@@ -59,7 +66,10 @@ data class CandlePoint(
     val low: Double,
     val close: Double,
     val date: String,
-    val priceLabel: String = ""
+    val priceLabel: String = "",
+    val xLabel: String = "",
+    val hourLabel: String = "",
+    val dayLabel: String = ""
 ) {
     val isUp: Boolean get() = close >= open
 }
@@ -79,7 +89,10 @@ fun List<DataPoint>.toCandlePoints(targetCount: Int = 16): List<CandlePoint> {
                 low = low,
                 close = close,
                 date = dp.date,
-                priceLabel = dp.yLabel ?: dp.y.formatMoney()
+                priceLabel = dp.yLabel ?: dp.y.formatMoney(),
+                xLabel = dp.xLabel?.takeIf { it.isNotBlank() } ?: dp.date,
+                hourLabel = dp.hourLabel.ifBlank { dp.xLabel.orEmpty() }.ifBlank { dp.date },
+                dayLabel = dp.dayLabel.ifBlank { dp.date }
             )
         }
     }
@@ -88,6 +101,7 @@ fun List<DataPoint>.toCandlePoints(targetCount: Int = 16): List<CandlePoint> {
     return chunked(chunkSize).take(targetCount).map { chunk ->
         val open = chunk.first().y
         val close = chunk.last().y
+        val lastPoint = chunk.last()
         var maxPrice = chunk.maxOf { it.y }
         var minPrice = chunk.minOf { it.y }
 
@@ -104,8 +118,11 @@ fun List<DataPoint>.toCandlePoints(targetCount: Int = 16): List<CandlePoint> {
             high = maxPrice,
             low = minPrice,
             close = close,
-            date = chunk.last().date,
-            priceLabel = chunk.last().yLabel ?: close.formatMoney()
+            date = lastPoint.date,
+            priceLabel = lastPoint.yLabel ?: close.formatMoney(),
+            xLabel = lastPoint.xLabel?.takeIf { it.isNotBlank() } ?: lastPoint.date,
+            hourLabel = lastPoint.hourLabel.ifBlank { lastPoint.xLabel.orEmpty() }.ifBlank { lastPoint.date },
+            dayLabel = lastPoint.dayLabel.ifBlank { lastPoint.date }
         )
     }
 }
@@ -115,15 +132,22 @@ fun BarChartCompose(
     modifier: Modifier = Modifier,
     data: List<DataPoint>,
     coinInfo: CoinDetailVO? = null,
-    upColor: Color = Color(0xFF00D09C),
-    downColor: Color = Color(0xFFEB5757),
+    selectedDays: Int = DaysOfChart.DAY.value,
+    upColor: Color? = null,
+    downColor: Color? = null,
     gridLineColor: Color? = null,
+    axisLabelColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    calloutColor: Color = MaterialTheme.colorScheme.surface,
+    pointFillColor: Color = MaterialTheme.colorScheme.primary,
+    showHighLowCallouts: Boolean = true,
     showFloatingCard: Boolean = true
 ) {
     if (data.isEmpty()) return
 
     val isDark = isSystemInDarkTheme()
-    val effectiveGridLineColor = gridLineColor ?: if (isDark) Color(0x28FFFFFF) else Color(0x18000000)
+    val effectiveUpColor = upColor ?: if (isDark) Color(0xFF1ED788) else Color(0xFF12A86E)
+    val effectiveDownColor = downColor ?: if (isDark) Color(0xFFFF5A52) else Color(0xFFE04838)
+    val effectiveGridLineColor = gridLineColor ?: if (isDark) Color(0x1FFFFFFF) else Color(0x140F172A)
 
     val candles = remember(data) { data.toCandlePoints(targetCount = 16) }
     if (candles.isEmpty()) return
@@ -131,33 +155,102 @@ fun BarChartCompose(
     var selectedIndex by remember(candles) { mutableStateOf<Int?>(null) }
     val currentCandle = selectedIndex?.let { candles.getOrNull(it) }
 
-    val overallMin = remember(candles) { candles.minOf { it.low } }
-    val overallMax = remember(candles) { candles.maxOf { it.high } }
-    val priceRange = remember(overallMin, overallMax) {
-        val diff = overallMax - overallMin
-        if (diff <= 0.0) 1.0 else diff
+    val maxCandleIndex = remember(candles) {
+        candles.indices.maxByOrNull { candles[it].high } ?: 0
+    }
+    val minCandleIndex = remember(candles) {
+        candles.indices.minByOrNull { candles[it].low } ?: 0
+    }
+    val overallMin = remember(candles, minCandleIndex) { candles[minCandleIndex].low }
+    val overallMax = remember(candles, maxCandleIndex) { candles[maxCandleIndex].high }
+    val actualDiff = remember(overallMin, overallMax) { overallMax - overallMin }
+    val priceRange = remember(actualDiff) { if (actualDiff <= 0.0) 1.0 else actualDiff }
+
+    val gridLineCount = 5
+    val yTickLabels = remember(overallMin, overallMax, actualDiff) {
+        (0 until gridLineCount).map { i ->
+            val fraction = 1.0 - (i.toDouble() / (gridLineCount - 1))
+            (overallMin + actualDiff * fraction).formatAxisMoney()
+        }
     }
 
-    BoxWithConstraints(modifier = modifier) {
-        val totalWidth = maxWidth
-        val totalHeight = maxHeight
+    val xTickIndices = remember(candles) {
+        val count = candles.size
+        if (count <= 1) listOf(0)
+        else {
+            val tickCount = min(4, count)
+            (0 until tickCount).map { tick ->
+                ((tick.toFloat() / (tickCount - 1)) * (count - 1)).toInt()
+            }.distinct()
+        }
+    }
 
+    val density = LocalDensity.current
+    val textMeasurer = rememberTextMeasurer()
+    val axisTextStyle = remember(axisLabelColor) {
+        TextStyle(
+            color = axisLabelColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+    val calloutTextStyle = remember(calloutColor) {
+        TextStyle(
+            color = calloutColor,
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.Bold
+        )
+    }
+
+    val yLabelLayouts = remember(yTickLabels, axisTextStyle) {
+        yTickLabels.map { label -> textMeasurer.measure(text = label, style = axisTextStyle) }
+    }
+    val xLabelLayouts = remember(candles, xTickIndices, axisTextStyle) {
+        xTickIndices.mapNotNull { index ->
+            val label = candles[index].xLabel
+            if (label.isBlank()) null
+            else index to textMeasurer.measure(text = label, style = axisTextStyle)
+        }
+    }
+    val maxCalloutLayout = remember(overallMax, calloutTextStyle, showHighLowCallouts) {
+        if (showHighLowCallouts) textMeasurer.measure(text = overallMax.formatMoney(), style = calloutTextStyle)
+        else null
+    }
+    val minCalloutLayout = remember(overallMin, calloutTextStyle, showHighLowCallouts) {
+        if (showHighLowCallouts) textMeasurer.measure(text = overallMin.formatMoney(), style = calloutTextStyle)
+        else null
+    }
+
+    val leftPaddingPx = with(density) { 10.dp.toPx() }
+    val yAxisGapPx = with(density) { 8.dp.toPx() }
+    val rightPaddingPx = with(density) { 12.dp.toPx() }
+    val maxYLabelWidthPx = yLabelLayouts.maxOfOrNull { it.size.width }?.toFloat() ?: 0f
+    val chartLeftPx = leftPaddingPx + maxYLabelWidthPx + yAxisGapPx
+    val chartLeftDp = with(density) { chartLeftPx.toDp() }
+
+    BoxWithConstraints(modifier = modifier) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(candles) {
+                .pointerInput(candles, chartLeftPx, rightPaddingPx) {
                     detectTapGestures(
                         onTap = { offset ->
-                            val slotWidth = size.width / candles.size
-                            val index = (offset.x / slotWidth).toInt().coerceIn(0, candles.lastIndex)
+                            val chartRightPx = (size.width - rightPaddingPx).coerceAtLeast(chartLeftPx + 1f)
+                            val chartWidthPx = chartRightPx - chartLeftPx
+                            val slotWidth = chartWidthPx / candles.size
+                            val relativeX = (offset.x - chartLeftPx).coerceIn(0f, chartWidthPx - 1f)
+                            val index = (relativeX / slotWidth).toInt().coerceIn(0, candles.lastIndex)
                             selectedIndex = if (selectedIndex == index) null else index
                         }
                     )
                 }
-                .pointerInput(candles) {
+                .pointerInput(candles, chartLeftPx, rightPaddingPx) {
                     detectDragGestures { change, _ ->
-                        val slotWidth = size.width / candles.size
-                        val index = (change.position.x / slotWidth).toInt().coerceIn(0, candles.lastIndex)
+                        val chartRightPx = (size.width - rightPaddingPx).coerceAtLeast(chartLeftPx + 1f)
+                        val chartWidthPx = chartRightPx - chartLeftPx
+                        val slotWidth = chartWidthPx / candles.size
+                        val relativeX = (change.position.x - chartLeftPx).coerceIn(0f, chartWidthPx - 1f)
+                        val index = (relativeX / slotWidth).toInt().coerceIn(0, candles.lastIndex)
                         selectedIndex = index
                     }
                 }
@@ -165,17 +258,37 @@ fun BarChartCompose(
             val canvasWidth = size.width
             val canvasHeight = size.height
 
-            // 1. Draw horizontal dashed grid lines (5 levels)
-            val gridLineCount = 5
+            val chartRight = (canvasWidth - rightPaddingPx).coerceAtLeast(chartLeftPx + 1f)
+            val chartWidth = chartRight - chartLeftPx
+
+            val dotRadiusPx = 3.5.dp.toPx()
+            val calloutGapPx = 4.dp.toPx()
+            val paddingTop = if (showHighLowCallouts && maxCalloutLayout != null) {
+                maxCalloutLayout.size.height + dotRadiusPx + calloutGapPx + 4.dp.toPx()
+            } else {
+                12.dp.toPx()
+            }
+            val xAxisTopGap = 6.dp.toPx()
+            val bottomPadding = 4.dp.toPx()
+            val xLabelHeight = xLabelLayouts.maxOfOrNull { it.second.size.height }?.toFloat() ?: 14.dp.toPx()
+            val reservedXAxisBottom = xAxisTopGap + xLabelHeight + bottomPadding
+            val showMinCallout = showHighLowCallouts && minCalloutLayout != null && (overallMax != overallMin || minCandleIndex != maxCandleIndex)
+            val bottomCalloutReserve = if (showMinCallout && minCalloutLayout != null) {
+                minCalloutLayout.size.height + dotRadiusPx + calloutGapPx + 4.dp.toPx()
+            } else {
+                0f
+            }
+            val chartBottom = (canvasHeight - reservedXAxisBottom - bottomCalloutReserve).coerceAtLeast(paddingTop + 1f)
+            val usableHeight = chartBottom - paddingTop
+
+            // 1. Draw horizontal dashed grid lines (5 levels) and left Y-axis price labels
             val dashEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
-            val paddingVertical = 20.dp.toPx()
-            val usableHeight = canvasHeight - (paddingVertical * 2)
 
             for (i in 0 until gridLineCount) {
-                val y = paddingVertical + (usableHeight / (gridLineCount - 1)) * i
+                val y = paddingTop + (usableHeight / (gridLineCount - 1)) * i
                 val path = Path().apply {
-                    moveTo(0f, y)
-                    lineTo(canvasWidth, y)
+                    moveTo(chartLeftPx, y)
+                    lineTo(chartRight, y)
                 }
                 drawPath(
                     path = path,
@@ -185,24 +298,32 @@ fun BarChartCompose(
                         pathEffect = dashEffect
                     )
                 )
+
+                val layout = yLabelLayouts[i]
+                val labelX = chartLeftPx - yAxisGapPx - layout.size.width
+                val labelY = (y - layout.size.height / 2f).coerceIn(0f, canvasHeight - layout.size.height)
+                drawText(
+                    textLayoutResult = layout,
+                    topLeft = Offset(labelX, labelY)
+                )
             }
 
             // 2. Draw Candlesticks (Bars + Wicks)
-            val slotWidth = canvasWidth / candles.size
+            val slotWidth = chartWidth / candles.size
             val candleBodyWidth = slotWidth * 0.58f
             val cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
             val wickStrokeWidth = 2.dp.toPx()
 
             fun priceToY(price: Double): Float {
-                val ratio = ((price - overallMin) / priceRange).toFloat()
-                return paddingVertical + usableHeight * (1f - ratio)
+                val ratio = if (actualDiff <= 0.0) 0.5f else ((price - overallMin) / priceRange).toFloat()
+                return paddingTop + usableHeight * (1f - ratio)
             }
 
             candles.forEachIndexed { index, candle ->
-                val centerX = slotWidth * index + (slotWidth / 2f)
+                val centerX = chartLeftPx + slotWidth * index + (slotWidth / 2f)
                 val isSelected = selectedIndex == index
 
-                val candleColor = if (candle.isUp) upColor else downColor
+                val candleColor = if (candle.isUp) effectiveUpColor else effectiveDownColor
 
                 val openY = priceToY(candle.open)
                 val closeY = priceToY(candle.close)
@@ -218,8 +339,8 @@ fun BarChartCompose(
                 if (isSelected) {
                     drawLine(
                         color = candleColor.copy(alpha = 0.25f),
-                        start = Offset(centerX, 0f),
-                        end = Offset(centerX, canvasHeight),
+                        start = Offset(centerX, paddingTop),
+                        end = Offset(centerX, chartBottom),
                         strokeWidth = 1.5.dp.toPx(),
                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
                     )
@@ -241,9 +362,92 @@ fun BarChartCompose(
                     cornerRadius = cornerRadius
                 )
             }
+
+            // 3. Draw High & Low hollow ring markers and price callouts at wick extremes
+            if (showHighLowCallouts && candles.isNotEmpty()) {
+                val maxCandle = candles[maxCandleIndex]
+                val maxCenterX = chartLeftPx + slotWidth * maxCandleIndex + (slotWidth / 2f)
+                val maxY = priceToY(maxCandle.high)
+                val maxRingColor = if (maxCandle.isUp) effectiveUpColor else effectiveDownColor
+
+                drawCircle(
+                    color = pointFillColor,
+                    radius = dotRadiusPx,
+                    center = Offset(maxCenterX, maxY),
+                    style = Fill
+                )
+                drawCircle(
+                    color = maxRingColor,
+                    radius = dotRadiusPx,
+                    center = Offset(maxCenterX, maxY),
+                    style = Stroke(width = 2.dp.toPx())
+                )
+
+                maxCalloutLayout?.let { layout ->
+                    val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
+                    val labelX = (maxCenterX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
+                    val labelY = (maxY - dotRadiusPx - calloutGapPx - layout.size.height)
+                        .coerceAtLeast(2.dp.toPx())
+                    drawText(
+                        textLayoutResult = layout,
+                        topLeft = Offset(labelX, labelY)
+                    )
+                }
+
+                if (showMinCallout) {
+                    val minCandle = candles[minCandleIndex]
+                    val minCenterX = chartLeftPx + slotWidth * minCandleIndex + (slotWidth / 2f)
+                    val minY = priceToY(minCandle.low)
+                    val minRingColor = if (minCandle.isUp) effectiveUpColor else effectiveDownColor
+
+                    drawCircle(
+                        color = pointFillColor,
+                        radius = dotRadiusPx,
+                        center = Offset(minCenterX, minY),
+                        style = Fill
+                    )
+                    drawCircle(
+                        color = minRingColor,
+                        radius = dotRadiusPx,
+                        center = Offset(minCenterX, minY),
+                        style = Stroke(width = 2.dp.toPx())
+                    )
+
+                    minCalloutLayout?.let { layout ->
+                        val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
+                        val labelX = (minCenterX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
+                        val maxLabelY = (canvasHeight - reservedXAxisBottom - layout.size.height - 2.dp.toPx())
+                            .coerceAtLeast(minY)
+                        val labelY = (minY + dotRadiusPx + calloutGapPx).coerceAtMost(maxLabelY)
+                        drawText(
+                            textLayoutResult = layout,
+                            topLeft = Offset(labelX, labelY)
+                        )
+                    }
+                }
+            }
+
+            // 4. Draw X-axis timestamps at the base of the chart
+            val xLabelY = (canvasHeight - reservedXAxisBottom) + xAxisTopGap
+            val minLabelGapPx = 8.dp.toPx()
+            var lastLabelEndX = Float.NEGATIVE_INFINITY
+
+            xLabelLayouts.forEach { (index, layout) ->
+                val centerX = chartLeftPx + slotWidth * index + (slotWidth / 2f)
+                val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
+                val labelX = (centerX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
+
+                if (labelX >= lastLabelEndX + minLabelGapPx) {
+                    drawText(
+                        textLayoutResult = layout,
+                        topLeft = Offset(labelX, xLabelY)
+                    )
+                    lastLabelEndX = labelX + layout.size.width
+                }
+            }
         }
 
-        // 3. Floating Info Card (appears ONLY when a candle is clicked, placed on opposite side to avoid obscuring selected candle)
+        // 5. Floating Info Card (appears ONLY when a candle is clicked, placed on opposite side to avoid obscuring selected candle)
         val isSelectedOnRightHalf = (selectedIndex ?: 0) >= (candles.size / 2)
         val cardAlignment = if (isSelectedOnRightHalf) Alignment.BottomStart else Alignment.BottomEnd
 
@@ -253,22 +457,26 @@ fun BarChartCompose(
             exit = fadeOut() + scaleOut(targetScale = 0.88f),
             modifier = Modifier
                 .align(cardAlignment)
-                .padding(horizontal = 8.dp, vertical = 8.dp)
+                .padding(start = chartLeftDp + 4.dp, end = 12.dp, top = 8.dp, bottom = 36.dp)
         ) {
             if (currentCandle != null) {
                 val variation = if (currentCandle.open != 0.0) {
                     ((currentCandle.close - currentCandle.open) / currentCandle.open) * 100.0
                 } else 0.0
 
-                val cardBgColor = if (isDark) Color(0xFF1E2333) else Color(0xFFFFFFFF)
-                val cardBorderColor = if (isDark) Color(0xFF384055) else Color(0xFFE5E7EB)
-                val labelColor = if (isDark) Color(0xFF9CA3AF) else Color(0xFF6B7280)
-                val valueColor = if (isDark) Color(0xFFF9FAFB) else Color(0xFF111827)
+                val cardBgColor = Color(0xFF1E222B)
+                val cardBorderColor = Color(0xFF323946)
+                val labelColor = Color(0xFF9CA3AF)
+                val valueColor = Color(0xFFF9FAFB)
                 val variationColor = if (currentCandle.isUp) {
-                    if (isDark) Color(0xFF00D09C) else Color(0xFF00A878)
+                    Color(0xFF22E588)
                 } else {
-                    if (isDark) Color(0xFFFF5252) else Color(0xFFE02E49)
+                    Color(0xFFFF6B63)
                 }
+
+                val isDayPeriod = selectedDays <= DaysOfChart.DAY.value
+                val occurrenceLabel = if (isDayPeriod) "Hora:" else "Data:"
+                val occurrenceValue = if (isDayPeriod) currentCandle.hourLabel else currentCandle.dayLabel
 
                 Card(
                     shape = RoundedCornerShape(10.dp),
@@ -278,13 +486,25 @@ fun BarChartCompose(
                     border = BorderStroke(1.dp, cardBorderColor),
                     elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
                     modifier = Modifier
-                        .widthIn(min = 135.dp, max = 155.dp)
+                        .widthIn(min = 145.dp, max = 172.dp)
                         .clickable { selectedIndex = null }
                 ) {
                     Column(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
+                        CandleInfoRow(
+                            label = occurrenceLabel,
+                            value = occurrenceValue,
+                            labelColor = labelColor,
+                            valueColor = valueColor,
+                            isBold = true
+                        )
+                        HorizontalDivider(
+                            thickness = 0.5.dp,
+                            color = cardBorderColor,
+                            modifier = Modifier.padding(vertical = 1.dp)
+                        )
                         CandleInfoRow(label = "Abertura:", value = currentCandle.open.formatMoney(), labelColor = labelColor, valueColor = valueColor)
                         CandleInfoRow(label = "Máximo:", value = currentCandle.high.formatMoney(), labelColor = labelColor, valueColor = valueColor)
                         CandleInfoRow(label = "Mínimo:", value = currentCandle.low.formatMoney(), labelColor = labelColor, valueColor = valueColor)
@@ -339,27 +559,27 @@ private fun CandleInfoRow(
 @Composable
 private fun BarChartComposePreview() {
     DSMTheme {
-        Surface {
+        Surface(color = MaterialTheme.colorScheme.primary) {
             BarChartCompose(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(300.dp)
                     .padding(16.dp),
                 data = listOf(
-                    DataPoint("10:00", 34100.0, null, "$34,100"),
-                    DataPoint("11:00", 34450.0, null, "$34,450"),
-                    DataPoint("12:00", 34200.0, null, "$34,200"),
-                    DataPoint("13:00", 33900.0, null, "$33,900"),
-                    DataPoint("14:00", 34300.0, null, "$34,300"),
-                    DataPoint("15:00", 34800.0, null, "$34,800"),
-                    DataPoint("16:00", 34600.0, null, "$34,600"),
-                    DataPoint("17:00", 35200.0, null, "$35,200"),
-                    DataPoint("18:00", 34950.0, null, "$34,950"),
-                    DataPoint("19:00", 34700.0, null, "$34,700"),
-                    DataPoint("20:00", 35100.0, null, "$35,100"),
-                    DataPoint("21:00", 35400.0, null, "$35,400"),
-                    DataPoint("22:00", 35050.0, null, "$35,050"),
-                    DataPoint("23:00", 35300.0, null, "$35,300")
+                    DataPoint("10:00", 34100.0, "10:00", "$34,100"),
+                    DataPoint("11:00", 34450.0, "11:00", "$34,450"),
+                    DataPoint("12:00", 34200.0, "12:00", "$34,200"),
+                    DataPoint("13:00", 33900.0, "13:00", "$33,900"),
+                    DataPoint("14:00", 34300.0, "14:00", "$34,300"),
+                    DataPoint("15:00", 34800.0, "15:00", "$34,800"),
+                    DataPoint("16:00", 34600.0, "16:00", "$34,600"),
+                    DataPoint("17:00", 35200.0, "17:00", "$35,200"),
+                    DataPoint("18:00", 34950.0, "18:00", "$34,950"),
+                    DataPoint("19:00", 34700.0, "19:00", "$34,700"),
+                    DataPoint("20:00", 35100.0, "20:00", "$35,100"),
+                    DataPoint("21:00", 35400.0, "21:00", "$35,400"),
+                    DataPoint("22:00", 35050.0, "22:00", "$35,050"),
+                    DataPoint("23:00", 35300.0, "23:00", "$35,300")
                 )
             )
         }

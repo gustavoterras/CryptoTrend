@@ -60,7 +60,7 @@ private fun Modifier.getRippleButtonSize(size: RippleButtonSize): Modifier {
 @Composable
 private fun PeopleActivityPreview() {
     DSMTheme {
-        Surface {
+        Surface(color = MaterialTheme.colorScheme.background) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 RippleButton(text = "Click me", SMALL) {}
                 RippleButton(text = "Click me", MEDIUM) {}

@@ -3,6 +3,8 @@ package br.com.terras.app.feeds.presentation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -18,21 +20,33 @@ import br.com.terras.app.dsm.ui.theme.DSMTheme
 
 @Composable
 fun FeedsItemShimmerCompose() {
+    val brush = ShimmerEffect()
     LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(9.dp),
-        modifier = Modifier.padding(top = 100.dp)
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+        contentPadding = PaddingValues(top = 100.dp, start = 18.dp, end = 18.dp, bottom = 100.dp)
     ) {
-        items(
-            count = 3,
-            itemContent = {
+        items(count = 3) {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(350.dp)
-                        .background(brush = ShimmerEffect(), shape = RoundedCornerShape(18.dp))
+                        .height(190.dp)
+                        .background(brush = brush, shape = RoundedCornerShape(14.dp))
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .height(18.dp)
+                        .background(brush = brush, shape = RoundedCornerShape(4.dp))
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.65f)
+                        .height(14.dp)
+                        .background(brush = brush, shape = RoundedCornerShape(4.dp))
                 )
             }
-        )
+        }
     }
 }
 

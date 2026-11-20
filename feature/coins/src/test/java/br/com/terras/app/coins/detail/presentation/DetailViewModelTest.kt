@@ -4,11 +4,15 @@ import app.cash.turbine.test
 import br.com.terras.app.coins.MainDispatcherRule
 import br.com.terras.app.coins.detail.domain.DetailUseCase
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.Error
+import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.InsightsError
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.Loading
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessChart
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessDetail
+import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessInsights
 import br.com.terras.app.coins.mockCoinChartDetailVOStub
 import br.com.terras.app.coins.mockCoinDetailVOStub
+import br.com.terras.app.coins.mockCoinInsightVOStub
+import br.com.terras.app.feeds.domain.FeedsUseCase
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -22,6 +26,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
     private val userCase: DetailUseCase = mockk(relaxed = true)
+    private val feedsUseCase: FeedsUseCase = mockk(relaxed = true)
 
     private lateinit var viewModel: DetailViewModel
 
@@ -30,7 +35,7 @@ class DetailViewModelTest {
 
     @Before
     fun setup() {
-        viewModel = DetailViewModel(userCase)
+        viewModel = DetailViewModel(userCase, feedsUseCase)
     }
 
     @Test
@@ -101,6 +106,40 @@ class DetailViewModelTest {
 
         viewModel.chart.test {
             Assert.assertEquals(SuccessChart(result), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `WHEN getInsightsByCoinId THEN return success`() = runBlocking {
+        val coinId = "bitcoin"
+        val insights = listOf(mockCoinInsightVOStub)
+
+        coEvery {
+            userCase.getInsightsByCoinId(coinId)
+        } returns Result.success(insights)
+
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadInsights(coinId))
+
+        viewModel.insights.test {
+            Assert.assertEquals(SuccessInsights(insights), awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `WHEN getInsightsByCoinId THEN return insights error`() = runBlocking {
+        val coinId = "bitcoin"
+
+        coEvery {
+            userCase.getInsightsByCoinId(coinId)
+        } returns Result.failure(IllegalStateException("Network failure"))
+
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadInsights(coinId))
+
+        viewModel.insights.test {
+            val state = awaitItem()
+            Assert.assertTrue(state is InsightsError)
             cancelAndIgnoreRemainingEvents()
         }
     }

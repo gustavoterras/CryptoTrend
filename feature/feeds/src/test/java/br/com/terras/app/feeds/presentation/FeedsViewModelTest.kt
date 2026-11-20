@@ -4,7 +4,9 @@ import app.cash.turbine.test
 import br.com.terras.app.feeds.MainDispatcherRule
 import br.com.terras.app.feeds.domain.FeedsUseCase
 import br.com.terras.app.feeds.mockArticlesVOStub
+import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsIntent
 import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsState
+import br.com.terras.app.network.refresh.DataRefreshCoordinator
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -20,6 +22,7 @@ import org.junit.Test
 class FeedsViewModelTest {
 
     private val userCase: FeedsUseCase = mockk(relaxed = true)
+    private lateinit var refreshCoordinator: DataRefreshCoordinator
 
     private lateinit var viewModel: FeedsViewModel
 
@@ -28,7 +31,8 @@ class FeedsViewModelTest {
 
     @Before
     fun setup() {
-        viewModel = FeedsViewModel(userCase)
+        refreshCoordinator = DataRefreshCoordinator()
+        viewModel = FeedsViewModel(userCase, refreshCoordinator)
     }
 
     @Test
@@ -75,5 +79,28 @@ class FeedsViewModelTest {
             Assert.assertEquals(FeedsState.Success(result), awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `WHEN Refresh intent THEN reload feeds and reset isRefreshing`() = runBlocking {
+        val result = mockArticlesVOStub
+        coEvery { userCase.getFeeds("bitcoin") } returns Result.success(result)
+
+        viewModel.handleIntent(FeedsIntent.Refresh)
+
+        coVerify(atLeast = 1) { userCase.getFeeds("bitcoin") }
+        Assert.assertEquals(FeedsState.Success(result), viewModel.feeds.value)
+        Assert.assertFalse(viewModel.isRefreshing.value)
+    }
+
+    @Test
+    fun `WHEN market refresh coordinator triggers THEN reload feeds`() = runBlocking {
+        val result = mockArticlesVOStub
+        coEvery { userCase.getFeeds("bitcoin") } returns Result.success(result)
+
+        refreshCoordinator.triggerRefresh()
+
+        coVerify(atLeast = 2) { userCase.getFeeds("bitcoin") }
+        Assert.assertEquals(FeedsState.Success(result), viewModel.feeds.value)
     }
 }

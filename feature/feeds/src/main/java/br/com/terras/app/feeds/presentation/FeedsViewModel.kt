@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.terras.app.feeds.domain.FeedsUseCase
 import br.com.terras.app.feeds.domain.model.ArticleVO
+import br.com.terras.app.network.refresh.DataRefreshCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +16,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class FeedsViewModel @Inject constructor(
-    private val useCase: FeedsUseCase
+    private val useCase: FeedsUseCase,
+    private val refreshCoordinator: DataRefreshCoordinator
 ) : ViewModel() {
 
     sealed interface FeedsIntent {
@@ -32,19 +34,37 @@ class FeedsViewModel @Inject constructor(
     private val _feeds: MutableStateFlow<FeedsState> = MutableStateFlow(FeedsState.Loading)
     val feeds: StateFlow<FeedsState> = _feeds.asStateFlow()
 
+    private val _isRefreshing: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    private var currentTopic: String = "bitcoin"
+
     init {
         handleIntent(FeedsIntent.LoadFeeds())
+        observeMarketRefresh()
+    }
+
+    private fun observeMarketRefresh() {
+        viewModelScope.launch {
+            refreshCoordinator.refreshEvents.collect {
+                refreshFeeds(currentTopic)
+            }
+        }
     }
 
     fun handleIntent(intent: FeedsIntent) {
         when (intent) {
-            is FeedsIntent.LoadFeeds -> getFeeds(intent.topic)
-            is FeedsIntent.Refresh -> getFeeds()
+            is FeedsIntent.LoadFeeds -> {
+                currentTopic = intent.topic
+                getFeeds(intent.topic)
+            }
+            is FeedsIntent.Refresh -> refreshFeeds(currentTopic)
         }
     }
 
     @VisibleForTesting
     fun getFeeds(topic: String = "bitcoin") {
+        currentTopic = topic
         _feeds.update { FeedsState.Loading }
         viewModelScope.launch {
             useCase.getFeeds(topic)
@@ -57,6 +77,26 @@ class FeedsViewModel @Inject constructor(
                         FeedsState.Success(result)
                     }
                 }
+        }
+    }
+
+    private fun refreshFeeds(topic: String = currentTopic) {
+        if (_isRefreshing.value) return
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            try {
+                useCase.getFeeds(topic)
+                    .onFailure {
+                        if (_feeds.value !is FeedsState.Success) {
+                            _feeds.update { FeedsState.Error }
+                        }
+                    }
+                    .onSuccess { result ->
+                        _feeds.update { FeedsState.Success(result) }
+                    }
+            } finally {
+                _isRefreshing.value = false
+            }
         }
     }
 }

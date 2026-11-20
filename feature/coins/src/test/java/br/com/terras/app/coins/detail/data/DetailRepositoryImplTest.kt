@@ -5,6 +5,7 @@ import br.com.terras.app.coins.detail.network.ApiServiceDetail
 import br.com.terras.app.coins.detail.presentation.DaysOfChart
 import br.com.terras.app.coins.mockCoinDetailChartResponseStub
 import br.com.terras.app.coins.mockCoinDetailResponseStub
+import br.com.terras.app.coins.mockCoinInsightResponseStub
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -52,5 +53,18 @@ class DetailRepositoryImplTest {
         val result = repository.getChartDetailById(id, days.value)
 
         Assert.assertEquals(result, Result.success(mockCoinDetailChartResponseStub))
+    }
+
+    @Test
+    fun `WHEN getInsightsByCoinId THEN should return success response`() = runBlocking {
+        val coinId = "bitcoin"
+        val response = listOf(mockCoinInsightResponseStub)
+        coEvery {
+            services.getInsightsByCoinId(coinId)
+        } returns response
+
+        val result = repository.getInsightsByCoinId(coinId)
+
+        Assert.assertEquals(Result.success(response), result)
     }
 }

@@ -49,12 +49,16 @@ fun SearchActivityCompose(
                 viewModel.handleIntent(SearchViewModel.SearchIntent.QueryChanged(query))
             })
         }
-    ) {
+    ) { innerPadding ->
         val coinsListState by viewModel.coins.collectAsState()
 
         when (coinsListState) {
             is Loading -> CoinListItemShimmerView(shouldShowSearchBar = true)
-            is Success -> OnSearchSuccess((coinsListState as Success).coinsList, onItemClick)
+            is Success -> OnSearchSuccess(
+                coinsList = (coinsListState as Success).coinsList,
+                topPadding = innerPadding.calculateTopPadding(),
+                onItemClick = onItemClick
+            )
             is Empty -> OnSearchEmpty()
             is Error -> OnSearchError(showDialog) {
                 showDialog = false
@@ -64,10 +68,17 @@ fun SearchActivityCompose(
 }
 
 @Composable
-private fun OnSearchSuccess(coinsList: List<CoinVO>, onItemClick: (String) -> Unit) {
+private fun OnSearchSuccess(
+    coinsList: List<CoinVO>,
+    topPadding: androidx.compose.ui.unit.Dp,
+    onItemClick: (String) -> Unit
+) {
     LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(9.dp),
-        modifier = Modifier.padding(top = 150.dp,start = 18.dp, end = 18.dp, bottom = 100.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            top = topPadding + 4.dp,
+            bottom = 112.dp
+        )
     ) {
         items(coinsList.size) {
             coinsList[it].run {
@@ -92,6 +103,9 @@ private fun OnSearchError(
 
     AlertDialog(
         onDismissRequest = onDismissRequest,
+        containerColor = MaterialTheme.colorScheme.primary,
+        titleContentColor = MaterialTheme.colorScheme.surface,
+        textContentColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
         title = { Text(text = "Alerta") },
         text = { Text(text = "Erro ao carregar os dados, tente novamente mais tarde.") },
         confirmButton = {

@@ -5,10 +5,16 @@ import br.com.terras.app.coins.detail.data.model.CoinDetailImage
 import br.com.terras.app.coins.detail.data.model.CoinDetailMarketChartResponse
 import br.com.terras.app.coins.detail.data.model.CoinDetailMarketData
 import br.com.terras.app.coins.detail.data.model.CoinDetailResponse
+import br.com.terras.app.coins.detail.data.model.CoinInsightResponse
 import br.com.terras.app.coins.detail.data.model.CoinValue
 import br.com.terras.app.coins.detail.domain.model.CoinChartDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailVO
+import br.com.terras.app.coins.detail.domain.model.CoinInsightVO
 import br.com.terras.app.coins.list.data.model.CoinsResponse
+import br.com.terras.app.coins.list.data.model.TrendingCoinData
+import br.com.terras.app.coins.list.data.model.TrendingCoinItem
+import br.com.terras.app.coins.list.data.model.TrendingCoinWrapper
+import br.com.terras.app.coins.list.data.model.TrendingCoinsResponse
 import br.com.terras.app.coins.list.domain.model.CoinVO
 import br.com.terras.app.dsm.ui.component.TrendColor
 
@@ -36,6 +42,29 @@ val mockCoinsResponseStub = CoinsResponse(
 val mockCoinsListResponseStub = listOf(mockCoinsResponseStub)
 
 val mockCoinsVOListStub = listOf(mockCoinVOStub)
+
+val mockTrendingCoinDataStub = TrendingCoinData(
+    price = 100.0,
+    priceChangePercentage24h = mapOf("usd" to 1.0, "brl" to 1.0),
+    totalVolume = "$1,250,000",
+    sparkline = "https://www.coingecko.com/coins/1/sparkline.svg"
+)
+
+val mockTrendingCoinItemStub = TrendingCoinItem(
+    id = "id",
+    symbol = "symbol",
+    name = "name",
+    marketCapRank = 1,
+    thumb = "thumb",
+    small = "image",
+    large = "large",
+    score = 0,
+    data = mockTrendingCoinDataStub
+)
+
+val mockTrendingCoinsResponseStub = TrendingCoinsResponse(
+    coins = listOf(TrendingCoinWrapper(item = mockTrendingCoinItemStub))
+)
 
 val mockCoinDetailResponseStub = CoinDetailResponse(
     id = "id",
@@ -84,4 +113,18 @@ val mockCoinDetailVOStub = CoinDetailVO(
 
 val mockCoinChartDetailVOStub = CoinChartDetailVO(
     chartData = arrayListOf()
+)
+
+val mockCoinInsightResponseStub = CoinInsightResponse(
+    title = "Institutional demand rises",
+    description = "ETF net inflows accelerated over the past 24 hours.",
+    relatedCoinIds = listOf("bitcoin"),
+    postedAt = "2026-06-15T03:56:19.514666Z"
+)
+
+val mockCoinInsightVOStub = CoinInsightVO(
+    title = "Institutional demand rises",
+    description = "ETF net inflows accelerated over the past 24 hours.",
+    relatedCoinIds = listOf("bitcoin"),
+    postedAt = "Jun 15, 2026"
 )

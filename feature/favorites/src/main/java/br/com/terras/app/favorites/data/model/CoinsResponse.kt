@@ -11,5 +11,12 @@ data class CoinsResponse(
     @SerialName("image") val image: String,
     @SerialName("market_cap_rank") val marketCapRank: Int,
     @SerialName("current_price") val price: Double,
-    @SerialName("price_change_percentage_24h") val priceChangePercentage: Double
+    @SerialName("price_change_percentage_24h") val priceChangePercentage: Double,
+    @SerialName("total_volume") val totalVolume: Double? = null,
+    @SerialName("sparkline_in_7d") val sparklineIn7d: SparklineResponse? = null
+)
+
+@Serializable
+data class SparklineResponse(
+    @SerialName("price") val price: List<Double> = emptyList()
 )

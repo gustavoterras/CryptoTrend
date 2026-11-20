@@ -1,16 +1,19 @@
 package br.com.terras.app.feeds.presentation
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,59 +34,77 @@ fun FeedsItemCompose(
     articleSeeMore: String,
     navigationClick: () -> Unit
 ) {
-    ConstraintLayout(
+    Column(
         modifier = Modifier
-            .clickable { navigationClick() }
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(18.dp)),
+            .clickable { navigationClick() }
     ) {
-
-        val (banner, title, description, seeMore) = createRefs()
-
-        GlideImage(model = articleImage,
-            contentDescription = "banner",
-            contentScale = ContentScale.Crop,
+        ConstraintLayout(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
-                .clip(RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp))
-                .constrainAs(banner) {
-                    top.linkTo(parent.top)
+                .padding(horizontal = 18.dp, vertical = 14.dp)
+        ) {
+            val (banner, title, description, seeMore) = createRefs()
+
+            GlideImage(
+                model = articleImage,
+                contentDescription = "banner",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(190.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .constrainAs(banner) {
+                        top.linkTo(parent.top)
+                        start.linkTo(parent.start)
+                        end.linkTo(parent.end)
+                    }
+            )
+
+            Text(
+                text = articleTitle,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.surface,
+                modifier = Modifier.constrainAs(title) {
+                    width = Dimension.fillToConstraints
                     start.linkTo(parent.start)
+                    top.linkTo(banner.bottom, 12.dp)
                     end.linkTo(parent.end)
-                })
+                }
+            )
 
-        Text(text = articleTitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.constrainAs(title) {
-                width = Dimension.fillToConstraints
-                start.linkTo(parent.start, 18.dp)
-                top.linkTo(banner.bottom, 9.dp)
-                end.linkTo(parent.end, 9.dp)
-            })
+            Text(
+                text = articleDescription,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.constrainAs(description) {
+                    width = Dimension.fillToConstraints
+                    start.linkTo(parent.start)
+                    top.linkTo(title.bottom, 6.dp)
+                    end.linkTo(parent.end)
+                }
+            )
 
-        Text(text = articleDescription,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.surface,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.constrainAs(description) {
-                width = Dimension.fillToConstraints
-                start.linkTo(parent.start, 18.dp)
-                top.linkTo(title.bottom, 9.dp)
-                end.linkTo(parent.end, 9.dp)
-            })
-
-        Text(text = articleSeeMore,
-            textDecoration = TextDecoration.Underline,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.surfaceTint,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.constrainAs(seeMore) {
-                end.linkTo(description.end, 9.dp)
-                top.linkTo(description.bottom, 9.dp)
-                bottom.linkTo(parent.bottom, 18.dp)
-            })
+            Text(
+                text = articleSeeMore,
+                textDecoration = TextDecoration.Underline,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.surfaceTint,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.constrainAs(seeMore) {
+                    end.linkTo(parent.end)
+                    top.linkTo(description.bottom, 10.dp)
+                    bottom.linkTo(parent.bottom)
+                }
+            )
+        }
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 18.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
     }
 }
 

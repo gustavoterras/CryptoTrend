@@ -4,6 +4,7 @@ import br.com.terras.app.coins.MainDispatcherRule
 import br.com.terras.app.coins.list.data.CoinsRepository
 import br.com.terras.app.coins.mockCoinsListResponseStub
 import br.com.terras.app.coins.mockCoinsVOListStub
+import br.com.terras.app.coins.mockTrendingCoinsResponseStub
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -43,5 +44,43 @@ class CoinsUseCaseImplTest {
         val result = useCase.getCoins()
 
         Assert.assertEquals(result, Result.success(mockCoinsVOListStub))
+    }
+
+    @Test
+    fun `WHEN getTrendingCoins is called THEN enriches with market data and returns mapped coins`() = runTest {
+        coEvery {
+            repository.getTrendingCoins()
+        } returns Result.success(mockTrendingCoinsResponseStub)
+
+        coEvery {
+            repository.getCoinsByIds(listOf("id"))
+        } returns Result.success(mockCoinsListResponseStub)
+
+        every {
+            mapper.toTrendingCoins(mockTrendingCoinsResponseStub, mockCoinsListResponseStub)
+        } returns mockCoinsVOListStub
+
+        val result = useCase.getTrendingCoins()
+
+        Assert.assertEquals(Result.success(mockCoinsVOListStub), result)
+    }
+
+    @Test
+    fun `WHEN getCoinsByIds fails during getTrendingCoins THEN falls back to empty market list`() = runTest {
+        coEvery {
+            repository.getTrendingCoins()
+        } returns Result.success(mockTrendingCoinsResponseStub)
+
+        coEvery {
+            repository.getCoinsByIds(listOf("id"))
+        } returns Result.failure(RuntimeException("rate limit"))
+
+        every {
+            mapper.toTrendingCoins(mockTrendingCoinsResponseStub, emptyList())
+        } returns mockCoinsVOListStub
+
+        val result = useCase.getTrendingCoins()
+
+        Assert.assertEquals(Result.success(mockCoinsVOListStub), result)
     }
 }

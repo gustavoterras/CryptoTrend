@@ -3,14 +3,19 @@ package br.com.terras.app.coins.detail.domain
 import br.com.terras.app.coins.detail.data.model.CoinDate
 import br.com.terras.app.coins.detail.data.model.CoinDetailMarketChartResponse
 import br.com.terras.app.coins.detail.data.model.CoinDetailResponse
+import br.com.terras.app.coins.detail.data.model.CoinInsightResponse
 import br.com.terras.app.coins.detail.data.model.CoinValue
 import br.com.terras.app.coins.detail.domain.model.CoinChartDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailPricePercentageVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailVO
+import br.com.terras.app.coins.detail.domain.model.CoinInsightVO
 import br.com.terras.app.coins.detail.domain.model.DataPoint
 import br.com.terras.app.coins.detail.domain.model.MarketChartDataPoint
 import br.com.terras.app.common.formatMoney
 import br.com.terras.app.common.formatPercentage
+import br.com.terras.app.common.toChartAxisTime
+import br.com.terras.app.common.toChartDay
+import br.com.terras.app.common.toChartHour
 import br.com.terras.app.common.toFormatDate
 import br.com.terras.app.dsm.ui.component.TrendColor
 import java.util.Locale
@@ -19,6 +24,7 @@ import javax.inject.Inject
 interface DetailMapper {
     fun toCoin(response: CoinDetailResponse): CoinDetailVO
     fun toChart(response: CoinDetailMarketChartResponse): CoinChartDetailVO
+    fun toInsights(response: List<CoinInsightResponse>): List<CoinInsightVO>
 }
 
 class DetailMapperImpl @Inject constructor() : DetailMapper {
@@ -64,17 +70,42 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
     }
 
     override fun toChart(response: CoinDetailMarketChartResponse): CoinChartDetailVO {
-        return CoinChartDetailVO(mapMarketChartDataPointList(response).mapIndexed { _, marketChartDataPoint ->
+        return CoinChartDetailVO(mapMarketChartDataPointList(response).map { marketChartDataPoint ->
             DataPoint(
                 date = marketChartDataPoint.date,
                 y = marketChartDataPoint.price,
-                xLabel = null,
-                yLabel = marketChartDataPoint.price.formatMoney()
+                xLabel = marketChartDataPoint.axisTime,
+                yLabel = marketChartDataPoint.price.formatMoney(),
+                hourLabel = marketChartDataPoint.hourLabel,
+                dayLabel = marketChartDataPoint.dayLabel
             )
-        }.toList())
+        })
+    }
+
+    override fun toInsights(response: List<CoinInsightResponse>): List<CoinInsightVO> {
+        return response
+            .filter { it.title.isNotBlank() || it.description.isNotBlank() }
+            .map { insight ->
+                val formattedDate = insight.postedAt
+                    .takeIf { it.isNotBlank() }
+                    ?.let { rawDate -> runCatching { rawDate.toFormatDate() }.getOrDefault("") }
+                    .orEmpty()
+                CoinInsightVO(
+                    title = insight.title,
+                    description = insight.description,
+                    relatedCoinIds = insight.relatedCoinIds,
+                    postedAt = formattedDate
+                )
+            }
     }
 
     private fun mapMarketChartDataPointList(marketChartDto: CoinDetailMarketChartResponse): List<MarketChartDataPoint> {
+        if (marketChartDto.prices.isEmpty()) return emptyList()
+
+        val firstTimestamp = marketChartDto.prices.firstOrNull()?.firstOrNull()?.toLong() ?: 0L
+        val lastTimestamp = marketChartDto.prices.lastOrNull()?.firstOrNull()?.toLong() ?: firstTimestamp
+        val spanHours = ((lastTimestamp - firstTimestamp).coerceAtLeast(0L)) / 3_600_000L
+
         val divAmount = when (marketChartDto.prices.size) {
             in 0..200 -> 1
             in 200..400 -> 2
@@ -86,17 +117,24 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
         return marketChartDto.prices.filterIndexed { index, _ ->
             index % divAmount == 0
         }.map {
-            mapMarketChartDataPoint(it)
+            mapMarketChartDataPoint(it, spanHours)
         }
     }
 
-    private fun mapMarketChartDataPoint(dataPointList: List<Double>): MarketChartDataPoint {
-        val date = dataPointList.first().toLong().toFormatDate()
+    private fun mapMarketChartDataPoint(dataPointList: List<Double>, spanHours: Long): MarketChartDataPoint {
+        val timestamp = dataPointList.first().toLong()
+        val date = timestamp.toFormatDate()
+        val axisTime = timestamp.toChartAxisTime(spanHours)
+        val hourLabel = timestamp.toChartHour()
+        val dayLabel = timestamp.toChartDay()
         val price = dataPointList[1]
 
         return MarketChartDataPoint(
             date = date,
-            price = price
+            price = price,
+            axisTime = axisTime,
+            hourLabel = hourLabel,
+            dayLabel = dayLabel
         )
     }
 

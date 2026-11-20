@@ -4,5 +4,7 @@ data class DataPoint(
     val date: String,
     val y: Double,
     val xLabel: String?,
-    val yLabel: String?
+    val yLabel: String?,
+    val hourLabel: String = "",
+    val dayLabel: String = ""
 )

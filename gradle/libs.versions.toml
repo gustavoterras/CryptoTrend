@@ -23,8 +23,12 @@ koverVersion = "0.8.1"
 turbineVersion = "0.11.0"
 googleServices = "4.4.2"
 firebaseAppDistribution = "5.0.0"
+firebaseBom = "33.1.0"
 
 [libraries]
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-ai = { group = "com.google.firebase", name = "firebase-vertexai", version = "16.2.0" }
+firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug", version = "18.0.0" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockkVersion"}
 coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesVersion"}

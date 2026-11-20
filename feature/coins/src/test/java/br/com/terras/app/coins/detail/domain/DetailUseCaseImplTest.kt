@@ -7,6 +7,8 @@ import br.com.terras.app.coins.mockCoinChartDetailVOStub
 import br.com.terras.app.coins.mockCoinDetailChartResponseStub
 import br.com.terras.app.coins.mockCoinDetailResponseStub
 import br.com.terras.app.coins.mockCoinDetailVOStub
+import br.com.terras.app.coins.mockCoinInsightResponseStub
+import br.com.terras.app.coins.mockCoinInsightVOStub
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -64,5 +66,24 @@ class DetailUseCaseImplTest {
         val result = useCase.getChartDetailById(id, days.value)
 
         Assert.assertEquals(result, Result.success(mockCoinChartDetailVOStub))
+    }
+
+    @Test
+    fun `WHEN getInsightsByCoinId is called THEN it should return mapped insights`() = runTest {
+        val coinId = "bitcoin"
+        val responseList = listOf(mockCoinInsightResponseStub)
+        val voList = listOf(mockCoinInsightVOStub)
+
+        coEvery {
+            repository.getInsightsByCoinId(coinId)
+        } returns Result.success(responseList)
+
+        every {
+            mapper.toInsights(responseList)
+        } returns voList
+
+        val result = useCase.getInsightsByCoinId(coinId)
+
+        Assert.assertEquals(Result.success(voList), result)
     }
 }

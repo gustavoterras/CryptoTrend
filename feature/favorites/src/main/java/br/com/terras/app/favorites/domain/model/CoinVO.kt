@@ -10,5 +10,10 @@ data class CoinVO(
     val marketCapRank: String,
     val price: String,
     val priceChangePercentage: String,
-    val trendColor: TrendColor
+    val trendColor: TrendColor,
+    val volume: String = "",
+    val rawVolume: Double = 0.0,
+    val rawPrice: Double = 0.0,
+    val rawPriceChangePercentage: Double = 0.0,
+    val sparklinePrices: List<Double> = emptyList()
 )

@@ -1,28 +1,42 @@
 package br.com.terras.app.dsm.ui.component
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import androidx.constraintlayout.compose.ConstraintLayout
-import androidx.constraintlayout.compose.Visibility.Companion.Gone
-import androidx.constraintlayout.compose.Visibility.Companion.Invisible
-import androidx.constraintlayout.compose.Visibility.Companion.Visible
+import androidx.compose.ui.unit.sp
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
+import java.util.Locale
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
@@ -35,108 +49,190 @@ fun CoinListItemView(
     coinPrice: String? = null,
     coinPriceChancePercentage: String? = null,
     trendColor: TrendColor = TrendColor.NONE,
+    coinVolume: String? = null,
+    sparklinePrices: List<Double> = emptyList(),
+    quoteCurrency: String = remember { if (Locale.getDefault().language == "pt") "BRL" else "USD" },
     onItemClick: (String) -> Unit
 ) {
-    ConstraintLayout(
+    val isDark = isSystemInDarkTheme()
+    val sparklineColor = when (trendColor) {
+        TrendColor.DOWN -> if (isDark) Color(0xFFFF6B63) else Color(0xFFE04838)
+        TrendColor.UP -> MaterialTheme.colorScheme.scrim
+        TrendColor.FLAT, TrendColor.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    val titleColor = MaterialTheme.colorScheme.surface
+    val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    Row(
         modifier = Modifier
-            .clickable { onItemClick(coinId) }
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(18.dp))
+            .testTag("coin_item_$coinId")
+            .clickable { onItemClick(coinId) }
+            .padding(horizontal = 18.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        val (avatar, position, nick, name, price, percentage) = createRefs()
-
-        val guideCenterVertically = createGuidelineFromTop(0.5f)
-
-        GlideImage(model = coinLogo,
-            contentDescription = "Avatar",
-            Modifier
-                .width(35.dp)
-                .height(35.dp)
-                .constrainAs(avatar) {
-                    top.linkTo(parent.top, 18.dp)
-                    bottom.linkTo(parent.bottom, 18.dp)
-                    start.linkTo(parent.start, 18.dp)
-                }
-        )
-
-        Text(text = coinName,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.constrainAs(nick) {
-                start.linkTo(avatar.end, 9.dp)
-                bottom.linkTo(guideCenterVertically)
-            }
-        )
-
-        Box(modifier = Modifier
-            .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(3.dp))
-            .padding(start = 3.dp, end = 3.dp)
-            .constrainAs(position) {
-                top.linkTo(guideCenterVertically)
-                start.linkTo(avatar.end, 9.dp)
-                visibility = if (coinPosition.isNullOrEmpty()) Invisible else Visible
-            }) {
-            Text(
-                text = coinPosition.orEmpty(),
-                style = MaterialTheme.typography.labelLarge,
-                color = Color.White
+        // Left column: Icon + Symbol/Quote + Rank & Volume (or Coin Name fallback)
+        Row(
+            modifier = Modifier.weight(1.55f),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            GlideImage(
+                model = coinLogo,
+                contentDescription = coinName,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
             )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                val displaySymbol = coinSymbol.ifBlank { coinName }.uppercase()
+                Text(
+                    text = buildAnnotatedString {
+                        withStyle(
+                            SpanStyle(
+                                color = titleColor,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        ) {
+                            append(displaySymbol)
+                        }
+                        if (quoteCurrency.isNotBlank()) {
+                            withStyle(
+                                SpanStyle(
+                                    color = subtitleColor,
+                                    fontWeight = FontWeight.Medium,
+                                    fontSize = 12.5.sp
+                                )
+                            ) {
+                                append(" / $quoteCurrency")
+                            }
+                        }
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                val hasRank = !coinPosition.isNullOrBlank() && coinPosition != "null"
+                val hasVolume = !coinVolume.isNullOrBlank()
+
+                if (hasRank || hasVolume || coinName.isNotBlank()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (hasRank) {
+                            Text(
+                                text = "#$coinPosition",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = titleColor.copy(alpha = 0.7f),
+                                maxLines = 1,
+                                modifier = Modifier.testTag("coin_rank_$coinId")
+                            )
+                        }
+                        val volumeOrName = when {
+                            hasVolume -> "Vol $coinVolume"
+                            coinName.isNotBlank() -> coinName
+                            else -> ""
+                        }
+                        if (volumeOrName.isNotEmpty()) {
+                            Text(
+                                text = volumeOrName,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = subtitleColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+            }
         }
 
-        val spacingNull = if (coinPosition.isNullOrEmpty()) (-5).dp else 3.dp
-
-        Text(text = coinSymbol,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.constrainAs(name) {
-                centerVerticallyTo(position)
-                start.linkTo(position.end, spacingNull)
+        // Middle column: 7d Sparkline Mini-Graph
+        Box(
+            modifier = Modifier
+                .width(70.dp)
+                .height(30.dp)
+                .padding(horizontal = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (sparklinePrices.size >= 2) {
+                SparklineChartView(
+                    prices = sparklinePrices,
+                    lineColor = sparklineColor,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(28.dp)
+                )
             }
-        )
+        }
 
-        Text(text = coinPrice.orEmpty(),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.surface,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.constrainAs(price) {
-                end.linkTo(parent.end, 18.dp)
-                bottom.linkTo(guideCenterVertically)
-                visibility = if (coinPrice.isNullOrEmpty()) Gone else Visible
+        // Right column: Price + 24h Percentage Change
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 6.dp),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            if (!coinPrice.isNullOrEmpty()) {
+                Text(
+                    text = coinPrice,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontSize = 14.5.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = titleColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End
+                )
             }
-        )
 
-
-        Box(modifier = Modifier
-            .background(trendColor.color, RoundedCornerShape(9.dp))
-            .padding(start = 9.dp, end = 9.dp)
-            .constrainAs(percentage) {
-                end.linkTo(parent.end, 18.dp)
-                top.linkTo(guideCenterVertically)
-                visibility = if (coinPriceChancePercentage.isNullOrEmpty()) Gone else Visible
-            }) {
-            Text(
-                text = coinPriceChancePercentage.orEmpty(),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.surface,
-                textAlign = TextAlign.Center
-            )
+            if (!coinPriceChancePercentage.isNullOrEmpty()) {
+                Text(
+                    text = coinPriceChancePercentage,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontSize = 12.5.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = trendColor.textColor,
+                    maxLines = 1,
+                    textAlign = TextAlign.End
+                )
+            }
         }
     }
 }
 
 @ThemePreviews
 @Composable
-private fun PersonListItemPreview() {
+private fun CoinListItemViewPreview() {
     DSMTheme {
-        CoinListItemView(
-            "id",
-            "1",
-            "teste",
-            "Bitcoin",
-            "1",
-            "$ 10,000.00",
-            "10%",
-            TrendColor.DOWN
-        ) {}
+        Surface(color = MaterialTheme.colorScheme.background) {
+            CoinListItemView(
+                coinId = "bitcoin",
+                coinLogo = "",
+                coinName = "Bitcoin",
+                coinSymbol = "BTC",
+                coinPosition = "1",
+                coinPrice = "$17,185.06",
+                coinPriceChancePercentage = "+2.65%",
+                trendColor = TrendColor.UP,
+                coinVolume = "$17,204,940,467",
+                sparklinePrices = listOf(16800.0, 16950.0, 16900.0, 17120.0, 17050.0, 17185.0),
+                quoteCurrency = "USDT"
+            ) {}
+        }
     }
 }

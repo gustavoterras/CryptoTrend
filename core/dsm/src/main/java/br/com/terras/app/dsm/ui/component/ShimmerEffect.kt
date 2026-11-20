@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -15,10 +16,11 @@ import androidx.compose.ui.graphics.Color
 @Composable
 fun ShimmerEffect(showShimmer: Boolean = true, targetValue: Float = 1000f): Brush {
     return if (showShimmer) {
+        val baseColor = MaterialTheme.colorScheme.surface
         val shimmerColors = listOf(
-            Color.LightGray.copy(alpha = 0.1f),
-            Color.LightGray.copy(alpha = 0.05f),
-            Color.LightGray.copy(alpha = 0.1f),
+            baseColor.copy(alpha = 0.18f),
+            baseColor.copy(alpha = 0.08f),
+            baseColor.copy(alpha = 0.18f),
         )
 
         val transition = rememberInfiniteTransition(label = "")
