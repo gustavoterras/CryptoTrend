@@ -14,6 +14,7 @@ class FavoritesUseCaseImpl @Inject constructor(
 ) : FavoritesUseCase {
 
     override suspend fun getCoinsByIds(ids: List<String>): Result<List<CoinVO>> {
+        if (ids.isEmpty()) return Result.success(emptyList())
         return repository.getCoinsByIds(ids).map { result ->
             mapper.toCoins(result)
         }

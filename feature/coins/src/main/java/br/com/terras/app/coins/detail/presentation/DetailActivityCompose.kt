@@ -26,13 +26,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -43,6 +45,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,6 +60,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.launch
 import java.util.Locale
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -72,6 +77,7 @@ import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.S
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessInsights
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
+import br.com.terras.app.dsm.ui.component.AnimatedFavoriteButton
 import br.com.terras.app.dsm.ui.component.RippleButton
 import br.com.terras.app.dsm.ui.component.SegmentedControl
 import br.com.terras.app.dsm.ui.component.TrendColor
@@ -85,13 +91,11 @@ import com.bumptech.glide.integration.compose.GlideImage
 fun DetailActivityCompose(
     id: String, navHostController: NavHostController, viewModel: DetailViewModel = hiltViewModel()
 ) {
-
-    var showDialog by remember { mutableStateOf(true) }
-
     val coinDetailState by viewModel.detail.collectAsState()
     val chartDetailState by viewModel.chart.collectAsState()
     val newsState by viewModel.news.collectAsState()
     val insightsState by viewModel.insights.collectAsState()
+    val isFavorite by viewModel.isFavorite.collectAsStateWithLifecycle()
 
     LaunchedEffect(id) {
         viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail(id))
@@ -107,26 +111,37 @@ fun DetailActivityCompose(
     }
 
     when (val state = coinDetailState) {
-        is Loading -> {}
+        is Loading -> OnCoinDetailLoading(
+            onBackPress = { navHostController.popBackStack() }
+        )
         is SuccessDetail -> OnCoinDetailSuccess(
-            state,
-            chartDetailState,
-            newsState,
-            insightsState,
-            {
+            state = state,
+            chartDetailState = chartDetailState,
+            newsState = newsState,
+            insightsState = insightsState,
+            onBackPress = {
                 navHostController.popBackStack()
             },
             onArticleClick = { url ->
                 if (url.isNotBlank()) {
                     navHostController.navigate(Screen.WebView(url = url))
                 }
+            },
+            isFavorite = isFavorite,
+            onToggleFavorite = {
+                viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleFavorite(id))
             }
         ) { days ->
             viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart(id, days))
         }
         is DetailViewModel.DetailState.Error -> OnCoinDetailError(
-            showDialog
-        ) { showDialog = false }
+            onBackPress = { navHostController.popBackStack() },
+            onRetry = {
+                viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail(id))
+                viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart(id))
+                viewModel.handleIntent(DetailViewModel.DetailIntent.LoadInsights(id))
+            }
+        )
         else -> {}
     }
 }
@@ -141,8 +156,12 @@ fun OnCoinDetailSuccess(
     insightsState: DetailViewModel.DetailState,
     onBackPress: () -> Unit,
     onArticleClick: (String) -> Unit,
+    isFavorite: Boolean = false,
+    onToggleFavorite: () -> Unit = {},
     selectedDaysOfChart: (Int) -> Unit
 ) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     var isBarChart by remember { mutableStateOf(false) }
     val quoteCurrency = remember {
@@ -183,7 +202,13 @@ fun OnCoinDetailSuccess(
     }
 
     BackHandler(onBack = onBackPress)
-    Scaffold(topBar = {
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        },
+        topBar = {
         TopAppBar(
             title = {
                 Row(
@@ -232,26 +257,36 @@ fun OnCoinDetailSuccess(
                 }
             },
             actions = {
-                IconButton(
-                    onClick = { },
-                    modifier = Modifier.testTag("favorite_button")
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.star_24dp),
-                        contentDescription = "Favorito",
-                        tint = MaterialTheme.colorScheme.inversePrimary
-                    )
-                }
+                AnimatedFavoriteButton(
+                    isFavorite = isFavorite,
+                    onToggle = {
+                        val willFavorite = !isFavorite
+                        onToggleFavorite()
+                        coroutineScope.launch {
+                            snackbarHostState.currentSnackbarData?.dismiss()
+                            snackbarHostState.showSnackbar(
+                                if (willFavorite) {
+                                    "${state.coin.symbol.uppercase()} adicionado aos favoritos"
+                                } else {
+                                    "${state.coin.symbol.uppercase()} removido dos favoritos"
+                                }
+                            )
+                        }
+                    },
+                    testTag = "favorite_button"
+                )
             }
         )
     }) { innerPadding ->
         Column(
             modifier = Modifier
+                .fillMaxSize()
+                .padding(top = innerPadding.calculateTopPadding())
+                .verticalScroll(rememberScrollState())
                 .padding(
-                    top = innerPadding.calculateTopPadding() + 8.dp,
-                    bottom = 108.dp
-                )
-                .verticalScroll(rememberScrollState()),
+                    top = 8.dp,
+                    bottom = innerPadding.calculateBottomPadding() + 24.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Column(
@@ -767,23 +802,101 @@ fun SectionInfoItem(
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun OnCoinDetailLoading(
+    onBackPress: () -> Unit
+) {
+    BackHandler(onBack = onBackPress)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = {},
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    navigationIconContentColor = MaterialTheme.colorScheme.surface
+                ),
+                navigationIcon = {
+                    IconButton(
+                        onClick = onBackPress,
+                        modifier = Modifier.testTag("loading_back_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Voltar"
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.scrim
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun OnCoinDetailError(
-    showDialog: Boolean, onDismissRequest: () -> Unit
+    onBackPress: () -> Unit,
+    onRetry: () -> Unit
 ) {
-    if (showDialog.not()) return
-
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        containerColor = MaterialTheme.colorScheme.primary,
-        titleContentColor = MaterialTheme.colorScheme.surface,
-        textContentColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-        title = { Text(text = "Alerta") },
-        text = { Text(text = "Erro ao carregar os dados, tente novamente mais tarde.") },
-        confirmButton = {
-            RippleButton(text = "Entendi", onClick = onDismissRequest)
+    BackHandler(onBack = onBackPress)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = {},
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background,
+                    navigationIconContentColor = MaterialTheme.colorScheme.surface
+                ),
+                navigationIcon = {
+                    IconButton(
+                        onClick = onBackPress,
+                        modifier = Modifier.testTag("error_back_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Voltar"
+                        )
+                    }
+                }
+            )
         }
-    )
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Erro ao carregar os dados, tente novamente mais tarde.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            RippleButton(
+                text = "Tentar novamente",
+                onClick = onRetry
+            )
+        }
+    }
 }
 
 @ThemePreviews

@@ -12,6 +12,7 @@ import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Succe
 import br.com.terras.app.coins.mockCoinsVOListStub
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.feeds.domain.FeedsUseCase
+import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
 import br.com.terras.app.network.refresh.DataRefreshCoordinator
 import br.com.terras.app.search.domain.SearchUseCase
 import br.com.terras.app.search.domain.model.CoinVO as SearchCoinVO
@@ -19,6 +20,9 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert
@@ -26,11 +30,23 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+private class FakeCoinsFavoriteLocalRepository(
+    private val idsFlow: Flow<List<String>>
+) : FavoriteCoinsLocalRepository {
+    override fun observeFavoriteIds(): Flow<List<String>> = idsFlow
+    override fun observeIsFavorite(coinId: String): Flow<Boolean> = flowOf(false)
+    override suspend fun toggleFavorite(coinId: String): Boolean = false
+    override suspend fun addFavorite(coinId: String) = Unit
+    override suspend fun removeFavorite(coinId: String) = Unit
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class CoinsViewModelTest {
     private val userCase: CoinsUseCase = mockk(relaxed = true)
     private val searchUseCase: SearchUseCase = mockk(relaxed = true)
     private val feedsUseCase: FeedsUseCase = mockk(relaxed = true)
+    private val favoriteIdsFlow = MutableStateFlow<List<String>>(emptyList())
+    private lateinit var favoriteLocalRepository: FavoriteCoinsLocalRepository
     private lateinit var refreshCoordinator: DataRefreshCoordinator
 
     private lateinit var viewModel: CoinsViewModel
@@ -40,8 +56,15 @@ class CoinsViewModelTest {
 
     @Before
     fun setup() {
+        favoriteLocalRepository = FakeCoinsFavoriteLocalRepository(favoriteIdsFlow)
         refreshCoordinator = DataRefreshCoordinator()
-        viewModel = CoinsViewModel(userCase, searchUseCase, feedsUseCase, refreshCoordinator)
+        viewModel = CoinsViewModel(
+            userCase,
+            searchUseCase,
+            feedsUseCase,
+            refreshCoordinator,
+            favoriteLocalRepository
+        )
     }
 
     @Test
@@ -230,6 +253,16 @@ class CoinsViewModelTest {
             coVerify(exactly = 1) { feedsUseCase.getFeeds("bitcoin") }
             Assert.assertEquals(Success(updatedCoins), viewModel.trendingCoins.value)
             Assert.assertFalse(viewModel.isTrendingRefreshing.value)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `WHEN favorite IDs emit THEN updates favoriteIds StateFlow`() = runBlocking {
+        viewModel.favoriteIds.test {
+            Assert.assertEquals(emptySet<String>(), awaitItem())
+            favoriteIdsFlow.value = listOf("bitcoin", "solana")
+            Assert.assertEquals(setOf("bitcoin", "solana"), awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
     }

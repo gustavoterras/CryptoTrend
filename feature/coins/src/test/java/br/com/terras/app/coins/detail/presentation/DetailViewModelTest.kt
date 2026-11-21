@@ -13,9 +13,13 @@ import br.com.terras.app.coins.mockCoinChartDetailVOStub
 import br.com.terras.app.coins.mockCoinDetailVOStub
 import br.com.terras.app.coins.mockCoinInsightVOStub
 import br.com.terras.app.feeds.domain.FeedsUseCase
+import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert
@@ -23,10 +27,28 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 
+private class FakeDetailFavoriteLocalRepository : FavoriteCoinsLocalRepository {
+    val favoriteIds = MutableStateFlow<List<String>>(emptyList())
+    val isFavoriteFlow = MutableStateFlow(false)
+    val toggledIds = mutableListOf<String>()
+
+    override fun observeFavoriteIds(): Flow<List<String>> = favoriteIds
+    override fun observeIsFavorite(coinId: String): Flow<Boolean> = isFavoriteFlow
+    override suspend fun toggleFavorite(coinId: String): Boolean {
+        toggledIds += coinId
+        val next = !isFavoriteFlow.value
+        isFavoriteFlow.value = next
+        return next
+    }
+    override suspend fun addFavorite(coinId: String) = Unit
+    override suspend fun removeFavorite(coinId: String) = Unit
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
     private val userCase: DetailUseCase = mockk(relaxed = true)
     private val feedsUseCase: FeedsUseCase = mockk(relaxed = true)
+    private lateinit var favoriteLocalRepository: FakeDetailFavoriteLocalRepository
 
     private lateinit var viewModel: DetailViewModel
 
@@ -35,7 +57,8 @@ class DetailViewModelTest {
 
     @Before
     fun setup() {
-        viewModel = DetailViewModel(userCase, feedsUseCase)
+        favoriteLocalRepository = FakeDetailFavoriteLocalRepository()
+        viewModel = DetailViewModel(userCase, feedsUseCase, favoriteLocalRepository)
     }
 
     @Test
@@ -140,6 +163,17 @@ class DetailViewModelTest {
         viewModel.insights.test {
             val state = awaitItem()
             Assert.assertTrue(state is InsightsError)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `WHEN ToggleFavorite intent THEN calls repository toggleFavorite and updates isFavorite`() = runBlocking {
+        viewModel.isFavorite.test {
+            Assert.assertFalse(awaitItem())
+            viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleFavorite("bitcoin"))
+            Assert.assertEquals(listOf("bitcoin"), favoriteLocalRepository.toggledIds)
+            Assert.assertTrue(awaitItem())
             cancelAndIgnoreRemainingEvents()
         }
     }

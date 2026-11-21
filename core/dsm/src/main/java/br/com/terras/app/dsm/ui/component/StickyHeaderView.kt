@@ -1,6 +1,7 @@
 package br.com.terras.app.dsm.ui.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +27,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -81,16 +84,53 @@ fun StickyHeaderView(
                 )
             }
 
+            val authUiController = LocalAuthUiController.current
             Box(
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .testTag("profile_button")
+                    .clickable(
+                        enabled = authUiController != null,
+                        role = Role.Button,
+                        onClick = {
+                            if (authUiController?.isSignedIn == true) {
+                                authUiController.openProfileMenu()
+                            } else {
+                                authUiController?.requestSignIn?.invoke {}
+                            }
+                        }
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.person_24dp),
-                    contentDescription = "Perfil",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp)
-                )
+                if (authUiController?.isSignedIn == true) {
+                    val initial = authUiController.displayName
+                        ?.trim()
+                        ?.firstOrNull()
+                        ?.uppercaseChar()
+                        ?: 'G'
+                    Box(
+                        modifier = Modifier
+                            .size(30.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.secondaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = initial.toString(),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                } else {
+                    Icon(
+                        painter = painterResource(id = R.drawable.person_24dp),
+                        contentDescription = "Entrar com o Google",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
 

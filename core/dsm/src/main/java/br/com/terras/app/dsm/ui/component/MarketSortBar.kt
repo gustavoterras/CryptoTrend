@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -87,12 +88,18 @@ fun <T> List<T>.sortWithMarketState(
 fun MarketSortBar(
     sortState: MarketSortState,
     onSortClick: (MarketSortColumn) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    hasFavoriteColumn: Boolean = false
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 18.dp, vertical = 6.dp),
+            .padding(
+                start = if (hasFavoriteColumn) 16.dp else 18.dp,
+                end = if (hasFavoriteColumn) 6.dp else 18.dp,
+                top = 6.dp,
+                bottom = 6.dp
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(
@@ -117,7 +124,7 @@ fun MarketSortBar(
         }
 
         Box(
-            modifier = Modifier.width(74.dp),
+            modifier = Modifier.width(if (hasFavoriteColumn) 64.dp else 74.dp),
             contentAlignment = Alignment.Center
         ) {
             SortHeaderItem(
@@ -141,6 +148,10 @@ fun MarketSortBar(
                 onClick = { onSortClick(MarketSortColumn.CHANGE_24H) },
                 modifier = Modifier.testTag("sort_header_change")
             )
+        }
+
+        if (hasFavoriteColumn) {
+            Spacer(modifier = Modifier.width(48.dp))
         }
     }
 }

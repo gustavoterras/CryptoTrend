@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.component.CoinListItemShimmerRow
@@ -56,7 +57,8 @@ fun FavoriteActivityCompose(
     showTopBar: Boolean = true,
     onItemClick: (String) -> Unit
 ) {
-    val coinsListState by viewModel.coins.collectAsState()
+    val coinsListState by viewModel.coins.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     var showDialog by remember(coinsListState) { mutableStateOf(coinsListState is Error) }
 
     if (showTopBar) {
@@ -67,6 +69,7 @@ fun FavoriteActivityCompose(
         ) { innerPadding ->
             FavoritesContentBody(
                 coinsListState = coinsListState,
+                isRefreshing = isRefreshing,
                 topPadding = innerPadding.calculateTopPadding(),
                 showDialog = showDialog,
                 onDismissError = { showDialog = false },
@@ -77,6 +80,7 @@ fun FavoriteActivityCompose(
     } else {
         FavoritesContentBody(
             coinsListState = coinsListState,
+            isRefreshing = isRefreshing,
             topPadding = 0.dp,
             showDialog = showDialog,
             onDismissError = { showDialog = false },
@@ -89,6 +93,7 @@ fun FavoriteActivityCompose(
 @Composable
 private fun FavoritesContentBody(
     coinsListState: FavoritesViewModel.FavoritesState,
+    isRefreshing: Boolean,
     topPadding: Dp,
     showDialog: Boolean,
     onDismissError: () -> Unit,
@@ -110,7 +115,7 @@ private fun FavoritesContentBody(
         )
 
         PullToRefreshWrapper(
-            isRefreshing = false,
+            isRefreshing = isRefreshing,
             onRefresh = onRefresh,
             modifier = Modifier
                 .weight(1f)
@@ -181,7 +186,7 @@ private fun OnFavoritesEmpty() {
                 .padding(bottom = 12.dp)
         )
         Text(
-            text = "Nenhuma criptomoeda favoritada no momento.",
+            text = "Nenhuma criptomoeda favoritada no momento.\nToque na estrela nos detalhes de uma moeda para salvá-la aqui.",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.surface,
             textAlign = TextAlign.Center

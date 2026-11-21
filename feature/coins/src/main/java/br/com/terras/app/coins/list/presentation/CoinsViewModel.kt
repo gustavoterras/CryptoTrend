@@ -7,6 +7,7 @@ import br.com.terras.app.coins.list.domain.CoinsUseCase
 import br.com.terras.app.coins.list.domain.model.CoinVO
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.feeds.domain.FeedsUseCase
+import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
 import br.com.terras.app.network.refresh.DataRefreshCoordinator
 import br.com.terras.app.search.domain.SearchUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,8 +16,11 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -26,7 +30,8 @@ class CoinsViewModel @Inject constructor(
     private val useCase: CoinsUseCase,
     private val searchUseCase: SearchUseCase,
     private val feedsUseCase: FeedsUseCase,
-    private val refreshCoordinator: DataRefreshCoordinator
+    private val refreshCoordinator: DataRefreshCoordinator,
+    favoriteLocalRepository: FavoriteCoinsLocalRepository
 ) : ViewModel() {
 
     sealed interface CoinsIntent {
@@ -69,6 +74,14 @@ class CoinsViewModel @Inject constructor(
 
     private val _isTrendingRefreshing: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val isTrendingRefreshing: StateFlow<Boolean> = _isTrendingRefreshing.asStateFlow()
+
+    val favoriteIds: StateFlow<Set<String>> = favoriteLocalRepository.observeFavoriteIds()
+        .map { it.toSet() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptySet()
+        )
 
     private var allCoins: List<CoinVO> = emptyList()
     private var allTrendingCoins: List<CoinVO> = emptyList()

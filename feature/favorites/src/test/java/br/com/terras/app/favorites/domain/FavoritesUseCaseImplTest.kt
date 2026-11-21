@@ -5,6 +5,7 @@ import br.com.terras.app.favorites.data.FavoritesRepository
 import br.com.terras.app.favorites.mockCoinsListResponseStub
 import br.com.terras.app.favorites.mockCoinsVOListStub
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -45,5 +46,13 @@ class FavoritesUseCaseImplTest {
         val result = useCase.getCoinsByIds(ids)
 
         Assert.assertEquals(result, Result.success(mockCoinsVOListStub))
+    }
+
+    @Test
+    fun `WHEN getCoinsByIds receives empty ids THEN returns empty list without calling repository`() = runTest {
+        val result = useCase.getCoinsByIds(emptyList())
+
+        Assert.assertEquals(Result.success(emptyList<Any>()), result)
+        coVerify(exactly = 0) { repository.getCoinsByIds(any()) }
     }
 }

@@ -8,20 +8,28 @@ import br.com.terras.app.coins.detail.domain.model.CoinDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinInsightVO
 import br.com.terras.app.feeds.domain.FeedsUseCase
 import br.com.terras.app.feeds.domain.model.ArticleVO
+import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class DetailViewModel @Inject constructor(
     private val useCase: DetailUseCase,
-    private val feedsUseCase: FeedsUseCase
+    private val feedsUseCase: FeedsUseCase,
+    private val favoriteLocalRepository: FavoriteCoinsLocalRepository
 ) : ViewModel() {
 
     sealed interface DetailIntent {
@@ -29,6 +37,7 @@ class DetailViewModel @Inject constructor(
         data class LoadChart(val id: String, val days: Int = 1) : DetailIntent
         data class LoadInsights(val coinId: String) : DetailIntent
         data class LoadNews(val query: String) : DetailIntent
+        data class ToggleFavorite(val coinId: String) : DetailIntent
     }
 
     sealed interface DetailState {
@@ -40,6 +49,22 @@ class DetailViewModel @Inject constructor(
         data class SuccessNews(val articles: List<ArticleVO>) : DetailState
         data object Error : DetailState
     }
+
+    private val currentCoinId: MutableStateFlow<String> = MutableStateFlow("")
+
+    val isFavorite: StateFlow<Boolean> = currentCoinId
+        .flatMapLatest { coinId ->
+            if (coinId.isBlank()) {
+                flowOf(false)
+            } else {
+                favoriteLocalRepository.observeIsFavorite(coinId)
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = false
+        )
 
     private val _detail: MutableStateFlow<DetailState> = MutableStateFlow(DetailState.Loading)
     val detail: StateFlow<DetailState> = _detail.asStateFlow()
@@ -59,10 +84,20 @@ class DetailViewModel @Inject constructor(
             is DetailIntent.LoadChart -> getChartById(intent.id, intent.days)
             is DetailIntent.LoadInsights -> getInsightsByCoinId(intent.coinId)
             is DetailIntent.LoadNews -> getNewsByQuery(intent.query)
+            is DetailIntent.ToggleFavorite -> toggleFavorite(intent.coinId)
+        }
+    }
+
+    fun toggleFavorite(coinId: String) {
+        if (coinId.isBlank()) return
+        currentCoinId.value = coinId
+        viewModelScope.launch {
+            favoriteLocalRepository.toggleFavorite(coinId)
         }
     }
 
     fun getDetailById(id: String) {
+        currentCoinId.value = id
         viewModelScope.launch {
             useCase.getDetailById(id)
                 .onSuccess { result ->

@@ -3,9 +3,16 @@ package br.com.terras.app.coins.list.presentation
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -25,13 +32,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -57,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -67,6 +71,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.terras.app.coins.list.domain.model.CoinVO
 import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsIntent
 import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.EmptySearch
@@ -75,6 +80,8 @@ import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Loadi
 import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Success
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
+import br.com.terras.app.dsm.ui.component.AnimatedSearchClearButton
+import br.com.terras.app.dsm.ui.component.AnimatedSearchFab
 import br.com.terras.app.dsm.ui.component.CoinListItemShimmerRow
 import br.com.terras.app.dsm.ui.component.CoinListItemView
 import br.com.terras.app.dsm.ui.component.MarketSortBar
@@ -99,6 +106,7 @@ fun CoinsActivityCompose(
     val trendingListState by viewModel.trendingCoins.collectAsState()
     val trendingSearchQuery by viewModel.trendingSearchQuery.collectAsState()
     val isTrendingRefreshing by viewModel.isTrendingRefreshing.collectAsState()
+    val favoriteIds by viewModel.favoriteIds.collectAsStateWithLifecycle()
 
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
     var cryptoSortState by remember { mutableStateOf(MarketSortState()) }
@@ -152,8 +160,21 @@ fun CoinsActivityCompose(
             StickyHeaderView()
         },
         floatingActionButton = {
-            if (selectedTabIndex == 1 || selectedTabIndex == 2) {
-                FloatingActionButton(
+            AnimatedVisibility(
+                visible = selectedTabIndex == 1 || selectedTabIndex == 2,
+                enter = fadeIn(animationSpec = tween(200)) +
+                    scaleIn(
+                        initialScale = 0.7f,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                            stiffness = Spring.StiffnessMedium
+                        )
+                    ),
+                exit = fadeOut(animationSpec = tween(150)) +
+                    scaleOut(targetScale = 0.7f, animationSpec = tween(150))
+            ) {
+                AnimatedSearchFab(
+                    isSearchOpen = isCurrentSearchOpen,
                     onClick = {
                         if (selectedTabIndex == 1) {
                             if (isCryptoSearchOpen) {
@@ -173,25 +194,9 @@ fun CoinsActivityCompose(
                             }
                         }
                     },
-                    shape = RoundedCornerShape(16.dp),
-                    containerColor = MaterialTheme.colorScheme.secondary,
-                    contentColor = MaterialTheme.colorScheme.onSecondary,
-                    modifier = Modifier
-                        .padding(bottom = 96.dp)
-                        .testTag("market_search_fab")
-                ) {
-                    if (isCurrentSearchOpen) {
-                        Icon(
-                            imageVector = Icons.Filled.Close,
-                            contentDescription = "Fechar pesquisa"
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(id = R.drawable.search_24dp),
-                            contentDescription = "Pesquisar criptomoedas"
-                        )
-                    }
-                }
+                    modifier = Modifier.padding(bottom = 96.dp),
+                    testTag = "market_search_fab"
+                )
             }
         }
     ) { innerPadding ->
@@ -307,6 +312,7 @@ fun CoinsActivityCompose(
                         },
                         onRefresh = { viewModel.handleIntent(CoinsIntent.Refresh) },
                         onDismissError = { showCryptoDialog = false },
+                        favoriteIds = favoriteIds,
                         onItemClick = onItemClick,
                         modifier = Modifier
                             .weight(1f)
@@ -342,6 +348,7 @@ fun CoinsActivityCompose(
                         },
                         onRefresh = { viewModel.handleIntent(CoinsIntent.RefreshTrending) },
                         onDismissError = { showTrendingDialog = false },
+                        favoriteIds = favoriteIds,
                         onItemClick = onItemClick,
                         modifier = Modifier
                             .weight(1f)
@@ -369,15 +376,41 @@ private fun MarketCoinsTabContent(
     onSearchClearOrClose: () -> Unit,
     onRefresh: () -> Unit,
     onDismissError: () -> Unit,
+    favoriteIds: Set<String> = emptySet(),
     onItemClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
         AnimatedVisibility(
             visible = isSearchOpen,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut()
+            enter = expandVertically(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow
+                )
+            ) + fadeIn(animationSpec = tween(200)),
+            exit = shrinkVertically(animationSpec = tween(180)) +
+                fadeOut(animationSpec = tween(150))
         ) {
+            val hasQuery = searchQuery.isNotEmpty()
+            val leadingIconTint by animateColorAsState(
+                targetValue = if (hasQuery) {
+                    MaterialTheme.colorScheme.scrim
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                animationSpec = tween(220),
+                label = "searchLeadingTint"
+            )
+            val leadingIconScale by animateFloatAsState(
+                targetValue = if (hasQuery) 1.12f else 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMedium
+                ),
+                label = "searchLeadingScale"
+            )
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -404,20 +437,19 @@ private fun MarketCoinsTabContent(
                         Icon(
                             painter = painterResource(id = R.drawable.search_24dp),
                             contentDescription = "Pesquisar",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = leadingIconTint,
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = leadingIconScale
+                                scaleY = leadingIconScale
+                            }
                         )
                     },
                     trailingIcon = {
-                        IconButton(
+                        AnimatedSearchClearButton(
+                            hasQuery = hasQuery,
                             onClick = onSearchClearOrClose,
-                            modifier = Modifier.testTag("market_search_clear_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Close,
-                                contentDescription = "Limpar pesquisa",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                            testTag = "market_search_clear_button"
+                        )
                     },
                     placeholder = {
                         Text(
@@ -465,6 +497,7 @@ private fun MarketCoinsTabContent(
                     OnCoinsListSuccess(
                         coinsList = sortedCoins,
                         isFromSearchApi = coinsListState.isFromSearchApi,
+                        favoriteIds = favoriteIds,
                         onItemClick = onItemClick
                     )
                 }
@@ -498,6 +531,7 @@ private fun OnCoinsListLoading() {
 private fun OnCoinsListSuccess(
     coinsList: List<CoinVO>,
     isFromSearchApi: Boolean,
+    favoriteIds: Set<String>,
     onItemClick: (String) -> Unit
 ) {
     LazyColumn(
@@ -527,6 +561,7 @@ private fun OnCoinsListSuccess(
                 trendColor = coin.trendColor,
                 coinVolume = coin.volume,
                 sparklinePrices = coin.sparklinePrices,
+                isFavorite = coin.id in favoriteIds,
                 onItemClick = onItemClick
             )
         }

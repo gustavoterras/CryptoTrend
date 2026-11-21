@@ -1,5 +1,12 @@
 package br.com.terras.app.dsm.ui.component
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -13,6 +20,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,6 +32,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -32,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
@@ -52,6 +62,7 @@ fun CoinListItemView(
     coinVolume: String? = null,
     sparklinePrices: List<Double> = emptyList(),
     quoteCurrency: String = remember { if (Locale.getDefault().language == "pt") "BRL" else "USD" },
+    isFavorite: Boolean = false,
     onItemClick: (String) -> Unit
 ) {
     val isDark = isSystemInDarkTheme()
@@ -93,32 +104,56 @@ fun CoinListItemView(
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 val displaySymbol = coinSymbol.ifBlank { coinName }.uppercase()
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(
-                            SpanStyle(
-                                color = titleColor,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
-                        ) {
-                            append(displaySymbol)
-                        }
-                        if (quoteCurrency.isNotBlank()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = buildAnnotatedString {
                             withStyle(
                                 SpanStyle(
-                                    color = subtitleColor,
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 12.5.sp
+                                    color = titleColor,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp
                                 )
                             ) {
-                                append(" / $quoteCurrency")
+                                append(displaySymbol)
                             }
-                        }
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                            if (quoteCurrency.isNotBlank()) {
+                                withStyle(
+                                    SpanStyle(
+                                        color = subtitleColor,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 12.5.sp
+                                    )
+                                ) {
+                                    append(" / $quoteCurrency")
+                                }
+                            }
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    AnimatedVisibility(
+                        visible = isFavorite,
+                        enter = fadeIn() + scaleIn(
+                            initialScale = 0.5f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium
+                            )
+                        ),
+                        exit = fadeOut() + scaleOut(targetScale = 0.5f)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_star_filled_24dp),
+                            contentDescription = "Favorito",
+                            tint = MaterialTheme.colorScheme.inversePrimary,
+                            modifier = Modifier.size(13.dp)
+                        )
+                    }
+                }
 
                 val hasRank = !coinPosition.isNullOrBlank() && coinPosition != "null"
                 val hasVolume = !coinVolume.isNullOrBlank()

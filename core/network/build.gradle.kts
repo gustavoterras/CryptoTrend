@@ -83,5 +83,12 @@ android {
 
 dependencies {
     api(libs.bundles.playground.network)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
     ksp(libs.dagger.hilt.compiler)
+    testImplementation(libs.junit)
+    testImplementation(libs.mockk)
+    testImplementation(libs.coroutines)
+    testImplementation(libs.turbine)
 }
