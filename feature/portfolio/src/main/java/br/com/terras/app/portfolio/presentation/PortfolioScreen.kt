@@ -1,6 +1,5 @@
 package br.com.terras.app.portfolio.presentation
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,7 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,13 +28,15 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,10 +49,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.terras.app.common.formatMoney
@@ -62,7 +68,6 @@ import br.com.terras.app.dsm.ui.component.AllocationSlice
 import br.com.terras.app.dsm.ui.component.AnimatedAddFab
 import br.com.terras.app.dsm.ui.component.PullToRefreshWrapper
 import br.com.terras.app.dsm.ui.component.RippleButton
-import br.com.terras.app.dsm.ui.component.SegmentedControl
 import br.com.terras.app.dsm.ui.component.ShimmerEffect
 import br.com.terras.app.dsm.ui.component.StickyHeaderView
 import br.com.terras.app.dsm.ui.component.TrendColor
@@ -70,7 +75,6 @@ import br.com.terras.app.dsm.ui.component.portfolioChartPalette
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import br.com.terras.app.network.portfolio.PortfolioTransactionType
 import br.com.terras.app.portfolio.domain.model.PortfolioHoldingVO
-import br.com.terras.app.portfolio.domain.model.PortfolioSnapshot
 import br.com.terras.app.portfolio.domain.model.PortfolioSummaryVO
 import br.com.terras.app.portfolio.domain.model.PortfolioTransactionVO
 import br.com.terras.app.portfolio.domain.model.SelectableCoinVO
@@ -203,43 +207,108 @@ fun PortfolioScreenContent(
 }
 
 @Composable
-private fun PortfolioLoadingView(topPadding: androidx.compose.ui.unit.Dp) {
+private fun PortfolioLoadingView(topPadding: Dp) {
     val shimmerBrush = ShimmerEffect()
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(top = topPadding + 12.dp, start = 16.dp, end = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            .padding(top = topPadding + 14.dp, start = 18.dp, end = 18.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 88.dp, height = 14.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(shimmerBrush)
+                )
+                Box(
+                    modifier = Modifier
+                        .size(width = 160.dp, height = 30.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(shimmerBrush)
+                )
+            }
+            Column(
+                horizontalAlignment = Alignment.End,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                repeat(3) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 110.dp, height = 12.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(shimmerBrush)
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(170.dp)
-                .clip(RoundedCornerShape(20.dp))
+                .size(196.dp)
+                .align(Alignment.CenterHorizontally)
+                .clip(CircleShape)
                 .background(shimmerBrush)
         )
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(260.dp)
-                .clip(RoundedCornerShape(20.dp))
-                .background(shimmerBrush)
-        )
+
+        HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
         repeat(3) {
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(78.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(shimmerBrush)
-            )
+                    .padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(shimmerBrush)
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 90.dp, height = 14.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(shimmerBrush)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(width = 130.dp, height = 11.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(shimmerBrush)
+                        )
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .size(width = 72.dp, height = 16.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(shimmerBrush)
+                )
+            }
+            HorizontalDivider(thickness = 1.dp, color = MaterialTheme.colorScheme.outlineVariant)
         }
     }
 }
 
 @Composable
 private fun PortfolioEmptyView(
-    topPadding: androidx.compose.ui.unit.Dp,
+    topPadding: Dp,
     onAddFirstOperation: () -> Unit
 ) {
     Box(
@@ -250,75 +319,68 @@ private fun PortfolioEmptyView(
             .padding(horizontal = 24.dp),
         contentAlignment = Alignment.Center
     ) {
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .widthIn(max = 520.dp)
+                .widthIn(max = 460.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Column(
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_portfolio_24dp),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.scrim,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+
+            Text(
+                text = "Seu Portfólio Cripto",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.surface,
+                textAlign = TextAlign.Center
+            )
+
+            Text(
+                text = "Registre suas compras e vendas para acompanhar saldo consolidado, preço médio, lucro/prejuízo e alocação direto no dispositivo.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Button(
+                onClick = onAddFirstOperation,
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.scrim,
+                    contentColor = Color.White
+                ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                    .height(50.dp)
+                    .testTag("portfolio_empty_cta")
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_portfolio_24dp),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.scrim,
-                        modifier = Modifier.size(30.dp)
-                    )
-                }
-
-                Text(
-                    text = "Seu Portfólio Cripto",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.surface,
-                    textAlign = TextAlign.Center
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp)
                 )
-
+                Spacer(modifier = Modifier.size(8.dp))
                 Text(
-                    text = "Registre suas compras e vendas para acompanhar saldo consolidado, preço médio, lucro/prejuízo e alocação direto no dispositivo.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
+                    text = "Registrar primeira operação",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
                 )
-
-                Button(
-                    onClick = onAddFirstOperation,
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.scrim,
-                        contentColor = Color.White
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(50.dp)
-                        .testTag("portfolio_empty_cta")
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Text(
-                        text = "Registrar primeira operação",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
             }
         }
     }
@@ -327,7 +389,7 @@ private fun PortfolioEmptyView(
 @Composable
 private fun PortfolioSuccessContent(
     state: PortfolioUiState.Content,
-    topPadding: androidx.compose.ui.unit.Dp,
+    topPadding: Dp,
     onIntent: (PortfolioIntent) -> Unit,
     onCoinClick: (String) -> Unit
 ) {
@@ -342,12 +404,9 @@ private fun PortfolioSuccessContent(
             .fillMaxSize()
             .testTag("portfolio_content_list"),
         contentPadding = PaddingValues(
-            top = topPadding + 8.dp,
-            bottom = 116.dp,
-            start = 16.dp,
-            end = 16.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(14.dp)
+            top = topPadding + 6.dp,
+            bottom = 116.dp
+        )
     ) {
         if (state.isOfflineFallback) {
             item(key = "offline_banner") {
@@ -357,79 +416,111 @@ private fun PortfolioSuccessContent(
             }
         }
 
-        item(key = "summary_card") {
-            PortfolioSummaryCard(summary = snapshot.summary)
+        item(key = "summary_header") {
+            PortfolioSummaryHeader(summary = snapshot.summary)
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 18.dp),
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
         }
 
         if (allocationSlices.isNotEmpty()) {
-            item(key = "allocation_card") {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    modifier = Modifier.fillMaxWidth()
+            item(key = "allocation_section") {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = "Distribuição da carteira",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.surface
-                        )
-                        AllocationDonutChart(
-                            slices = allocationSlices,
-                            totalValueText = snapshot.summary.totalValueFormatted,
-                            assetCountLabel = if (snapshot.summary.assetCount == 1) {
-                                "1 ativo"
-                            } else {
-                                "${snapshot.summary.assetCount} ativos"
-                            },
-                            selectedSliceId = state.selectedSliceId,
-                            onSelectSlice = { onIntent(PortfolioIntent.SelectAllocationSlice(it)) }
-                        )
-                    }
+                    Text(
+                        text = "Distribuição da carteira",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.surface
+                    )
+                    AllocationDonutChart(
+                        slices = allocationSlices,
+                        totalValueText = snapshot.summary.totalValueFormatted,
+                        assetCountLabel = if (snapshot.summary.assetCount == 1) {
+                            "1 ativo"
+                        } else {
+                            "${snapshot.summary.assetCount} ativos"
+                        },
+                        selectedSliceId = state.selectedSliceId,
+                        onSelectSlice = { onIntent(PortfolioIntent.SelectAllocationSlice(it)) }
+                    )
                 }
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
             }
         }
 
-        item(key = "subtab_toggle") {
-            SegmentedControl(
-                items = PortfolioSubTab.entries.map { it.label },
-                defaultSelectedItemIndex = PortfolioSubTab.entries.indexOf(state.activeTab),
-                equalWidth = true,
-                itemHeight = 40.dp,
-                cornerRadius = 12.dp,
-                color = MaterialTheme.colorScheme.scrim,
+        item(key = "subtab_bar") {
+            val selectedIdx = PortfolioSubTab.entries.indexOf(state.activeTab).coerceAtLeast(0)
+            TabRow(
+                selectedTabIndex = selectedIdx,
+                containerColor = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.surface,
+                indicator = { tabPositions ->
+                    if (selectedIdx < tabPositions.size) {
+                        TabRowDefaults.SecondaryIndicator(
+                            modifier = Modifier
+                                .tabIndicatorOffset(tabPositions[selectedIdx])
+                                .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)),
+                            height = 3.dp,
+                            color = MaterialTheme.colorScheme.scrim
+                        )
+                    }
+                },
+                divider = {
+                    HorizontalDivider(
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        color = MaterialTheme.colorScheme.tertiary,
-                        shape = RoundedCornerShape(14.dp)
+                    .testTag("portfolio_subtab_control")
+            ) {
+                PortfolioSubTab.entries.forEachIndexed { index, tab ->
+                    val isSelected = selectedIdx == index
+                    val tabTag = if (tab == PortfolioSubTab.ASSETS) {
+                        "portfolio_subtab_assets"
+                    } else {
+                        "portfolio_subtab_history"
+                    }
+                    Tab(
+                        selected = isSelected,
+                        onClick = { onIntent(PortfolioIntent.SelectSubTab(tab)) },
+                        selectedContentColor = MaterialTheme.colorScheme.surface,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.testTag(tabTag),
+                        text = {
+                            Text(
+                                text = tab.label,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
                     )
-                    .padding(4.dp)
-                    .testTag("portfolio_subtab_control"),
-                onItemSelection = { idx ->
-                    val chosen = PortfolioSubTab.entries.getOrElse(idx) { PortfolioSubTab.ASSETS }
-                    onIntent(PortfolioIntent.SelectSubTab(chosen))
                 }
-            )
+            }
         }
 
         if (state.activeTab == PortfolioSubTab.ASSETS) {
             if (snapshot.holdings.isEmpty()) {
                 item(key = "no_active_positions") {
-                    NoActivePositionsCard(
+                    NoActivePositionsSection(
                         onAddOperation = { onIntent(PortfolioIntent.OpenNewTransaction()) }
                     )
                 }
             } else {
-                items(snapshot.holdings, key = { "holding_${it.coinId}" }) { holding ->
-                    HoldingCard(
+                itemsIndexed(snapshot.holdings, key = { _, item -> "holding_${item.coinId}" }) { index, holding ->
+                    HoldingRow(
                         holding = holding,
                         isHighlighted = state.selectedSliceId == holding.coinId,
                         onOpenDetail = { onCoinClick(holding.coinId) },
@@ -448,15 +539,29 @@ private fun PortfolioSuccessContent(
                             )
                         }
                     )
+                    if (index != snapshot.holdings.lastIndex) {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 18.dp),
+                            thickness = 1.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                    }
                 }
             }
         } else {
-            items(snapshot.transactions, key = { "tx_${it.id}" }) { tx ->
-                TransactionHistoryCard(
+            itemsIndexed(snapshot.transactions, key = { _, tx -> "tx_${tx.id}" }) { index, tx ->
+                TransactionHistoryRow(
                     transaction = tx,
                     onEdit = { onIntent(PortfolioIntent.OpenEditTransaction(tx)) },
                     onDelete = { onIntent(PortfolioIntent.RequestDeleteTransaction(tx)) }
                 )
+                if (index != snapshot.transactions.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 18.dp),
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                }
             }
         }
     }
@@ -464,10 +569,7 @@ private fun PortfolioSuccessContent(
 
 @Composable
 private fun OfflineQuotesBanner(onRetry: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.tertiary,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .testTag("portfolio_offline_banner")
@@ -475,7 +577,7 @@ private fun OfflineQuotesBanner(onRetry: () -> Unit) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 10.dp),
+                .padding(horizontal = 18.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -494,429 +596,377 @@ private fun OfflineQuotesBanner(onRetry: () -> Unit) {
                 )
             }
         }
+        HorizontalDivider(
+            modifier = Modifier.padding(horizontal = 18.dp),
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
     }
 }
 
 @Composable
-private fun PortfolioSummaryCard(summary: PortfolioSummaryVO) {
-    Card(
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+private fun PortfolioSummaryHeader(summary: PortfolioSummaryVO) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("portfolio_summary_card")
+            .padding(horizontal = 18.dp, vertical = 14.dp)
+            .testTag("portfolio_summary_card"),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "Saldo total",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = summary.totalValueFormatted,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.surface
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = summary.change24hTrend.color
-                ) {
-                    Text(
-                        text = "24h ${summary.change24hPercentageFormatted}",
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = summary.change24hTrend.onColor,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                SummaryMetricTile(
-                    label = "P&L total",
-                    value = summary.totalPnLFormatted,
-                    subValue = summary.unrealizedPnLPercentageFormatted,
-                    valueColor = summary.totalPnLTrend.textColor,
-                    modifier = Modifier.weight(1f)
-                )
-                SummaryMetricTile(
-                    label = "Investido atual",
-                    value = summary.totalInvestedFormatted,
-                    subValue = "Realizado ${summary.realizedPnLFormatted}",
-                    valueColor = MaterialTheme.colorScheme.surface,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SummaryMetricTile(
-    label: String,
-    value: String,
-    subValue: String,
-    valueColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.tertiary,
-        modifier = modifier
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp)
+                .weight(1.1f)
+                .padding(end = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Text(
-                text = label,
-                style = MaterialTheme.typography.labelSmall,
+                text = "Saldo total",
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                text = value,
-                style = MaterialTheme.typography.titleSmall,
+                text = summary.totalValueFormatted,
+                fontSize = 26.sp,
                 fontWeight = FontWeight.Bold,
-                color = valueColor,
+                color = MaterialTheme.colorScheme.surface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = subValue,
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "24h ${summary.change24hValueFormatted}",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                Text(
+                    text = "(${summary.change24hPercentageFormatted})",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = summary.change24hTrend.textColor,
+                    maxLines = 1
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier.weight(0.95f),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            PortfolioStatRow(
+                label = "P&L total",
+                value = "${summary.totalPnLFormatted} (${summary.unrealizedPnLPercentageFormatted})",
+                valueColor = summary.totalPnLTrend.textColor
+            )
+            PortfolioStatRow(
+                label = "Investido",
+                value = summary.totalInvestedFormatted,
+                valueColor = MaterialTheme.colorScheme.surface
+            )
+            PortfolioStatRow(
+                label = "Realizado",
+                value = summary.realizedPnLFormatted,
+                valueColor = summary.realizedPnLTrend.textColor
             )
         }
     }
 }
 
 @Composable
-private fun HoldingCard(
+private fun PortfolioStatRow(
+    label: String,
+    value: String,
+    valueColor: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontSize = 11.5.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelSmall,
+            fontSize = 11.5.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = valueColor,
+            maxLines = 1,
+            textAlign = TextAlign.End,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .weight(1f, fill = false)
+                .padding(start = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun HoldingRow(
     holding: PortfolioHoldingVO,
     isHighlighted: Boolean,
     onOpenDetail: () -> Unit,
     onQuickAdd: () -> Unit
 ) {
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isHighlighted) {
-                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
-            } else {
-                MaterialTheme.colorScheme.primary
-            }
-        ),
-        border = BorderStroke(
-            width = if (isHighlighted) 1.5.dp else 1.dp,
-            color = if (isHighlighted) MaterialTheme.colorScheme.scrim else MaterialTheme.colorScheme.outlineVariant
-        ),
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .background(
+                if (isHighlighted) {
+                    MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.28f)
+                } else {
+                    Color.Transparent
+                }
+            )
             .clickable(role = Role.Button, onClick = onOpenDetail)
-            .testTag("portfolio_holding_card_${holding.coinId}")
+            .padding(start = 18.dp, end = 6.dp, top = 12.dp, bottom = 12.dp)
+            .testTag("portfolio_holding_card_${holding.coinId}"),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+        Row(
+            modifier = Modifier.weight(1.35f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            CoinAvatar(imageUrl = holding.imageUrl, symbol = holding.symbol, sizeDp = 38)
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    CoinAvatar(imageUrl = holding.imageUrl, symbol = holding.symbol, sizeDp = 40)
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = holding.name,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.surface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = MaterialTheme.colorScheme.tertiary
-                            ) {
-                                Text(
-                                    text = holding.allocationPercentageFormatted,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                        Text(
-                            text = "${holding.quantityFormatted} ${holding.symbol} • PM ${holding.averageBuyPriceFormatted}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                IconButton(
-                    onClick = onQuickAdd,
-                    modifier = Modifier
-                        .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                        .testTag("portfolio_holding_quick_add_${holding.coinId}")
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = "Nova operação de ${holding.name}",
-                        tint = MaterialTheme.colorScheme.scrim
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = if (holding.hasLiveQuote) {
-                            "Atual: ${holding.currentPriceFormatted}"
-                        } else {
-                            "Preço médio: ${holding.averageBuyPriceFormatted}"
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = holding.currentValueFormatted,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.surface
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = holding.unrealizedTrend.color
-                ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        horizontalAlignment = Alignment.End
-                    ) {
-                        Text(
-                            text = holding.unrealizedPnLFormatted,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = holding.unrealizedTrend.onColor
-                        )
-                        Text(
-                            text = holding.unrealizedPnLPercentageFormatted,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = holding.unrealizedTrend.onColor
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun NoActivePositionsCard(onAddOperation: () -> Unit) {
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "Nenhuma posição em aberto",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.surface
-            )
-            Text(
-                text = "Todas as suas posições foram encerradas. Consulte o Histórico ou registre uma nova compra.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-            TextButton(onClick = onAddOperation) {
                 Text(
-                    text = "Nova operação",
-                    color = MaterialTheme.colorScheme.scrim,
-                    fontWeight = FontWeight.SemiBold
+                    text = buildAnnotatedString {
+                        withStyle(
+                            SpanStyle(
+                                color = MaterialTheme.colorScheme.surface,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        ) {
+                            append(holding.symbol)
+                        }
+                        withStyle(
+                            SpanStyle(
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Medium,
+                                fontSize = 12.sp
+                            )
+                        ) {
+                            append(" • ${holding.allocationPercentageFormatted}")
+                        }
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${holding.quantityFormatted} ${holding.symbol} • PM ${holding.averageBuyPriceFormatted}",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontSize = 11.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(start = 8.dp),
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Text(
+                text = holding.currentValueFormatted,
+                style = MaterialTheme.typography.bodyLarge,
+                fontSize = 14.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.surface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.End
+            )
+            Text(
+                text = "${holding.unrealizedPnLFormatted} (${holding.unrealizedPnLPercentageFormatted})",
+                style = MaterialTheme.typography.labelMedium,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = holding.unrealizedTrend.textColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.End
+            )
+        }
+
+        IconButton(
+            onClick = onQuickAdd,
+            modifier = Modifier
+                .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                .testTag("portfolio_holding_quick_add_${holding.coinId}")
+        ) {
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = "Nova operação de ${holding.name}",
+                tint = MaterialTheme.colorScheme.scrim,
+                modifier = Modifier.size(20.dp)
+            )
+        }
     }
 }
 
 @Composable
-private fun TransactionHistoryCard(
+private fun NoActivePositionsSection(onAddOperation: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 28.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = "Nenhuma posição em aberto",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.surface
+        )
+        Text(
+            text = "Todas as suas posições foram encerradas. Consulte o Histórico ou registre uma nova compra.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        TextButton(onClick = onAddOperation) {
+            Text(
+                text = "Nova operação",
+                color = MaterialTheme.colorScheme.scrim,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun TransactionHistoryRow(
     transaction: PortfolioTransactionVO,
     onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val isBuy = transaction.type == PortfolioTransactionType.BUY
-    val badgeTrend = if (isBuy) TrendColor.UP else TrendColor.DOWN
-    val badgeLabel = if (isBuy) "COMPRA" else "VENDA"
+    val typeTrend = if (isBuy) TrendColor.UP else TrendColor.DOWN
+    val typeLabel = if (isBuy) "COMPRA" else "VENDA"
 
-    Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .testTag("portfolio_tx_card_${transaction.id}")
+            .padding(start = 18.dp, end = 6.dp, top = 12.dp, bottom = 12.dp)
+            .testTag("portfolio_tx_card_${transaction.id}"),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+        Row(
+            modifier = Modifier.weight(1.25f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+            CoinAvatar(
+                imageUrl = transaction.coinImageUrl,
+                symbol = transaction.coinSymbol,
+                sizeDp = 36
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Row(
-                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    CoinAvatar(
-                        imageUrl = transaction.coinImageUrl,
-                        symbol = transaction.coinSymbol,
-                        sizeDp = 36
+                    Text(
+                        text = transaction.coinSymbol,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.surface
                     )
-                    Column(modifier = Modifier.weight(1f)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = transaction.coinSymbol,
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.surface
-                            )
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = badgeTrend.color
-                            ) {
-                                Text(
-                                    text = badgeLabel,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = badgeTrend.onColor,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                        Text(
-                            text = transaction.dateFormatted,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                    Text(
+                        text = typeLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = typeTrend.textColor
+                    )
                 }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = onEdit,
-                        modifier = Modifier
-                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            .testTag("portfolio_tx_edit_${transaction.id}")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Edit,
-                            contentDescription = "Editar operação",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(19.dp)
-                        )
-                    }
-                    IconButton(
-                        onClick = onDelete,
-                        modifier = Modifier
-                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
-                            .testTag("portfolio_tx_delete_${transaction.id}")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Delete,
-                            contentDescription = "Excluir operação",
-                            tint = TrendColor.DOWN.textColor,
-                            modifier = Modifier.size(19.dp)
-                        )
-                    }
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
                 Text(
-                    text = "${transaction.quantityFormatted} ${transaction.coinSymbol} × ${transaction.unitPriceFormatted}",
+                    text = "${transaction.quantityFormatted} × ${transaction.unitPriceFormatted}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontSize = 11.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
+                val subtitle = if (transaction.note.isNotBlank()) {
+                    "${transaction.dateFormatted} • ${transaction.note}"
+                } else {
+                    transaction.dateFormatted
+                }
                 Text(
-                    text = transaction.totalValueFormatted,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.surface
-                )
-            }
-
-            if (transaction.note.isNotBlank()) {
-                Text(
-                    text = transaction.note,
+                    text = subtitle,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        Column(
+            modifier = Modifier.padding(start = 6.dp),
+            horizontalAlignment = Alignment.End
+        ) {
+            Text(
+                text = transaction.totalValueFormatted,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.surface,
+                maxLines = 1
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(
+                onClick = onEdit,
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .testTag("portfolio_tx_edit_${transaction.id}")
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Edit,
+                    contentDescription = "Editar operação",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .testTag("portfolio_tx_delete_${transaction.id}")
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = "Excluir operação",
+                    tint = TrendColor.DOWN.textColor,
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }

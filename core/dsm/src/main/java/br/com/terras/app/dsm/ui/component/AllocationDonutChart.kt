@@ -293,19 +293,17 @@ fun AllocationDonutChart(
         Spacer(modifier = Modifier.height(14.dp))
 
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
-            slices.forEach { slice ->
+            slices.forEachIndexed { index, slice ->
                 val isSelected = selectedSliceId == slice.id
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .defaultMinSize(minHeight = 48.dp)
-                        .clip(RoundedCornerShape(12.dp))
                         .background(
                             if (isSelected) {
-                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                                MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.28f)
                             } else {
                                 Color.Transparent
                             }
@@ -313,7 +311,7 @@ fun AllocationDonutChart(
                         .clickable(role = Role.Button) {
                             onSelectSlice(if (isSelected) null else slice.id)
                         }
-                        .padding(horizontal = 10.dp, vertical = 8.dp)
+                        .padding(vertical = 10.dp, horizontal = 4.dp)
                         .testTag("allocation_legend_${slice.id}"),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
@@ -359,6 +357,12 @@ fun AllocationDonutChart(
                             color = MaterialTheme.colorScheme.surface
                         )
                     }
+                }
+                if (index != slices.lastIndex) {
+                    androidx.compose.material3.HorizontalDivider(
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
                 }
             }
         }

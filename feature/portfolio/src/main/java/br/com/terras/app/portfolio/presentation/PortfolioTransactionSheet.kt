@@ -309,13 +309,16 @@ private fun CoinPickerContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 360.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
                 contentPadding = PaddingValues(bottom = 8.dp)
             ) {
                 items(pickerState.displayedCoins, key = { it.id }) { coin ->
                     PickerCoinRow(
                         coin = coin,
                         onClick = { onSelectCoin(coin) }
+                    )
+                    HorizontalDivider(
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
                     )
                 }
             }
@@ -329,54 +332,45 @@ private fun PickerCoinRow(
     coin: SelectableCoinVO,
     onClick: () -> Unit
 ) {
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = MaterialTheme.colorScheme.primary,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 56.dp)
-            .clip(RoundedCornerShape(14.dp))
             .clickable(role = Role.Button, onClick = onClick)
-            .testTag("tx_picker_coin_${coin.id}")
+            .padding(vertical = 10.dp)
+            .testTag("tx_picker_coin_${coin.id}"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                CoinAvatar(imageUrl = coin.imageUrl, symbol = coin.symbol)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = coin.name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.surface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = coin.symbol,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            if (coin.currentPrice != null) {
+            CoinAvatar(imageUrl = coin.imageUrl, symbol = coin.symbol)
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = coin.currentPrice.formatAxisMoney(),
-                    style = MaterialTheme.typography.labelLarge,
+                    text = coin.name,
+                    style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.surface
+                    color = MaterialTheme.colorScheme.surface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = coin.symbol,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+        if (coin.currentPrice != null) {
+            Text(
+                text = coin.currentPrice.formatAxisMoney(),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.surface
+            )
         }
     }
 }
@@ -408,16 +402,11 @@ private fun TransactionFormContent(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = MaterialTheme.colorScheme.tertiary,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            modifier = Modifier.fillMaxWidth()
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -459,6 +448,10 @@ private fun TransactionFormContent(
                     }
                 }
             }
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
         }
 
         // BUY / SELL segmented toggle
