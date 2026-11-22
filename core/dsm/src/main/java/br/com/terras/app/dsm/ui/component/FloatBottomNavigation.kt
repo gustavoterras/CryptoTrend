@@ -140,7 +140,7 @@ fun FloatBottomNavigation(
     Box(
         modifier = modifier
             .windowInsetsPadding(WindowInsets.navigationBars)
-            .padding(bottom = 14.dp, start = 24.dp, end = 24.dp),
+            .padding(bottom = 16.dp, start = 24.dp, end = 24.dp),
         contentAlignment = Alignment.Center
     ) {
         Surface(

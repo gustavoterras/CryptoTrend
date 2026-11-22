@@ -28,22 +28,23 @@ class ApiServiceCoins(
         else -> COINS_MARKET_DATA_PARAMS_VALUE_PT
     }
 
-    suspend fun getCoins(): List<CoinsResponse> = client.get {
+    suspend fun getCoins(page: Int = 1): List<CoinsResponse> = client.get {
         url("$baseUrl$COINS_MARKET_DATA_ROUTE")
         parameter(COINS_MARKET_DATA_PARAMS_KEY, Locale.getDefault().getCurrencyParamData())
         parameter("order", "market_cap_desc")
         parameter("per_page", COINS_MARKET_DATA_TOP_LIMIT)
-        parameter("page", 1)
+        parameter("page", page.coerceAtLeast(1))
         parameter("sparkline", true)
     }.body()
 
     suspend fun getCoinsByIds(ids: List<String>): List<CoinsResponse> {
         if (ids.isEmpty()) return emptyList()
+        val limitedIds = ids.take(COINS_MARKET_DATA_TOP_LIMIT)
         return client.get {
             url("$baseUrl$COINS_MARKET_DATA_ROUTE")
             parameter(COINS_MARKET_DATA_PARAMS_KEY, Locale.getDefault().getCurrencyParamData())
-            parameter("ids", ids.take(COINS_MARKET_DATA_TOP_LIMIT).joinToString(","))
-            parameter("per_page", COINS_MARKET_DATA_TOP_LIMIT)
+            parameter("ids", limitedIds.joinToString(","))
+            parameter("per_page", limitedIds.size.coerceAtLeast(1))
             parameter("page", 1)
             parameter("sparkline", true)
         }.body()

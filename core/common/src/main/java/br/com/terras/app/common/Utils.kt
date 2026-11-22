@@ -43,6 +43,17 @@ fun Double.formatPercentage(locale: Locale = Locale.getDefault()): String {
     return formatter.format(this) + "%"
 }
 
+fun Double.formatCryptoQuantity(locale: Locale = Locale.getDefault()): String {
+    val symbols = DecimalFormatSymbols(locale)
+    val maxDecimals = when {
+        abs(this) >= 100.0 -> 4
+        abs(this) >= 1.0 -> 6
+        else -> 8
+    }
+    val pattern = "#,##0." + "#".repeat(maxDecimals)
+    return DecimalFormat(pattern, symbols).format(this)
+}
+
 fun String.toFormatDate(zoneId: ZoneId = ZoneId.systemDefault()): String =
     Instant.parse(this).atZone(zoneId).toLocalDateTime()
         .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))

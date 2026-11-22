@@ -150,6 +150,7 @@ class MainActivity : ComponentActivity() {
 
         val bottomNavItems = listOf(
             BottomNavItem("Mercado", R.drawable.storefront_24dp, Screen.CoinsList),
+            BottomNavItem("Portfólio", R.drawable.ic_portfolio_24dp, Screen.Portfolio),
             BottomNavItem("Notícias", R.drawable.newspaper_24dp, Screen.Feeds),
         )
 

@@ -36,11 +36,13 @@ class CoinsViewModel @Inject constructor(
 
     sealed interface CoinsIntent {
         data object LoadCoins : CoinsIntent
+        data object LoadMoreCoins : CoinsIntent
         data object Refresh : CoinsIntent
         data class SearchQueryChanged(val query: String) : CoinsIntent
         data class ExecuteSearch(val query: String) : CoinsIntent
         data object ClearSearch : CoinsIntent
         data object LoadTrendingCoins : CoinsIntent
+        data object LoadMoreTrendingCoins : CoinsIntent
         data object RefreshTrending : CoinsIntent
         data class TrendingSearchQueryChanged(val query: String) : CoinsIntent
         data class ExecuteTrendingSearch(val query: String) : CoinsIntent
@@ -51,7 +53,9 @@ class CoinsViewModel @Inject constructor(
         data object Loading : CoinsState
         data class Success(
             val coinsList: List<CoinVO>,
-            val isFromSearchApi: Boolean = false
+            val isFromSearchApi: Boolean = false,
+            val isLoadingMore: Boolean = false,
+            val hasMorePages: Boolean = false
         ) : CoinsState
         data object EmptySearch : CoinsState
         data object Error : CoinsState
@@ -85,8 +89,16 @@ class CoinsViewModel @Inject constructor(
 
     private var allCoins: List<CoinVO> = emptyList()
     private var allTrendingCoins: List<CoinVO> = emptyList()
+    private var currentCoinsPage: Int = 1
+    private var currentTrendingPage: Int = 1
+    private var hasMoreCoinsPages: Boolean = false
+    private var hasMoreTrendingPages: Boolean = false
+    private var isLoadingMoreCoins: Boolean = false
+    private var isLoadingMoreTrending: Boolean = false
     private var searchJob: Job? = null
     private var trendingSearchJob: Job? = null
+    private var loadMoreCoinsJob: Job? = null
+    private var loadMoreTrendingJob: Job? = null
 
     init {
         handleIntent(CoinsIntent.LoadCoins)
@@ -95,11 +107,13 @@ class CoinsViewModel @Inject constructor(
     fun handleIntent(intent: CoinsIntent) {
         when (intent) {
             is CoinsIntent.LoadCoins -> fetchCoins()
+            is CoinsIntent.LoadMoreCoins -> loadMoreCoins()
             is CoinsIntent.Refresh -> refreshCoinsAndFeeds()
             is CoinsIntent.SearchQueryChanged -> onSearchQueryChanged(intent.query)
             is CoinsIntent.ExecuteSearch -> onExecuteSearch(intent.query)
             is CoinsIntent.ClearSearch -> clearSearch()
             is CoinsIntent.LoadTrendingCoins -> loadTrendingIfNeeded()
+            is CoinsIntent.LoadMoreTrendingCoins -> loadMoreTrendingCoins()
             is CoinsIntent.RefreshTrending -> refreshTrendingAndFeeds()
             is CoinsIntent.TrendingSearchQueryChanged -> onTrendingSearchQueryChanged(intent.query)
             is CoinsIntent.ExecuteTrendingSearch -> onExecuteTrendingSearch(intent.query)
@@ -119,20 +133,28 @@ class CoinsViewModel @Inject constructor(
     }
 
     private fun fetchCoins() {
+        loadMoreCoinsJob?.cancel()
+        isLoadingMoreCoins = false
         _coins.update { CoinsState.Loading }
         viewModelScope.launch {
-            useCase.getCoins()
+            useCase.getCoins(page = 1)
                 .onFailure {
                     _coins.update {
                         CoinsState.Error
                     }
                 }
                 .onSuccess { result ->
-                    allCoins = result
+                    currentCoinsPage = 1
+                    hasMoreCoinsPages = result.size >= CoinsUseCase.CRYPTO_PAGE_SIZE
+                    allCoins = result.distinctBy { it.id }
                     val currentQuery = _searchQuery.value.trim()
                     if (currentQuery.isEmpty()) {
                         _coins.update {
-                            CoinsState.Success(result)
+                            CoinsState.Success(
+                                coinsList = allCoins,
+                                isLoadingMore = false,
+                                hasMorePages = hasMoreCoinsPages
+                            )
                         }
                     } else {
                         searchLocalOrApi(currentQuery, debounceApi = false)
@@ -141,21 +163,90 @@ class CoinsViewModel @Inject constructor(
         }
     }
 
+    private fun loadMoreCoins() {
+        if (_searchQuery.value.isNotBlank() ||
+            _isRefreshing.value ||
+            isLoadingMoreCoins ||
+            !hasMoreCoinsPages ||
+            _coins.value !is CoinsState.Success
+        ) {
+            return
+        }
+
+        isLoadingMoreCoins = true
+        _coins.update {
+            CoinsState.Success(
+                coinsList = allCoins,
+                isLoadingMore = true,
+                hasMorePages = hasMoreCoinsPages
+            )
+        }
+
+        loadMoreCoinsJob = viewModelScope.launch {
+            val nextPage = currentCoinsPage + 1
+            useCase.getCoins(page = nextPage)
+                .onFailure {
+                    isLoadingMoreCoins = false
+                    if (_searchQuery.value.isBlank()) {
+                        _coins.update {
+                            CoinsState.Success(
+                                coinsList = allCoins,
+                                isLoadingMore = false,
+                                hasMorePages = hasMoreCoinsPages
+                            )
+                        }
+                    }
+                }
+                .onSuccess { nextPageItems ->
+                    val existingIds = allCoins.asSequence().map { it.id }.toHashSet()
+                    val uniqueNewItems = nextPageItems.filterNot { it.id in existingIds }
+                    if (uniqueNewItems.isNotEmpty()) {
+                        allCoins = allCoins + uniqueNewItems
+                        currentCoinsPage = nextPage
+                    }
+                    hasMoreCoinsPages = uniqueNewItems.isNotEmpty() &&
+                        nextPageItems.size >= CoinsUseCase.CRYPTO_PAGE_SIZE
+                    isLoadingMoreCoins = false
+
+                    val currentQuery = _searchQuery.value.trim()
+                    if (currentQuery.isEmpty()) {
+                        _coins.update {
+                            CoinsState.Success(
+                                coinsList = allCoins,
+                                isLoadingMore = false,
+                                hasMorePages = hasMoreCoinsPages
+                            )
+                        }
+                    } else {
+                        searchLocalOrApi(currentQuery, debounceApi = false, showLoading = false)
+                    }
+                }
+        }
+    }
+
     private fun fetchTrendingCoins() {
+        loadMoreTrendingJob?.cancel()
+        isLoadingMoreTrending = false
         _trendingCoins.update { CoinsState.Loading }
         viewModelScope.launch {
-            useCase.getTrendingCoins()
+            useCase.getTrendingCoins(page = 1)
                 .onFailure {
                     _trendingCoins.update {
                         CoinsState.Error
                     }
                 }
                 .onSuccess { result ->
-                    allTrendingCoins = result
+                    currentTrendingPage = 1
+                    hasMoreTrendingPages = result.size >= CoinsUseCase.TRENDING_PAGE_SIZE
+                    allTrendingCoins = result.distinctBy { it.id }
                     val currentQuery = _trendingSearchQuery.value.trim()
                     if (currentQuery.isEmpty()) {
                         _trendingCoins.update {
-                            CoinsState.Success(result)
+                            CoinsState.Success(
+                                coinsList = allTrendingCoins,
+                                isLoadingMore = false,
+                                hasMorePages = hasMoreTrendingPages
+                            )
                         }
                     } else {
                         searchTrendingLocalOrApi(currentQuery, debounceApi = false)
@@ -164,14 +255,77 @@ class CoinsViewModel @Inject constructor(
         }
     }
 
+    private fun loadMoreTrendingCoins() {
+        if (_trendingSearchQuery.value.isNotBlank() ||
+            _isTrendingRefreshing.value ||
+            isLoadingMoreTrending ||
+            !hasMoreTrendingPages ||
+            _trendingCoins.value !is CoinsState.Success
+        ) {
+            return
+        }
+
+        isLoadingMoreTrending = true
+        _trendingCoins.update {
+            CoinsState.Success(
+                coinsList = allTrendingCoins,
+                isLoadingMore = true,
+                hasMorePages = hasMoreTrendingPages
+            )
+        }
+
+        loadMoreTrendingJob = viewModelScope.launch {
+            val nextPage = currentTrendingPage + 1
+            useCase.getTrendingCoins(page = nextPage)
+                .onFailure {
+                    isLoadingMoreTrending = false
+                    if (_trendingSearchQuery.value.isBlank()) {
+                        _trendingCoins.update {
+                            CoinsState.Success(
+                                coinsList = allTrendingCoins,
+                                isLoadingMore = false,
+                                hasMorePages = hasMoreTrendingPages
+                            )
+                        }
+                    }
+                }
+                .onSuccess { nextPageItems ->
+                    val existingIds = allTrendingCoins.asSequence().map { it.id }.toHashSet()
+                    val uniqueNewItems = nextPageItems.filterNot { it.id in existingIds }
+                    if (uniqueNewItems.isNotEmpty()) {
+                        allTrendingCoins = allTrendingCoins + uniqueNewItems
+                        currentTrendingPage = nextPage
+                    }
+                    hasMoreTrendingPages = uniqueNewItems.isNotEmpty() &&
+                        nextPageItems.size >= CoinsUseCase.TRENDING_PAGE_SIZE
+                    isLoadingMoreTrending = false
+
+                    val currentQuery = _trendingSearchQuery.value.trim()
+                    if (currentQuery.isEmpty()) {
+                        _trendingCoins.update {
+                            CoinsState.Success(
+                                coinsList = allTrendingCoins,
+                                isLoadingMore = false,
+                                hasMorePages = hasMoreTrendingPages
+                            )
+                        }
+                    } else {
+                        searchTrendingLocalOrApi(currentQuery, debounceApi = false, showLoading = false)
+                    }
+                }
+        }
+    }
+
     private fun refreshCoinsAndFeeds() {
         if (_isRefreshing.value) return
+        loadMoreCoinsJob?.cancel()
+        isLoadingMoreCoins = false
         viewModelScope.launch {
             _isRefreshing.value = true
             try {
                 refreshCoordinator.triggerRefresh()
                 coroutineScope {
-                    val coinsDeferred = async { useCase.getCoins() }
+                    val coinsDeferred = async { useCase.getCoins(page = 1) }
                     val feedsDeferred = async { feedsUseCase.getFeeds("bitcoin") }
                     val coinsResult = coinsDeferred.await()
                     feedsDeferred.await()
@@ -183,10 +337,18 @@ class CoinsViewModel @Inject constructor(
                             }
                         }
                         .onSuccess { result ->
-                            allCoins = result
+                            currentCoinsPage = 1
+                            hasMoreCoinsPages = result.size >= CoinsUseCase.CRYPTO_PAGE_SIZE
+                            allCoins = result.distinctBy { it.id }
                             val currentQuery = _searchQuery.value.trim()
                             if (currentQuery.isEmpty()) {
-                                _coins.update { CoinsState.Success(result) }
+                                _coins.update {
+                                    CoinsState.Success(
+                                        coinsList = allCoins,
+                                        isLoadingMore = false,
+                                        hasMorePages = hasMoreCoinsPages
+                                    )
+                                }
                             } else {
                                 searchLocalOrApi(
                                     trimmedQuery = currentQuery,
@@ -204,12 +366,14 @@ class CoinsViewModel @Inject constructor(
 
     private fun refreshTrendingAndFeeds() {
         if (_isTrendingRefreshing.value) return
+        loadMoreTrendingJob?.cancel()
+        isLoadingMoreTrending = false
         viewModelScope.launch {
             _isTrendingRefreshing.value = true
             try {
                 refreshCoordinator.triggerRefresh()
                 coroutineScope {
-                    val trendingDeferred = async { useCase.getTrendingCoins() }
+                    val trendingDeferred = async { useCase.getTrendingCoins(page = 1) }
                     val feedsDeferred = async { feedsUseCase.getFeeds("bitcoin") }
                     val trendingResult = trendingDeferred.await()
                     feedsDeferred.await()
@@ -221,10 +385,18 @@ class CoinsViewModel @Inject constructor(
                             }
                         }
                         .onSuccess { result ->
-                            allTrendingCoins = result
+                            currentTrendingPage = 1
+                            hasMoreTrendingPages = result.size >= CoinsUseCase.TRENDING_PAGE_SIZE
+                            allTrendingCoins = result.distinctBy { it.id }
                             val currentQuery = _trendingSearchQuery.value.trim()
                             if (currentQuery.isEmpty()) {
-                                _trendingCoins.update { CoinsState.Success(result) }
+                                _trendingCoins.update {
+                                    CoinsState.Success(
+                                        coinsList = allTrendingCoins,
+                                        isLoadingMore = false,
+                                        hasMorePages = hasMoreTrendingPages
+                                    )
+                                }
                             } else {
                                 searchTrendingLocalOrApi(
                                     trimmedQuery = currentQuery,
@@ -254,7 +426,13 @@ class CoinsViewModel @Inject constructor(
         searchJob?.cancel()
         _searchQuery.value = ""
         if (allCoins.isNotEmpty()) {
-            _coins.update { CoinsState.Success(allCoins) }
+            _coins.update {
+                CoinsState.Success(
+                    coinsList = allCoins,
+                    isLoadingMore = isLoadingMoreCoins,
+                    hasMorePages = hasMoreCoinsPages
+                )
+            }
         } else {
             fetchCoins()
         }
@@ -274,7 +452,13 @@ class CoinsViewModel @Inject constructor(
         trendingSearchJob?.cancel()
         _trendingSearchQuery.value = ""
         if (allTrendingCoins.isNotEmpty()) {
-            _trendingCoins.update { CoinsState.Success(allTrendingCoins) }
+            _trendingCoins.update {
+                CoinsState.Success(
+                    coinsList = allTrendingCoins,
+                    isLoadingMore = isLoadingMoreTrending,
+                    hasMorePages = hasMoreTrendingPages
+                )
+            }
         } else {
             fetchTrendingCoins()
         }
@@ -288,7 +472,13 @@ class CoinsViewModel @Inject constructor(
         searchJob?.cancel()
         if (trimmedQuery.isEmpty()) {
             if (allCoins.isNotEmpty()) {
-                _coins.update { CoinsState.Success(allCoins) }
+                _coins.update {
+                    CoinsState.Success(
+                        coinsList = allCoins,
+                        isLoadingMore = isLoadingMoreCoins,
+                        hasMorePages = hasMoreCoinsPages
+                    )
+                }
             } else {
                 fetchCoins()
             }
@@ -337,7 +527,13 @@ class CoinsViewModel @Inject constructor(
         trendingSearchJob?.cancel()
         if (trimmedQuery.isEmpty()) {
             if (allTrendingCoins.isNotEmpty()) {
-                _trendingCoins.update { CoinsState.Success(allTrendingCoins) }
+                _trendingCoins.update {
+                    CoinsState.Success(
+                        coinsList = allTrendingCoins,
+                        isLoadingMore = isLoadingMoreTrending,
+                        hasMorePages = hasMoreTrendingPages
+                    )
+                }
             } else {
                 fetchTrendingCoins()
             }

@@ -266,4 +266,120 @@ class CoinsViewModelTest {
             cancelAndIgnoreRemainingEvents()
         }
     }
+
+    @Test
+    fun `WHEN LoadMoreCoins intent THEN appends deduplicated page and stops when page smaller than limit`() = runBlocking {
+        val page1 = (1..CoinsUseCase.CRYPTO_PAGE_SIZE).map { idx ->
+            CoinVO(
+                id = "coin-$idx",
+                symbol = "C$idx",
+                name = "Coin $idx",
+                image = "",
+                marketCapRank = idx.toString(),
+                price = "$1.00",
+                priceChangePercentage = "1.0%",
+                trendColor = TrendColor.UP
+            )
+        }
+        val page2 = listOf(
+            page1.last(),
+            CoinVO(
+                id = "coin-21",
+                symbol = "C21",
+                name = "Coin 21",
+                image = "",
+                marketCapRank = "21",
+                price = "$2.00",
+                priceChangePercentage = "2.0%",
+                trendColor = TrendColor.UP
+            )
+        )
+
+        coEvery { userCase.getCoins(page = 1) } returns Result.success(page1)
+        coEvery { userCase.getCoins(page = 2) } returns Result.success(page2)
+
+        viewModel.getCoins()
+        Assert.assertEquals(
+            Success(coinsList = page1, isLoadingMore = false, hasMorePages = true),
+            viewModel.coins.value
+        )
+
+        viewModel.handleIntent(CoinsIntent.LoadMoreCoins)
+        coVerify(exactly = 1) { userCase.getCoins(page = 2) }
+        Assert.assertEquals(
+            Success(coinsList = page1 + page2.last(), isLoadingMore = false, hasMorePages = false),
+            viewModel.coins.value
+        )
+
+        viewModel.handleIntent(CoinsIntent.LoadMoreCoins)
+        coVerify(exactly = 1) { userCase.getCoins(page = 2) }
+    }
+
+    @Test
+    fun `WHEN LoadMoreTrendingCoins intent THEN appends deduplicated trending page and stops at end`() = runBlocking {
+        val page1 = (1..CoinsUseCase.TRENDING_PAGE_SIZE).map { idx ->
+            CoinVO(
+                id = "trend-$idx",
+                symbol = "T$idx",
+                name = "Trend $idx",
+                image = "",
+                marketCapRank = idx.toString(),
+                price = "$1.00",
+                priceChangePercentage = "1.0%",
+                trendColor = TrendColor.UP
+            )
+        }
+        val page2 = listOf(
+            page1.first(),
+            CoinVO(
+                id = "trend-8",
+                symbol = "T8",
+                name = "Trend 8",
+                image = "",
+                marketCapRank = "8",
+                price = "$2.00",
+                priceChangePercentage = "2.0%",
+                trendColor = TrendColor.UP
+            )
+        )
+
+        coEvery { userCase.getTrendingCoins(page = 1) } returns Result.success(page1)
+        coEvery { userCase.getTrendingCoins(page = 2) } returns Result.success(page2)
+
+        viewModel.getTrendingCoins()
+        Assert.assertEquals(
+            Success(coinsList = page1, isLoadingMore = false, hasMorePages = true),
+            viewModel.trendingCoins.value
+        )
+
+        viewModel.handleIntent(CoinsIntent.LoadMoreTrendingCoins)
+        coVerify(exactly = 1) { userCase.getTrendingCoins(page = 2) }
+        Assert.assertEquals(
+            Success(coinsList = page1 + page2.last(), isLoadingMore = false, hasMorePages = false),
+            viewModel.trendingCoins.value
+        )
+    }
+
+    @Test
+    fun `WHEN search query is active THEN LoadMoreCoins is ignored`() = runBlocking {
+        val page1 = (1..CoinsUseCase.CRYPTO_PAGE_SIZE).map { idx ->
+            CoinVO(
+                id = "coin-$idx",
+                symbol = "C$idx",
+                name = "Coin $idx",
+                image = "",
+                marketCapRank = idx.toString(),
+                price = "$1.00",
+                priceChangePercentage = "1.0%",
+                trendColor = TrendColor.UP
+            )
+        }
+        coEvery { userCase.getCoins(page = 1) } returns Result.success(page1)
+        viewModel.getCoins()
+
+        viewModel.handleIntent(CoinsIntent.SearchQueryChanged("Coin 1"))
+        viewModel.handleIntent(CoinsIntent.LoadMoreCoins)
+
+        coVerify(exactly = 0) { userCase.getCoins(page = 2) }
+    }
 }

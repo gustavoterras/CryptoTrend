@@ -11,15 +11,11 @@ import br.com.terras.app.dsm.ui.component.WebViewScreen
 import br.com.terras.app.favorites.presentation.FavoriteActivityCompose
 import br.com.terras.app.feeds.presentation.FeedsActivityCompose
 import br.com.terras.app.navigation.Screen
+import br.com.terras.app.portfolio.presentation.PortfolioActivityCompose
 
 @Composable
 fun NavigationGraph(navController: NavHostController) {
     NavHost(navController = navController, startDestination = Screen.CoinsList) {
-        composable<Screen.Favorites> {
-            FavoriteActivityCompose { coinId ->
-                navController.navigate(Screen.CoinDetail(id = coinId))
-            }
-        }
         composable<Screen.CoinsList> {
             CoinsActivityCompose(
                 favoritesContent = {
@@ -35,6 +31,11 @@ fun NavigationGraph(navController: NavHostController) {
         composable<Screen.CoinDetail> { backStackEntry ->
             val route = backStackEntry.toRoute<Screen.CoinDetail>()
             DetailActivityCompose(id = route.id, navHostController = navController)
+        }
+        composable<Screen.Portfolio> {
+            PortfolioActivityCompose { coinId ->
+                navController.navigate(Screen.CoinDetail(id = coinId))
+            }
         }
         composable<Screen.Feeds> {
             FeedsActivityCompose { url ->

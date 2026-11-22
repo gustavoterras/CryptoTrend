@@ -51,6 +51,17 @@ class CoinsRepositoryImplTest {
     }
 
     @Test
+    fun `WHEN getCoins with page 2 THEN forwards page parameter to service`() = runBlocking {
+        coEvery {
+            services.getCoins(page = 2)
+        } returns mockCoinsListResponseStub
+
+        val result = repository.getCoins(page = 2)
+
+        Assert.assertEquals(Result.success(mockCoinsListResponseStub), result)
+    }
+
+    @Test
     fun `WHEN getCoinsByIds THEN should return success response`() = runBlocking {
         val ids = listOf("id")
         coEvery {

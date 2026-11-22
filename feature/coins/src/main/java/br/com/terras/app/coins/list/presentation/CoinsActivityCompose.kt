@@ -26,13 +26,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +57,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -91,6 +95,7 @@ import br.com.terras.app.dsm.ui.component.RippleButton
 import br.com.terras.app.dsm.ui.component.StickyHeaderView
 import br.com.terras.app.dsm.ui.component.sortWithMarketState
 import br.com.terras.app.dsm.ui.theme.DSMTheme
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -118,6 +123,8 @@ fun CoinsActivityCompose(
 
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val cryptoLazyListState = rememberLazyListState()
+    val trendingLazyListState = rememberLazyListState()
 
     val isCurrentSearchOpen = when (selectedTabIndex) {
         1 -> isCryptoSearchOpen
@@ -194,7 +201,6 @@ fun CoinsActivityCompose(
                             }
                         }
                     },
-                    modifier = Modifier.padding(bottom = 96.dp),
                     testTag = "market_search_fab"
                 )
             }
@@ -292,6 +298,7 @@ fun CoinsActivityCompose(
                         sortState = cryptoSortState,
                         showErrorDialog = showCryptoDialog,
                         focusRequester = focusRequester,
+                        listState = cryptoLazyListState,
                         pullToRefreshTestTag = "market_pull_to_refresh",
                         onSortClick = { column -> cryptoSortState = cryptoSortState.toggle(column) },
                         onSearchQueryChange = { query ->
@@ -311,6 +318,7 @@ fun CoinsActivityCompose(
                             }
                         },
                         onRefresh = { viewModel.handleIntent(CoinsIntent.Refresh) },
+                        onLoadMore = { viewModel.handleIntent(CoinsIntent.LoadMoreCoins) },
                         onDismissError = { showCryptoDialog = false },
                         favoriteIds = favoriteIds,
                         onItemClick = onItemClick,
@@ -328,6 +336,7 @@ fun CoinsActivityCompose(
                         sortState = trendingSortState,
                         showErrorDialog = showTrendingDialog,
                         focusRequester = focusRequester,
+                        listState = trendingLazyListState,
                         pullToRefreshTestTag = "trending_pull_to_refresh",
                         onSortClick = { column -> trendingSortState = trendingSortState.toggle(column) },
                         onSearchQueryChange = { query ->
@@ -347,6 +356,7 @@ fun CoinsActivityCompose(
                             }
                         },
                         onRefresh = { viewModel.handleIntent(CoinsIntent.RefreshTrending) },
+                        onLoadMore = { viewModel.handleIntent(CoinsIntent.LoadMoreTrendingCoins) },
                         onDismissError = { showTrendingDialog = false },
                         favoriteIds = favoriteIds,
                         onItemClick = onItemClick,
@@ -369,12 +379,14 @@ private fun MarketCoinsTabContent(
     sortState: MarketSortState,
     showErrorDialog: Boolean,
     focusRequester: FocusRequester,
+    listState: LazyListState,
     pullToRefreshTestTag: String,
     onSortClick: (br.com.terras.app.dsm.ui.component.MarketSortColumn) -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onSearchExecute: () -> Unit,
     onSearchClearOrClose: () -> Unit,
     onRefresh: () -> Unit,
+    onLoadMore: () -> Unit,
     onDismissError: () -> Unit,
     favoriteIds: Set<String> = emptySet(),
     onItemClick: (String) -> Unit,
@@ -496,7 +508,11 @@ private fun MarketCoinsTabContent(
                     }
                     OnCoinsListSuccess(
                         coinsList = sortedCoins,
+                        listState = listState,
                         isFromSearchApi = coinsListState.isFromSearchApi,
+                        isLoadingMore = coinsListState.isLoadingMore,
+                        hasMorePages = coinsListState.hasMorePages,
+                        onLoadMore = onLoadMore,
                         favoriteIds = favoriteIds,
                         onItemClick = onItemClick
                     )
@@ -530,11 +546,31 @@ private fun OnCoinsListLoading() {
 @Composable
 private fun OnCoinsListSuccess(
     coinsList: List<CoinVO>,
+    listState: LazyListState,
     isFromSearchApi: Boolean,
+    isLoadingMore: Boolean,
+    hasMorePages: Boolean,
+    onLoadMore: () -> Unit,
     favoriteIds: Set<String>,
     onItemClick: (String) -> Unit
 ) {
+    LaunchedEffect(listState, coinsList.size, isLoadingMore, hasMorePages, isFromSearchApi) {
+        snapshotFlow {
+            val layoutInfo = listState.layoutInfo
+            val totalItems = layoutInfo.totalItemsCount
+            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            totalItems > 0 && lastVisibleIndex >= totalItems - 3
+        }
+            .distinctUntilChanged()
+            .collect { isNearBottom ->
+                if (isNearBottom && hasMorePages && !isLoadingMore && !isFromSearchApi) {
+                    onLoadMore()
+                }
+            }
+    }
+
     LazyColumn(
+        state = listState,
         verticalArrangement = Arrangement.spacedBy(2.dp),
         contentPadding = PaddingValues(top = 4.dp, bottom = 112.dp),
         modifier = Modifier.fillMaxSize()
@@ -564,6 +600,23 @@ private fun OnCoinsListSuccess(
                 isFavorite = coin.id in favoriteIds,
                 onItemClick = onItemClick
             )
+        }
+        if (isLoadingMore) {
+            item(key = "coins_pagination_loader") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                        .testTag("coins_pagination_loader"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(26.dp),
+                        color = MaterialTheme.colorScheme.scrim,
+                        strokeWidth = 2.5.dp
+                    )
+                }
+            }
         }
     }
 }
