@@ -112,6 +112,7 @@ dependencies {
     implementation(libs.dagger.hilt.core)
     ksp(libs.dagger.hilt.compiler)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.dotlottie.android)
 

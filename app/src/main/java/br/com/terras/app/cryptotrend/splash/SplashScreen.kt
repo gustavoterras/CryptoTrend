@@ -7,6 +7,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -42,7 +43,9 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -51,8 +54,6 @@ import androidx.compose.ui.unit.sp
 import br.com.terras.app.cryptotrend.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
-import com.lottiefiles.dotlottie.core.compose.ui.DotLottieAnimation
-import com.lottiefiles.dotlottie.core.util.DotLottieSource
 import kotlinx.coroutines.delay
 
 private val SpaceGroteskDisplayFont = FontFamily(
@@ -64,13 +65,14 @@ fun SplashScreen(
     onSplashFinished: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val backgroundColor = MaterialTheme.colorScheme.background
-    val emeraldAccent = MaterialTheme.colorScheme.scrim
-    val emeraldSecondary = MaterialTheme.colorScheme.secondary
-    val goldAccent = MaterialTheme.colorScheme.inversePrimary
-    val primaryTextColor = MaterialTheme.colorScheme.surface
-    val mutedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val backgroundColor = Color(0xFF0C7C54)
+    val emeraldAccent = Color(0xFF1ED788)
+    val emeraldSecondary = Color(0xFF34E89E)
+    val goldAccent = Color(0xFFFBBF24)
+    val primaryTextColor = Color.White
+    val mutedTextColor = Color.White.copy(alpha = 0.8f)
 
+    var startLogo by remember { mutableStateOf(false) }
     var startCryptoWord by remember { mutableStateOf(false) }
     var startTrendWord by remember { mutableStateOf(false) }
     var startUnderline by remember { mutableStateOf(false) }
@@ -86,17 +88,27 @@ fun SplashScreen(
     }
 
     LaunchedEffect(Unit) {
-        delay(220L)
+        startLogo = true
+        delay(180L)
         startCryptoWord = true
-        delay(260L)
-        startTrendWord = true
-        delay(420L)
-        startUnderline = true
         delay(220L)
+        startTrendWord = true
+        delay(380L)
+        startUnderline = true
+        delay(200L)
         startTagline = true
-        delay(1280L)
+        delay(1200L)
         onSplashFinished()
     }
+
+    val logoScale by animateFloatAsState(
+        targetValue = if (startLogo) 1f else 0.9f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "splashLogoScale"
+    )
 
     val underlineProgress by animateFloatAsState(
         targetValue = if (startUnderline) 1f else 0f,
@@ -147,23 +159,29 @@ fun SplashScreen(
                 )
         )
 
+        // Unified centered column containing the exact app logo image and texts perfectly aligned together
         Column(
             modifier = Modifier
                 .align(Alignment.Center)
                 .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            DotLottieAnimation(
-                source = DotLottieSource.Asset("crypto_trend_splash.json"),
-                autoplay = true,
-                loop = false,
-                speed = 1f,
+            Image(
+                painter = painterResource(id = R.drawable.crypto_trend_icon_1795270968907),
+                contentDescription = "Crypto Trend Logo",
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(188.dp)
-                    .testTag("splash_lottie_animation")
+                    .size(112.dp)
+                    .clip(CircleShape)
+                    .graphicsLayer {
+                        scaleX = logoScale
+                        scaleY = logoScale
+                    }
+                    .testTag("splash_logo_image")
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             Row(
                 verticalAlignment = Alignment.CenterVertically,
