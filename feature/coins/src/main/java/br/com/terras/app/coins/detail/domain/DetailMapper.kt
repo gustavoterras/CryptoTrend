@@ -65,7 +65,8 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
                 Pair("All-Time Low Date", response.marketData.atlDate?.getCurrentDateByLocale().orEmpty()),
                 Pair("Last updated", response.marketData.lastUpdated?.toFormatDate().orEmpty())
             ),
-            trendColor = getTrendColor(response.marketData.priceChangePercentage24h)
+            trendColor = getTrendColor(response.marketData.priceChangePercentage24h),
+            rawPrice = response.marketData.currentPrice.getRawPriceByLocale()
         )
     }
 
@@ -77,7 +78,8 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
                 xLabel = marketChartDataPoint.axisTime,
                 yLabel = marketChartDataPoint.price.formatMoney(),
                 hourLabel = marketChartDataPoint.hourLabel,
-                dayLabel = marketChartDataPoint.dayLabel
+                dayLabel = marketChartDataPoint.dayLabel,
+                timestampMillis = marketChartDataPoint.timestampMillis
             )
         })
     }
@@ -134,13 +136,16 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
             price = price,
             axisTime = axisTime,
             hourLabel = hourLabel,
-            dayLabel = dayLabel
+            dayLabel = dayLabel,
+            timestampMillis = timestamp
         )
     }
 
+    private fun CoinValue.getRawPriceByLocale(): Double =
+        if (Locale.getDefault().language == "pt") brl else usd
+
     private fun CoinValue.getCurrentPriceByLocale(): String {
-        val value = if (Locale.getDefault().language == "pt") brl else usd
-        return value.formatMoney()
+        return getRawPriceByLocale().formatMoney()
     }
 
     private fun CoinDate.getCurrentDateByLocale(): String {

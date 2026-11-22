@@ -5,5 +5,6 @@ data class MarketChartDataPoint(
     val price: Double,
     val axisTime: String = "",
     val hourLabel: String = "",
-    val dayLabel: String = ""
+    val dayLabel: String = "",
+    val timestampMillis: Long = 0L
 )

@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.terras.app.coins.detail.domain.ChartTradeMarkerVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailVO
 import br.com.terras.app.coins.detail.domain.model.DataPoint
 import br.com.terras.app.common.formatAxisMoney
@@ -60,6 +61,10 @@ import br.com.terras.app.dsm.ui.theme.DSMTheme
 import kotlin.math.max
 import kotlin.math.min
 
+private class CandleMarkerPositionHolder {
+    var items: List<PositionedChartTradeMarker> = emptyList()
+}
+
 data class CandlePoint(
     val open: Double,
     val high: Double,
@@ -69,7 +74,9 @@ data class CandlePoint(
     val priceLabel: String = "",
     val xLabel: String = "",
     val hourLabel: String = "",
-    val dayLabel: String = ""
+    val dayLabel: String = "",
+    val startTimestampMillis: Long = 0L,
+    val endTimestampMillis: Long = 0L
 ) {
     val isUp: Boolean get() = close >= open
 }
@@ -78,7 +85,8 @@ fun List<DataPoint>.toCandlePoints(targetCount: Int = 16): List<CandlePoint> {
     if (isEmpty()) return emptyList()
     if (size <= targetCount) {
         return mapIndexed { index, dp ->
-            val prevPrice = getOrNull(index - 1)?.y ?: dp.y
+            val prev = getOrNull(index - 1)
+            val prevPrice = prev?.y ?: dp.y
             val open = prevPrice
             val close = dp.y
             val high = maxOf(open, close) * 1.0025
@@ -92,7 +100,9 @@ fun List<DataPoint>.toCandlePoints(targetCount: Int = 16): List<CandlePoint> {
                 priceLabel = dp.yLabel ?: dp.y.formatMoney(),
                 xLabel = dp.xLabel?.takeIf { it.isNotBlank() } ?: dp.date,
                 hourLabel = dp.hourLabel.ifBlank { dp.xLabel.orEmpty() }.ifBlank { dp.date },
-                dayLabel = dp.dayLabel.ifBlank { dp.date }
+                dayLabel = dp.dayLabel.ifBlank { dp.date },
+                startTimestampMillis = prev?.timestampMillis ?: dp.timestampMillis,
+                endTimestampMillis = dp.timestampMillis
             )
         }
     }
@@ -122,7 +132,9 @@ fun List<DataPoint>.toCandlePoints(targetCount: Int = 16): List<CandlePoint> {
             priceLabel = lastPoint.yLabel ?: close.formatMoney(),
             xLabel = lastPoint.xLabel?.takeIf { it.isNotBlank() } ?: lastPoint.date,
             hourLabel = lastPoint.hourLabel.ifBlank { lastPoint.xLabel.orEmpty() }.ifBlank { lastPoint.date },
-            dayLabel = lastPoint.dayLabel.ifBlank { lastPoint.date }
+            dayLabel = lastPoint.dayLabel.ifBlank { lastPoint.date },
+            startTimestampMillis = chunk.first().timestampMillis,
+            endTimestampMillis = lastPoint.timestampMillis
         )
     }
 }
@@ -140,7 +152,10 @@ fun BarChartCompose(
     calloutColor: Color = MaterialTheme.colorScheme.surface,
     pointFillColor: Color = MaterialTheme.colorScheme.primary,
     showHighLowCallouts: Boolean = true,
-    showFloatingCard: Boolean = true
+    showFloatingCard: Boolean = true,
+    tradeMarkers: List<ChartTradeMarkerVO> = emptyList(),
+    selectedMarkerId: Long? = null,
+    onMarkerClick: ((ChartTradeMarkerVO?) -> Unit)? = null
 ) {
     if (data.isEmpty()) return
 
@@ -148,6 +163,7 @@ fun BarChartCompose(
     val effectiveUpColor = upColor ?: if (isDark) Color(0xFF1ED788) else Color(0xFF12A86E)
     val effectiveDownColor = downColor ?: if (isDark) Color(0xFFFF5A52) else Color(0xFFE04838)
     val effectiveGridLineColor = gridLineColor ?: if (isDark) Color(0x1FFFFFFF) else Color(0x140F172A)
+    val markerHolder = remember { CandleMarkerPositionHolder() }
 
     val candles = remember(data) { data.toCandlePoints(targetCount = 16) }
     if (candles.isEmpty()) return
@@ -228,13 +244,29 @@ fun BarChartCompose(
     val chartLeftPx = leftPaddingPx + maxYLabelWidthPx + yAxisGapPx
     val chartLeftDp = with(density) { chartLeftPx.toDp() }
 
+    val tapThresholdPx = with(density) { 24.dp.toPx() }
+
     BoxWithConstraints(modifier = modifier) {
         Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(candles, chartLeftPx, rightPaddingPx) {
+                .pointerInput(candles, chartLeftPx, rightPaddingPx, tradeMarkers, selectedMarkerId, tapThresholdPx) {
                     detectTapGestures(
                         onTap = { offset ->
+                            if (tradeMarkers.isNotEmpty() && onMarkerClick != null) {
+                                val hit = findNearestTradeMarker(
+                                    tapOffset = offset,
+                                    positionedMarkers = markerHolder.items,
+                                    maxDistancePx = tapThresholdPx
+                                )
+                                if (hit != null) {
+                                    selectedIndex = null
+                                    onMarkerClick(if (hit.transactionId == selectedMarkerId) null else hit)
+                                    return@detectTapGestures
+                                } else if (selectedMarkerId != null) {
+                                    onMarkerClick(null)
+                                }
+                            }
                             val chartRightPx = (size.width - rightPaddingPx).coerceAtLeast(chartLeftPx + 1f)
                             val chartWidthPx = chartRightPx - chartLeftPx
                             val slotWidth = chartWidthPx / candles.size
@@ -426,6 +458,26 @@ fun BarChartCompose(
                     }
                 }
             }
+
+            // 3b. Draw portfolio entry/exit markers mapped by timestamp & execution price
+            val positionedMarkers = resolveCandleTradeMarkers(
+                candles = candles,
+                markers = tradeMarkers,
+                chartLeftPx = chartLeftPx,
+                chartWidth = chartWidth,
+                priceToY = ::priceToY,
+                paddingTop = paddingTop,
+                chartBottom = chartBottom,
+                markerRadiusPx = 6.dp.toPx()
+            )
+            markerHolder.items = positionedMarkers
+            drawTradeMarkers(
+                positionedMarkers = positionedMarkers,
+                plotBottom = chartBottom,
+                pointFillColor = pointFillColor,
+                isDark = isDark,
+                selectedMarkerId = selectedMarkerId
+            )
 
             // 4. Draw X-axis timestamps at the base of the chart
             val xLabelY = (canvasHeight - reservedXAxisBottom) + xAxisTopGap

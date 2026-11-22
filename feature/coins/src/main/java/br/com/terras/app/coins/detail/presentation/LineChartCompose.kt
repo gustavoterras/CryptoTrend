@@ -1,6 +1,7 @@
 package br.com.terras.app.coins.detail.presentation
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,7 @@ import androidx.compose.ui.graphics.asAndroidPath
 import androidx.compose.ui.graphics.asComposePath
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -27,12 +29,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.terras.app.coins.detail.domain.ChartTradeMarkerVO
 import br.com.terras.app.coins.detail.domain.model.DataPoint
 import br.com.terras.app.common.formatAxisMoney
 import br.com.terras.app.common.formatMoney
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import kotlin.math.min
+
+private class LineMarkerPositionHolder {
+    var items: List<PositionedChartTradeMarker> = emptyList()
+}
 
 @Composable
 fun LineChartCompose(
@@ -45,7 +52,10 @@ fun LineChartCompose(
     showHighLowCallouts: Boolean = true,
     pointFillColor: Color? = null,
     gridLineColor: Color? = null,
-    colorScheme: ColorScheme = MaterialTheme.colorScheme
+    colorScheme: ColorScheme = MaterialTheme.colorScheme,
+    tradeMarkers: List<ChartTradeMarkerVO> = emptyList(),
+    selectedMarkerId: Long? = null,
+    onMarkerClick: ((ChartTradeMarkerVO?) -> Unit)? = null
 ) {
     if (data.isEmpty()) {
         return
@@ -54,6 +64,7 @@ fun LineChartCompose(
     val isDark = isSystemInDarkTheme()
     val effectiveGridLineColor = gridLineColor ?: if (isDark) Color(0x1FFFFFFF) else Color(0x140F172A)
     val effectivePointFillColor = pointFillColor ?: colorScheme.primary
+    val markerHolder = remember { LineMarkerPositionHolder() }
 
     val transparentGraphColor = remember(key1 = graphColor) {
         graphColor.copy(alpha = 0.28f)
@@ -145,7 +156,29 @@ fun LineChartCompose(
     val maxYLabelWidthPx = yLabelLayouts.maxOfOrNull { it.size.width }?.toFloat() ?: 0f
     val chartLeftPx = if (showYLabels) leftPaddingPx + maxYLabelWidthPx + yAxisGapPx else leftPaddingPx
 
-    Canvas(modifier = modifier) {
+    val tapThresholdPx = with(density) { 26.dp.toPx() }
+    val canvasModifier = if (tradeMarkers.isNotEmpty() && onMarkerClick != null) {
+        modifier.pointerInput(tradeMarkers, selectedMarkerId, tapThresholdPx) {
+            detectTapGestures(
+                onTap = { tapOffset ->
+                    val hit = findNearestTradeMarker(
+                        tapOffset = tapOffset,
+                        positionedMarkers = markerHolder.items,
+                        maxDistancePx = tapThresholdPx
+                    )
+                    if (hit != null) {
+                        onMarkerClick(if (hit.transactionId == selectedMarkerId) null else hit)
+                    } else if (selectedMarkerId != null) {
+                        onMarkerClick(null)
+                    }
+                }
+            )
+        }
+    } else {
+        modifier
+    }
+
+    Canvas(modifier = canvasModifier) {
         val canvasWidth = size.width
         val canvasHeight = size.height
 
@@ -346,6 +379,26 @@ fun LineChartCompose(
                 }
             }
         }
+
+        // 3b. Draw portfolio entry/exit markers mapped by timestamp & execution price
+        val positionedMarkers = resolveLineTradeMarkers(
+            data = data,
+            markers = tradeMarkers,
+            chartLeftPx = chartLeftPx,
+            chartWidth = chartWidth,
+            priceToY = ::priceToY,
+            paddingTop = paddingTop,
+            plotBottom = plotBottom,
+            markerRadiusPx = 6.dp.toPx()
+        )
+        markerHolder.items = positionedMarkers
+        drawTradeMarkers(
+            positionedMarkers = positionedMarkers,
+            plotBottom = plotBottom,
+            pointFillColor = effectivePointFillColor,
+            isDark = isDark,
+            selectedMarkerId = selectedMarkerId
+        )
 
         // 4. Draw X-axis timestamps at the base of the chart
         if (showXLabels) {

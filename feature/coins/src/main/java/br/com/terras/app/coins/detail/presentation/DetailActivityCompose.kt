@@ -65,6 +65,8 @@ import kotlinx.coroutines.launch
 import java.util.Locale
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import br.com.terras.app.coins.detail.domain.ChartTradeMarkerVO
+import br.com.terras.app.coins.detail.domain.CoinPortfolioInsightVO
 import br.com.terras.app.coins.detail.domain.model.CoinChartDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailPricePercentageVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailVO
@@ -89,13 +91,17 @@ import com.bumptech.glide.integration.compose.GlideImage
 
 @Composable
 fun DetailActivityCompose(
-    id: String, navHostController: NavHostController, viewModel: DetailViewModel = hiltViewModel()
+    id: String,
+    navHostController: NavHostController,
+    viewModel: DetailViewModel = hiltViewModel(),
+    onNavigateToPortfolio: () -> Unit = {}
 ) {
     val coinDetailState by viewModel.detail.collectAsState()
     val chartDetailState by viewModel.chart.collectAsState()
     val newsState by viewModel.news.collectAsState()
     val insightsState by viewModel.insights.collectAsState()
     val isFavorite by viewModel.isFavorite.collectAsStateWithLifecycle()
+    val portfolioInsight by viewModel.portfolioInsight.collectAsStateWithLifecycle()
 
     LaunchedEffect(id) {
         viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail(id))
@@ -119,6 +125,7 @@ fun DetailActivityCompose(
             chartDetailState = chartDetailState,
             newsState = newsState,
             insightsState = insightsState,
+            portfolioInsight = portfolioInsight,
             onBackPress = {
                 navHostController.popBackStack()
             },
@@ -130,7 +137,8 @@ fun DetailActivityCompose(
             isFavorite = isFavorite,
             onToggleFavorite = {
                 viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleFavorite(id))
-            }
+            },
+            onNavigateToPortfolio = onNavigateToPortfolio
         ) { days ->
             viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart(id, days))
         }
@@ -154,16 +162,21 @@ fun OnCoinDetailSuccess(
     chartDetailState: DetailViewModel.DetailState,
     newsState: DetailViewModel.DetailState,
     insightsState: DetailViewModel.DetailState,
+    portfolioInsight: CoinPortfolioInsightVO? = null,
     onBackPress: () -> Unit,
     onArticleClick: (String) -> Unit,
     isFavorite: Boolean = false,
     onToggleFavorite: () -> Unit = {},
+    onNavigateToPortfolio: () -> Unit = {},
     selectedDaysOfChart: (Int) -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
     var isBarChart by remember { mutableStateOf(false) }
+    var selectedTradeMarker by remember(portfolioInsight, chartDetailState) {
+        mutableStateOf<ChartTradeMarkerVO?>(null)
+    }
     val quoteCurrency = remember {
         if (Locale.getDefault().language == "pt") "BRL" else "USD"
     }
@@ -446,6 +459,7 @@ fun OnCoinDetailSuccess(
                             }
                         }
 
+                        val chartMarkers = portfolioInsight?.tradeMarkers.orEmpty()
                         if (isBarChart) {
                             BarChartCompose(
                                 modifier = Modifier
@@ -455,7 +469,10 @@ fun OnCoinDetailSuccess(
                                 coinInfo = state.coin,
                                 selectedDays = chartDetailState.days,
                                 showHighLowCallouts = true,
-                                pointFillColor = MaterialTheme.colorScheme.background
+                                pointFillColor = MaterialTheme.colorScheme.background,
+                                tradeMarkers = chartMarkers,
+                                selectedMarkerId = selectedTradeMarker?.transactionId,
+                                onMarkerClick = { selectedTradeMarker = it }
                             )
                         } else {
                             LineChartCompose(
@@ -467,7 +484,20 @@ fun OnCoinDetailSuccess(
                                 showDashedLine = false,
                                 showYLabels = true,
                                 showHighLowCallouts = true,
-                                pointFillColor = MaterialTheme.colorScheme.background
+                                pointFillColor = MaterialTheme.colorScheme.background,
+                                tradeMarkers = chartMarkers,
+                                selectedMarkerId = selectedTradeMarker?.transactionId,
+                                onMarkerClick = { selectedTradeMarker = it }
+                            )
+                        }
+
+                        if (chartMarkers.isNotEmpty() && chartDetailState.chart.chartData.size >= 2) {
+                            ChartTradeMarkersFooter(
+                                markers = chartMarkers,
+                                minChartTimestampMillis = chartDetailState.chart.chartData.first().timestampMillis,
+                                maxChartTimestampMillis = chartDetailState.chart.chartData.last().timestampMillis,
+                                selectedMarker = selectedTradeMarker,
+                                onSelectMarker = { selectedTradeMarker = it }
                             )
                         }
                     }
@@ -480,6 +510,19 @@ fun OnCoinDetailSuccess(
                 thickness = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant
             )
+
+            if (portfolioInsight != null) {
+                CoinPortfolioSummaryCard(
+                    insight = portfolioInsight,
+                    onNavigateToPortfolio = onNavigateToPortfolio
+                )
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
 
             Row(
                 horizontalArrangement = Arrangement.SpaceEvenly,

@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -40,7 +41,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -532,78 +532,73 @@ private fun TransactionFormContent(
                 .testTag("tx_quantity_input")
         )
 
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            OutlinedTextField(
-                value = editorState.unitPriceInput,
-                onValueChange = { onIntent(PortfolioIntent.UpdateUnitPriceInput(it)) },
-                label = { Text("Preço unitário") },
-                placeholder = { Text("Ex: 350000.00") },
-                singleLine = true,
-                shape = RoundedCornerShape(14.dp),
-                colors = fieldColors,
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Decimal,
-                    imeAction = ImeAction.Next
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("tx_unit_price_input")
-            )
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedButton(
+        OutlinedTextField(
+            value = editorState.unitPriceInput,
+            onValueChange = { onIntent(PortfolioIntent.UpdateUnitPriceInput(it)) },
+            label = { Text("Preço unitário") },
+            placeholder = { Text("Ex: 350000.00") },
+            trailingIcon = {
+                IconButton(
                     onClick = { onIntent(PortfolioIntent.UseCurrentMarketPrice) },
                     enabled = !editorState.isFetchingPrice,
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    modifier = Modifier
-                        .defaultMinSize(minHeight = 40.dp)
-                        .testTag("tx_use_current_price_btn")
+                    modifier = Modifier.testTag("tx_use_current_price_btn")
                 ) {
                     if (editorState.isFetchingPrice) {
                         CircularProgressIndicator(
-                            modifier = Modifier.size(14.dp),
+                            modifier = Modifier.size(18.dp),
                             strokeWidth = 2.dp,
                             color = MaterialTheme.colorScheme.scrim
                         )
-                        Spacer(modifier = Modifier.size(6.dp))
+                    } else {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Atualizar com preço atual",
+                            tint = MaterialTheme.colorScheme.scrim
+                        )
                     }
-                    Text(
-                        text = "Usar preço atual",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.scrim,
-                        fontWeight = FontWeight.SemiBold
-                    )
                 }
+            },
+            singleLine = true,
+            shape = RoundedCornerShape(14.dp),
+            colors = fieldColors,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Decimal,
+                imeAction = ImeAction.Next
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("tx_unit_price_input")
+        )
 
-                OutlinedButton(
-                    onClick = onOpenDatePicker,
-                    shape = RoundedCornerShape(10.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                    modifier = Modifier
-                        .defaultMinSize(minHeight = 40.dp)
-                        .testTag("tx_date_picker_btn")
-                ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = editorState.timestamp.toFormatDate(),
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Data da operação") },
+                trailingIcon = {
                     Icon(
                         imageVector = Icons.Filled.DateRange,
                         contentDescription = "Selecionar data da operação",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(16.dp)
+                        tint = MaterialTheme.colorScheme.scrim
                     )
-                    Spacer(modifier = Modifier.size(6.dp))
-                    Text(
-                        text = editorState.timestamp.toFormatDate(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.surface
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = fieldColors,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(
+                        role = Role.Button,
+                        onClickLabel = "Selecionar data da operação",
+                        onClick = onOpenDatePicker
                     )
-                }
-            }
+                    .testTag("tx_date_picker_btn")
+            )
         }
 
         OutlinedTextField(

@@ -1,6 +1,7 @@
 package br.com.terras.app.cryptotrend
 
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -30,7 +31,19 @@ fun NavigationGraph(navController: NavHostController) {
         }
         composable<Screen.CoinDetail> { backStackEntry ->
             val route = backStackEntry.toRoute<Screen.CoinDetail>()
-            DetailActivityCompose(id = route.id, navHostController = navController)
+            DetailActivityCompose(
+                id = route.id,
+                navHostController = navController,
+                onNavigateToPortfolio = {
+                    navController.navigate(Screen.Portfolio) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                }
+            )
         }
         composable<Screen.Portfolio> {
             PortfolioActivityCompose { coinId ->

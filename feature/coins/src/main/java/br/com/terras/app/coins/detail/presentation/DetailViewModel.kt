@@ -2,6 +2,8 @@ package br.com.terras.app.coins.detail.presentation
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import br.com.terras.app.coins.detail.domain.CoinDetailPortfolioCalculator
+import br.com.terras.app.coins.detail.domain.CoinPortfolioInsightVO
 import br.com.terras.app.coins.detail.domain.DetailUseCase
 import br.com.terras.app.coins.detail.domain.model.CoinChartDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailVO
@@ -9,6 +11,7 @@ import br.com.terras.app.coins.detail.domain.model.CoinInsightVO
 import br.com.terras.app.feeds.domain.FeedsUseCase
 import br.com.terras.app.feeds.domain.model.ArticleVO
 import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
+import br.com.terras.app.network.portfolio.PortfolioLocalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
@@ -17,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -29,7 +33,9 @@ import javax.inject.Inject
 class DetailViewModel @Inject constructor(
     private val useCase: DetailUseCase,
     private val feedsUseCase: FeedsUseCase,
-    private val favoriteLocalRepository: FavoriteCoinsLocalRepository
+    private val favoriteLocalRepository: FavoriteCoinsLocalRepository,
+    private val portfolioLocalRepository: PortfolioLocalRepository,
+    private val portfolioCalculator: CoinDetailPortfolioCalculator = CoinDetailPortfolioCalculator()
 ) : ViewModel() {
 
     sealed interface DetailIntent {
@@ -68,6 +74,27 @@ class DetailViewModel @Inject constructor(
 
     private val _detail: MutableStateFlow<DetailState> = MutableStateFlow(DetailState.Loading)
     val detail: StateFlow<DetailState> = _detail.asStateFlow()
+
+    val portfolioInsight: StateFlow<CoinPortfolioInsightVO?> = combine(
+        currentCoinId,
+        _detail,
+        portfolioLocalRepository.observeTransactionsChronological()
+    ) { coinId, detailState, transactions ->
+        if (coinId.isBlank()) {
+            null
+        } else {
+            val livePrice = (detailState as? DetailState.SuccessDetail)?.coin?.rawPrice
+            portfolioCalculator.calculate(
+                coinId = coinId,
+                transactions = transactions,
+                livePrice = livePrice
+            )
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5000),
+        initialValue = null
+    )
 
     private val _chart: MutableStateFlow<DetailState> = MutableStateFlow(DetailState.Loading)
     val chart: StateFlow<DetailState> = _chart.asStateFlow()

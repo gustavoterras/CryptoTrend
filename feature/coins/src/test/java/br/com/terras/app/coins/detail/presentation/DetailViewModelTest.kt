@@ -2,6 +2,7 @@ package br.com.terras.app.coins.detail.presentation
 
 import app.cash.turbine.test
 import br.com.terras.app.coins.MainDispatcherRule
+import br.com.terras.app.coins.detail.domain.CoinDetailPortfolioCalculator
 import br.com.terras.app.coins.detail.domain.DetailUseCase
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.Error
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.InsightsError
@@ -12,14 +13,17 @@ import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.S
 import br.com.terras.app.coins.mockCoinChartDetailVOStub
 import br.com.terras.app.coins.mockCoinDetailVOStub
 import br.com.terras.app.coins.mockCoinInsightVOStub
+import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.feeds.domain.FeedsUseCase
 import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
+import br.com.terras.app.network.portfolio.PortfolioLocalRepository
+import br.com.terras.app.network.portfolio.PortfolioTransactionRecord
+import br.com.terras.app.network.portfolio.PortfolioTransactionType
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert
@@ -44,11 +48,31 @@ private class FakeDetailFavoriteLocalRepository : FavoriteCoinsLocalRepository {
     override suspend fun removeFavorite(coinId: String) = Unit
 }
 
+private class FakeDetailPortfolioLocalRepository : PortfolioLocalRepository {
+    val transactionsFlow = MutableStateFlow<List<PortfolioTransactionRecord>>(emptyList())
+
+    override fun observeTransactionsChronological(): Flow<List<PortfolioTransactionRecord>> = transactionsFlow
+    override suspend fun getTransactionById(id: Long): PortfolioTransactionRecord? =
+        transactionsFlow.value.firstOrNull { it.id == id }
+    override suspend fun insertTransaction(record: PortfolioTransactionRecord): Long {
+        val nextId = (transactionsFlow.value.maxOfOrNull { it.id } ?: 0L) + 1L
+        transactionsFlow.value = transactionsFlow.value + record.copy(id = nextId)
+        return nextId
+    }
+    override suspend fun updateTransaction(record: PortfolioTransactionRecord) {
+        transactionsFlow.value = transactionsFlow.value.map { if (it.id == record.id) record else it }
+    }
+    override suspend fun deleteTransaction(id: Long) {
+        transactionsFlow.value = transactionsFlow.value.filterNot { it.id == id }
+    }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
     private val userCase: DetailUseCase = mockk(relaxed = true)
     private val feedsUseCase: FeedsUseCase = mockk(relaxed = true)
     private lateinit var favoriteLocalRepository: FakeDetailFavoriteLocalRepository
+    private lateinit var portfolioLocalRepository: FakeDetailPortfolioLocalRepository
 
     private lateinit var viewModel: DetailViewModel
 
@@ -58,7 +82,14 @@ class DetailViewModelTest {
     @Before
     fun setup() {
         favoriteLocalRepository = FakeDetailFavoriteLocalRepository()
-        viewModel = DetailViewModel(userCase, feedsUseCase, favoriteLocalRepository)
+        portfolioLocalRepository = FakeDetailPortfolioLocalRepository()
+        viewModel = DetailViewModel(
+            useCase = userCase,
+            feedsUseCase = feedsUseCase,
+            favoriteLocalRepository = favoriteLocalRepository,
+            portfolioLocalRepository = portfolioLocalRepository,
+            portfolioCalculator = CoinDetailPortfolioCalculator()
+        )
     }
 
     @Test
@@ -174,6 +205,52 @@ class DetailViewModelTest {
             viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleFavorite("bitcoin"))
             Assert.assertEquals(listOf("bitcoin"), favoriteLocalRepository.toggledIds)
             Assert.assertTrue(awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `WHEN coin has no portfolio transactions THEN portfolioInsight emits null`() = runBlocking {
+        coEvery {
+            userCase.getDetailById("bitcoin")
+        } returns Result.success(mockCoinDetailVOStub.copy(rawPrice = 300000.0))
+
+        viewModel.portfolioInsight.test {
+            Assert.assertNull(awaitItem())
+            viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail("bitcoin"))
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `WHEN coin has portfolio transactions THEN portfolioInsight emits pnl and markers`() = runBlocking {
+        coEvery {
+            userCase.getDetailById("bitcoin")
+        } returns Result.success(mockCoinDetailVOStub.copy(rawPrice = 150.0))
+
+        portfolioLocalRepository.transactionsFlow.value = listOf(
+            PortfolioTransactionRecord(
+                id = 1L,
+                coinId = "bitcoin",
+                coinSymbol = "BTC",
+                coinName = "Bitcoin",
+                coinImageUrl = "",
+                type = PortfolioTransactionType.BUY,
+                quantity = 2.0,
+                unitPrice = 100.0,
+                timestamp = 1_700_000_000_000L
+            )
+        )
+
+        viewModel.portfolioInsight.test {
+            Assert.assertNull(awaitItem())
+            viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail("bitcoin"))
+            val insight = expectMostRecentItem()
+            Assert.assertNotNull(insight)
+            Assert.assertEquals("BTC", insight!!.symbol)
+            Assert.assertEquals(TrendColor.UP, insight.totalPnLTrend)
+            Assert.assertEquals(1, insight.tradeMarkers.size)
             cancelAndIgnoreRemainingEvents()
         }
     }

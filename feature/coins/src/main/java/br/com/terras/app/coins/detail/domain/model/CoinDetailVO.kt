@@ -10,7 +10,8 @@ data class CoinDetailVO(
     val price: String,
     val priceChangePercentageList: List<CoinDetailPricePercentageVO>,
     val marketDataList: List<Pair<String, String>>,
-    val trendColor: TrendColor
+    val trendColor: TrendColor,
+    val rawPrice: Double = 0.0
 )
 
 data class CoinDetailPricePercentageVO(

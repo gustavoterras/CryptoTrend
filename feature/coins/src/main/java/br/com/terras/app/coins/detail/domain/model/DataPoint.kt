@@ -6,5 +6,6 @@ data class DataPoint(
     val xLabel: String?,
     val yLabel: String?,
     val hourLabel: String = "",
-    val dayLabel: String = ""
+    val dayLabel: String = "",
+    val timestampMillis: Long = 0L
 )
