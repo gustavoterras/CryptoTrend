@@ -25,21 +25,6 @@
     <string name="splash_tagline">Real-time prices and trends</string>
     <string name="splash_live_badge">LIVE MARKET</string>
 
-    <!-- Auth & Profile -->
-    <string name="auth_sign_in_with_google">Sign in with Google</string>
-    <string name="auth_missing_config">Google Sign-In configuration missing (default_web_client_id).</string>
-    <string name="auth_unexpected_credential">Unexpected credential type.</string>
-    <string name="auth_sign_in_failed">Failed to sign in with Google.</string>
-    <string name="auth_prompt_title">Save favorites in the cloud</string>
-    <string name="auth_prompt_message">Sign in with your Google account to favorite cryptocurrencies and keep your list synced.</string>
-    <string name="auth_prompt_not_now">Not now</string>
-    <string name="auth_default_account_name">Google Account</string>
-    <string name="auth_profile_synced_note">Your favorites are safely synced with this account.</string>
-    <string name="auth_sign_out">Sign out</string>
-    <string name="favorites_sync_load_error">Unable to load favorites.</string>
-    <string name="favorites_invalid_id">Invalid cryptocurrency ID for favorites.</string>
-    <string name="favorites_invalid_remove_id">Invalid cryptocurrency ID for removal.</string>
-
     <!-- Market List, Tabs & Sort Bar -->
     <string name="tab_favorites">Favorites</string>
     <string name="tab_crypto">Cryptocurrencies</string>

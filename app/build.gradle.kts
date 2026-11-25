@@ -70,10 +70,23 @@ android {
 
     firebaseAppDistribution {
         appId = "1:942204810323:android:ef2eb8ae55a51e16fdc2a6"
-        artifactType = "APK"
+        artifactType = findProperty("artifactType")?.toString()
+            ?: System.getenv("FIREBASE_ARTIFACT_TYPE")
+            ?: "APK"
+        val customReleaseNotes = findProperty("releaseNotes")?.toString()
+            ?: System.getenv("FIREBASE_RELEASE_NOTES")
+        if (!customReleaseNotes.isNullOrBlank()) {
+            releaseNotes = customReleaseNotes
+        }
         val customGroups = findProperty("groups")?.toString()
+            ?: System.getenv("FIREBASE_TESTER_GROUPS")
         if (!customGroups.isNullOrBlank()) {
             groups = customGroups
+        }
+        val customTesters = findProperty("testers")?.toString()
+            ?: System.getenv("FIREBASE_TESTERS")
+        if (!customTesters.isNullOrBlank()) {
+            testers = customTesters
         }
         val credentialsFile = findProperty("serviceCredentialsFile")?.toString()
             ?: System.getenv("GOOGLE_APPLICATION_CREDENTIALS")
@@ -84,14 +97,14 @@ android {
 }
 
 dependencies {
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.ai)
-    implementation(libs.firebase.firestore)
-    implementation(libs.firebase.auth)
-    implementation(libs.firebase.appcheck.debug)
-    implementation(libs.androidx.credentials)
-    implementation(libs.androidx.credentials.play.services)
-    implementation(libs.googleid)
+    // implementation(platform(libs.firebase.bom))
+    // implementation(libs.firebase.ai)
+    // implementation(libs.firebase.firestore)
+    // implementation(libs.firebase.auth)
+    // implementation(libs.firebase.appcheck.debug)
+    // implementation(libs.androidx.credentials)
+    // implementation(libs.androidx.credentials.play.services)
+    // implementation(libs.googleid)
     implementation(project(":core:dsm"))
     implementation(project(":core:common"))
     implementation(project(":core:navigation"))

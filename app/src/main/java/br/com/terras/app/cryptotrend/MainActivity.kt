@@ -26,14 +26,12 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -44,42 +42,27 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import androidx.credentials.CredentialManager
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import br.com.terras.app.cryptotrend.auth.AccountProfileDialog
-import br.com.terras.app.cryptotrend.auth.GoogleSignInPromptDialog
-import br.com.terras.app.cryptotrend.auth.attemptAutoSignIn
-import br.com.terras.app.cryptotrend.auth.signOutWithCleanup
 import br.com.terras.app.cryptotrend.core.dsm.R
-import br.com.terras.app.cryptotrend.data.favorites.FirestoreFavoritesSyncGateway
 import br.com.terras.app.cryptotrend.splash.SplashScreen
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
-import br.com.terras.app.dsm.ui.component.AuthUiController
 import br.com.terras.app.dsm.ui.component.BottomNavItem
 import br.com.terras.app.dsm.ui.component.FloatBottomNavigation
-import br.com.terras.app.dsm.ui.component.LocalAuthUiController
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import br.com.terras.app.navigation.Screen
-import br.com.terras.app.network.favorites.AuthUserState
 import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 import kotlin.math.abs
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-
-    @Inject
-    lateinit var favoritesSyncGateway: FirestoreFavoritesSyncGateway
 
     private var isFirstFrameReady = false
     private var startSplashEntrance by mutableStateOf(false)
@@ -101,15 +84,6 @@ class MainActivity : ComponentActivity() {
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)
         )
-        try {
-            com.google.firebase.FirebaseApp.initializeApp(this)
-            val firebaseAppCheck = com.google.firebase.appcheck.FirebaseAppCheck.getInstance()
-            firebaseAppCheck.installAppCheckProviderFactory(
-                com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory.getInstance()
-            )
-        } catch (e: Exception) {
-            // Already initialized
-        }
         setContent {
             DSMTheme {
                 var showSplash by rememberSaveable { mutableStateOf(true) }
@@ -187,50 +161,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun MainScreenView() {
-        val context = LocalContext.current
-        val scope = rememberCoroutineScope()
-        val credentialManager = remember(context) { CredentialManager.create(context) }
         val navController = rememberNavController()
-
-        val authState by favoritesSyncGateway.authState.collectAsStateWithLifecycle()
-        var showSignInDialog by remember { mutableStateOf(false) }
-        var showProfileDialog by remember { mutableStateOf(false) }
-        var pendingOnSignedIn by remember { mutableStateOf<(() -> Unit)?>(null) }
-
-        LaunchedEffect(Unit) {
-            attemptAutoSignIn(
-                context = context,
-                credentialManager = credentialManager,
-                onAuthSuccess = {},
-                onUnauthenticated = {},
-                scope = scope
-            )
-        }
-
-        val authUiController = remember(authState) {
-            val signedIn = authState as? AuthUserState.Authenticated
-            AuthUiController(
-                isSignedIn = signedIn != null,
-                displayName = signedIn?.displayName,
-                email = signedIn?.email,
-                photoUrl = signedIn?.photoUrl,
-                requestSignIn = { onSignedIn ->
-                    if (signedIn != null) {
-                        onSignedIn()
-                    } else {
-                        pendingOnSignedIn = onSignedIn
-                        showSignInDialog = true
-                    }
-                },
-                openProfileMenu = {
-                    if (signedIn != null) {
-                        showProfileDialog = true
-                    } else {
-                        showSignInDialog = true
-                    }
-                }
-            )
-        }
 
         val bottomNavItems = listOf(
             BottomNavItem(stringResource(R.string.nav_market), R.drawable.storefront_24dp, Screen.CoinsList),
@@ -275,64 +206,28 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        CompositionLocalProvider(LocalAuthUiController provides authUiController) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(nestedScrollConnection)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(nestedScrollConnection)
+        ) {
+            NavigationGraph(navController = navController)
+
+            AnimatedVisibility(
+                visible = showBottomBar,
+                enter = fadeIn() + slideInVertically { it },
+                exit = fadeOut() + slideOutVertically { it },
+                modifier = Modifier.align(Alignment.BottomCenter)
             ) {
-                NavigationGraph(navController = navController)
-
-                AnimatedVisibility(
-                    visible = showBottomBar,
-                    enter = fadeIn() + slideInVertically { it },
-                    exit = fadeOut() + slideOutVertically { it },
-                    modifier = Modifier.align(Alignment.BottomCenter)
-                ) {
-                    FloatBottomNavigation(
-                        items = bottomNavItems,
-                        navController = navController,
-                        isCollapsed = isBottomBarCollapsed,
-                        onExpandRequest = {
-                            accumulatedScrollPx = 0f
-                            isBottomBarCollapsed = false
-                        }
-                    )
-                }
-
-                if (showSignInDialog) {
-                    GoogleSignInPromptDialog(
-                        onDismiss = {
-                            showSignInDialog = false
-                            pendingOnSignedIn = null
-                        },
-                        onAuthSuccess = {
-                            showSignInDialog = false
-                            val callback = pendingOnSignedIn
-                            pendingOnSignedIn = null
-                            callback?.invoke()
-                        }
-                    )
-                }
-
-                val authenticatedUser = authState as? AuthUserState.Authenticated
-                if (showProfileDialog && authenticatedUser != null) {
-                    AccountProfileDialog(
-                        displayName = authenticatedUser.displayName,
-                        email = authenticatedUser.email,
-                        onDismiss = { showProfileDialog = false },
-                        onSignOutClick = {
-                            showProfileDialog = false
-                            signOutWithCleanup(
-                                credentialManager = credentialManager,
-                                scope = scope,
-                                detachListeners = {
-                                    favoritesSyncGateway.detachListenersBeforeSignOut()
-                                }
-                            )
-                        }
-                    )
-                }
+                FloatBottomNavigation(
+                    items = bottomNavItems,
+                    navController = navController,
+                    isCollapsed = isBottomBarCollapsed,
+                    onExpandRequest = {
+                        accumulatedScrollPx = 0f
+                        isBottomBarCollapsed = false
+                    }
+                )
             }
         }
     }

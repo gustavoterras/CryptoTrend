@@ -25,21 +25,6 @@
     <string name="splash_tagline">Cotações e tendências em tempo real</string>
     <string name="splash_live_badge">MERCADO AO VIVO</string>
 
-    <!-- Auth & Profile -->
-    <string name="auth_sign_in_with_google">Entrar com o Google</string>
-    <string name="auth_missing_config">Configuração do Google Sign-In ausente (default_web_client_id).</string>
-    <string name="auth_unexpected_credential">Tipo de credencial inesperado.</string>
-    <string name="auth_sign_in_failed">Falha ao entrar com o Google.</string>
-    <string name="auth_prompt_title">Salvar favoritos na nuvem</string>
-    <string name="auth_prompt_message">Entre com sua conta Google para favoritar criptomoedas e manter sua lista sincronizada.</string>
-    <string name="auth_prompt_not_now">Agora não</string>
-    <string name="auth_default_account_name">Conta Google</string>
-    <string name="auth_profile_synced_note">Seus favoritos estão sincronizados com segurança nesta conta.</string>
-    <string name="auth_sign_out">Sair da conta</string>
-    <string name="favorites_sync_load_error">Não foi possível carregar os favoritos.</string>
-    <string name="favorites_invalid_id">ID de criptomoeda inválido para favoritos.</string>
-    <string name="favorites_invalid_remove_id">ID de criptomoeda inválido para remoção.</string>
-
     <!-- Market List, Tabs & Sort Bar -->
     <string name="tab_favorites">Favoritos</string>
     <string name="tab_crypto">Criptomoedas</string>
