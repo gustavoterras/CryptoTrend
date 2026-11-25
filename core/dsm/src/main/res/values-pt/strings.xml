@@ -63,6 +63,7 @@
     <string name="detail_line_chart_cd">Gráfico de Linhas</string>
     <string name="detail_section_about">Sobre</string>
     <string name="detail_section_insights">Insights de Mercado</string>
+    <string name="detail_section_news">Notícias</string>
     <string name="detail_insights_empty">Nenhum insight disponível para %1$s no momento.</string>
     <string name="detail_news_empty">Nenhuma notícia encontrada para %1$s.</string>
 

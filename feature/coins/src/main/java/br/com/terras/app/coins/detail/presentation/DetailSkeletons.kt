@@ -189,13 +189,24 @@ internal fun OnCoinDetailLoading(
                     .padding(horizontal = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .width(64.dp)
-                        .height(16.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(brush)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(brush)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(64.dp)
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(brush)
+                    )
+                }
                 repeat(4) { index ->
                     Row(
                         modifier = Modifier
@@ -218,9 +229,6 @@ internal fun OnCoinDetailLoading(
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(brush)
                         )
-                    }
-                    if (index != 3) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
             }
@@ -265,7 +273,31 @@ internal fun OnCoinDetailLoading(
                 color = MaterialTheme.colorScheme.outlineVariant
             )
 
-            DetailNewsSkeleton(brush = brush)
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clip(CircleShape)
+                            .background(brush)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(78.dp)
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(brush)
+                    )
+                }
+                DetailNewsSkeleton(brush = brush)
+            }
         }
     }
 }
@@ -415,8 +447,7 @@ internal fun DetailChartSkeleton(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(265.dp)
-                .padding(horizontal = 18.dp),
+                .height(265.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Box(
@@ -464,7 +495,7 @@ internal fun DetailChartSkeleton(
                 Column(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .padding(vertical = 12.dp),
+                        .padding(vertical = 12.dp, horizontal = 8.dp),
                     verticalArrangement = Arrangement.SpaceBetween,
                     horizontalAlignment = Alignment.End
                 ) {

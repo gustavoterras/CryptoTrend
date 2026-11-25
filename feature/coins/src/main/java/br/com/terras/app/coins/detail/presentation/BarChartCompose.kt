@@ -52,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
@@ -234,17 +235,15 @@ fun BarChartCompose(
         }?.toFloat() ?: 0f
     }
 
-    val leftPaddingPx = with(density) { 12.dp.toPx() }
-    val yAxisGapPx = with(density) { 8.dp.toPx() }
-    val rightOuterPaddingPx = with(density) { 10.dp.toPx() }
+    val yLabelEndInsetPx = with(density) { 8.dp.toPx() }
     val trailingPointMarginPx = with(density) { 12.dp.toPx() }
-    val chartLeftPx = leftPaddingPx
-    val reservedRightPx = yAxisGapPx + maxYLabelWidthPx + rightOuterPaddingPx
-    val reservedRightDp = with(density) { reservedRightPx.toDp() }
+    val chartLeftPx = 0f
+    val rightContentAnchorInsetPx = maxYLabelWidthPx + yLabelEndInsetPx + trailingPointMarginPx
+    val reservedRightDp = with(density) { (maxYLabelWidthPx + yLabelEndInsetPx + 4.dp.toPx()).toDp() }
 
     var canvasWidthPx by remember { mutableIntStateOf(0) }
-    val viewportWidthPx = (canvasWidthPx - chartLeftPx - reservedRightPx).coerceAtLeast(1f)
-    val usableSpanPx = (viewportWidthPx - trailingPointMarginPx).coerceAtLeast(1f)
+    val viewportWidthPx = canvasWidthPx.toFloat().coerceAtLeast(1f)
+    val usableSpanPx = (viewportWidthPx - rightContentAnchorInsetPx).coerceAtLeast(1f)
     val totalContentWidthPx = usableSpanPx * contentScaleFactor
     val maxScrollPx = (totalContentWidthPx - usableSpanPx).coerceAtLeast(0f)
     val currentMaxScrollPx by rememberUpdatedState(maxScrollPx)
@@ -390,7 +389,7 @@ fun BarChartCompose(
 
         Canvas(
             modifier = scrollModifier
-                .pointerInput(candles, chartLeftPx, reservedRightPx, contentScaleFactor, tradeMarkers, selectedMarkerId, tapThresholdPx) {
+                .pointerInput(candles, rightContentAnchorInsetPx, contentScaleFactor, tradeMarkers, selectedMarkerId, tapThresholdPx) {
                     detectTapGestures(
                         onTap = { offset ->
                             if (tradeMarkers.isNotEmpty() && onMarkerClick != null) {
@@ -407,13 +406,12 @@ fun BarChartCompose(
                                     onMarkerClick(null)
                                 }
                             }
-                            val chartRightPx = (size.width - reservedRightPx).coerceAtLeast(chartLeftPx + 1f)
-                            val vpWidth = chartRightPx - chartLeftPx
-                            val usableSpan = (vpWidth - trailingPointMarginPx).coerceAtLeast(1f)
+                            val chartRightPx = size.width.toFloat().coerceAtLeast(1f)
+                            val usableSpan = (chartRightPx - rightContentAnchorInsetPx).coerceAtLeast(1f)
                             val virtualWidth = usableSpan * contentScaleFactor
                             val canvasMaxScroll = (virtualWidth - usableSpan).coerceAtLeast(0f)
                             val effectiveBack = scrollBackPx.coerceIn(0f, canvasMaxScroll)
-                            val virtualLeft = (chartRightPx - trailingPointMarginPx) + effectiveBack - virtualWidth
+                            val virtualLeft = (chartRightPx - rightContentAnchorInsetPx) + effectiveBack - virtualWidth
                             val slotWidth = virtualWidth / candles.size
                             val contentX = (offset.x - virtualLeft).coerceIn(0f, virtualWidth - 1f)
                             val index = (contentX / slotWidth).toInt().coerceIn(0, candles.lastIndex)
@@ -425,13 +423,13 @@ fun BarChartCompose(
             val canvasWidth = size.width
             val canvasHeight = size.height
 
-            val chartRight = (canvasWidth - reservedRightPx).coerceAtLeast(chartLeftPx + 1f)
+            val chartRight = canvasWidth
             val viewportWidth = chartRight - chartLeftPx
-            val usableSpan = (viewportWidth - trailingPointMarginPx).coerceAtLeast(1f)
+            val usableSpan = (viewportWidth - rightContentAnchorInsetPx).coerceAtLeast(1f)
             val virtualWidth = usableSpan * contentScaleFactor
             val canvasMaxScroll = (virtualWidth - usableSpan).coerceAtLeast(0f)
             val effectiveBack = scrollBackPx.coerceIn(0f, canvasMaxScroll)
-            val virtualLeftPx = (chartRight - trailingPointMarginPx) + effectiveBack - virtualWidth
+            val virtualLeftPx = (chartRight - rightContentAnchorInsetPx) + effectiveBack - virtualWidth
 
             val dotRadiusPx = 3.5.dp.toPx()
             val calloutGapPx = 4.dp.toPx()
@@ -453,7 +451,7 @@ fun BarChartCompose(
             val chartBottom = (canvasHeight - reservedXAxisBottom - bottomCalloutReserve).coerceAtLeast(paddingTop + 1f)
             val usableHeight = chartBottom - paddingTop
 
-            // 1. Draw horizontal dashed grid lines and pinned right Y-axis price labels
+            // 1. Draw full-width horizontal dashed grid lines
             val dashEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
 
             for (i in 0 until gridLineCount) {
@@ -469,14 +467,6 @@ fun BarChartCompose(
                         width = 1.dp.toPx(),
                         pathEffect = dashEffect
                     )
-                )
-
-                val layout = yLabelLayouts[i]
-                val labelX = chartRight + yAxisGapPx
-                val labelY = (y - layout.size.height / 2f).coerceIn(0f, canvasHeight - layout.size.height)
-                drawText(
-                    textLayoutResult = layout,
-                    topLeft = Offset(labelX, labelY)
                 )
             }
 
@@ -560,8 +550,8 @@ fun BarChartCompose(
                     )
 
                     maxCalloutLayout?.let { layout ->
-                        val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
-                        val labelX = (maxCenterX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
+                        val maxAllowedX = (chartRight - layout.size.width - 4.dp.toPx()).coerceAtLeast(chartLeftPx)
+                        val labelX = (maxCenterX - layout.size.width / 2f).coerceIn(chartLeftPx + 4.dp.toPx(), maxAllowedX)
                         val labelY = (maxY - dotRadiusPx - calloutGapPx - layout.size.height)
                             .coerceAtLeast(2.dp.toPx())
                         drawText(
@@ -590,8 +580,8 @@ fun BarChartCompose(
                         )
 
                         minCalloutLayout?.let { layout ->
-                            val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
-                            val labelX = (minCenterX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
+                            val maxAllowedX = (chartRight - layout.size.width - 4.dp.toPx()).coerceAtLeast(chartLeftPx)
+                            val labelX = (minCenterX - layout.size.width / 2f).coerceIn(chartLeftPx + 4.dp.toPx(), maxAllowedX)
                             val maxLabelY = (canvasHeight - reservedXAxisBottom - layout.size.height - 2.dp.toPx())
                                 .coerceAtLeast(minY)
                             val labelY = (minY + dotRadiusPx + calloutGapPx).coerceAtMost(maxLabelY)
@@ -658,11 +648,12 @@ fun BarChartCompose(
                 val xLabelY = (canvasHeight - reservedXAxisBottom) + xAxisTopGap
                 val minLabelGapPx = 10.dp.toPx()
                 var lastLabelEndX = Float.NEGATIVE_INFINITY
+                val xEdgeInset = 6.dp.toPx()
 
                 xLabelLayouts.forEach { (index, layout) ->
                     val centerX = virtualLeftPx + slotWidth * index + (slotWidth / 2f)
-                    val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
-                    val labelX = (centerX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
+                    val maxAllowedX = (chartRight - layout.size.width - xEdgeInset).coerceAtLeast(xEdgeInset)
+                    val labelX = (centerX - layout.size.width / 2f).coerceIn(xEdgeInset, maxAllowedX)
                     val labelEnd = labelX + layout.size.width
 
                     if (centerX >= chartLeftPx - layout.size.width &&
@@ -676,6 +667,35 @@ fun BarChartCompose(
                         lastLabelEndX = labelEnd
                     }
                 }
+            }
+
+            // 3. Draw fixed right Y-axis price labels in front of the scrolling candles
+            val yBackdropWidth = maxYLabelWidthPx + yLabelEndInsetPx + 14.dp.toPx()
+            val yBackdropStart = (chartRight - yBackdropWidth).coerceAtLeast(0f)
+            val yBackdropBottom = (canvasHeight - reservedXAxisBottom).coerceAtLeast(chartBottom)
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        pointFillColor.copy(alpha = 0.62f),
+                        pointFillColor.copy(alpha = 0.82f)
+                    ),
+                    startX = yBackdropStart,
+                    endX = chartRight
+                ),
+                topLeft = Offset(yBackdropStart, 0f),
+                size = Size(chartRight - yBackdropStart, yBackdropBottom)
+            )
+
+            for (i in 0 until gridLineCount) {
+                val y = paddingTop + (usableHeight / (gridLineCount - 1)) * i
+                val layout = yLabelLayouts[i]
+                val labelX = (chartRight - layout.size.width - yLabelEndInsetPx).coerceAtLeast(0f)
+                val labelY = (y - layout.size.height / 2f).coerceIn(0f, canvasHeight - layout.size.height)
+                drawText(
+                    textLayoutResult = layout,
+                    topLeft = Offset(labelX, labelY)
+                )
             }
         }
 

@@ -63,6 +63,7 @@
     <string name="detail_line_chart_cd">Line Chart</string>
     <string name="detail_section_about">About</string>
     <string name="detail_section_insights">Market Insights</string>
+    <string name="detail_section_news">News</string>
     <string name="detail_insights_empty">No insights available for %1$s right now.</string>
     <string name="detail_news_empty">No news found for %1$s.</string>
 

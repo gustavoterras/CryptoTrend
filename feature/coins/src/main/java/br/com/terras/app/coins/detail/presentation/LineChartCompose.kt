@@ -31,6 +31,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -143,16 +144,18 @@ fun LineChartCompose(
         }?.toFloat() ?: 0f
     }
 
-    val leftPaddingPx = with(density) { 12.dp.toPx() }
-    val yAxisGapPx = with(density) { 8.dp.toPx() }
-    val rightOuterPaddingPx = with(density) { 10.dp.toPx() }
+    val yLabelEndInsetPx = with(density) { 8.dp.toPx() }
     val trailingPointMarginPx = with(density) { 16.dp.toPx() }
-    val chartLeftPx = leftPaddingPx
-    val reservedRightPx = if (showYLabels) yAxisGapPx + maxYLabelWidthPx + rightOuterPaddingPx else rightOuterPaddingPx
+    val chartLeftPx = 0f
+    val rightContentAnchorInsetPx = if (showYLabels) {
+        maxYLabelWidthPx + yLabelEndInsetPx + trailingPointMarginPx
+    } else {
+        trailingPointMarginPx
+    }
 
     var canvasWidthPx by remember { mutableIntStateOf(0) }
-    val viewportWidthPx = (canvasWidthPx - chartLeftPx - reservedRightPx).coerceAtLeast(1f)
-    val usableSpanPx = (viewportWidthPx - trailingPointMarginPx).coerceAtLeast(1f)
+    val viewportWidthPx = canvasWidthPx.toFloat().coerceAtLeast(1f)
+    val usableSpanPx = (viewportWidthPx - rightContentAnchorInsetPx).coerceAtLeast(1f)
     val totalContentWidthPx = usableSpanPx * contentScaleFactor
     val maxScrollPx = (totalContentWidthPx - usableSpanPx).coerceAtLeast(0f)
     val currentMaxScrollPx by rememberUpdatedState(maxScrollPx)
@@ -332,13 +335,13 @@ fun LineChartCompose(
         val canvasWidth = size.width
         val canvasHeight = size.height
 
-        val chartRight = (canvasWidth - reservedRightPx).coerceAtLeast(chartLeftPx + 1f)
+        val chartRight = canvasWidth
         val viewportWidth = chartRight - chartLeftPx
-        val usableSpan = (viewportWidth - trailingPointMarginPx).coerceAtLeast(1f)
+        val usableSpan = (viewportWidth - rightContentAnchorInsetPx).coerceAtLeast(1f)
         val virtualWidth = usableSpan * contentScaleFactor
         val canvasMaxScroll = (virtualWidth - usableSpan).coerceAtLeast(0f)
         val effectiveBack = scrollBackPx.coerceIn(0f, canvasMaxScroll)
-        val virtualLeftPx = (chartRight - trailingPointMarginPx) + effectiveBack - virtualWidth
+        val virtualLeftPx = (chartRight - rightContentAnchorInsetPx) + effectiveBack - virtualWidth
 
         val dotRadiusPx = 4.5.dp.toPx()
         val calloutGapPx = 5.dp.toPx()
@@ -365,7 +368,7 @@ fun LineChartCompose(
         val usableHeight = plotBottom - paddingTop
         val gradientBottom = (canvasHeight - reservedXAxisBottom).coerceAtLeast(plotBottom)
 
-        // 1. Draw subtle horizontal dashed grid lines and pinned right Y-axis labels
+        // 1. Draw full-width subtle horizontal dashed grid lines
         val gridDashEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
         for (i in 0 until gridLineCount) {
             val y = paddingTop + (usableHeight / (gridLineCount - 1)) * i
@@ -381,16 +384,6 @@ fun LineChartCompose(
                     pathEffect = gridDashEffect
                 )
             )
-
-            if (showYLabels && i < yLabelLayouts.size) {
-                val layout = yLabelLayouts[i]
-                val labelX = chartRight + yAxisGapPx
-                val labelY = (y - layout.size.height / 2f).coerceIn(0f, canvasHeight - layout.size.height)
-                drawText(
-                    textLayoutResult = layout,
-                    topLeft = Offset(labelX, labelY)
-                )
-            }
         }
 
         fun priceToY(price: Double): Float {
@@ -400,13 +393,13 @@ fun LineChartCompose(
 
         fun indexToX(index: Int): Float {
             return if (data.size <= 1) {
-                chartLeftPx + viewportWidth / 2f
+                chartLeftPx + usableSpan / 2f
             } else {
                 virtualLeftPx + (index.toFloat() / data.lastIndex) * virtualWidth
             }
         }
 
-        // 2. Draw clipped scrollable curve, gradient fill, high/low callouts, markers, and X labels
+        // 2. Draw full-width scrollable curve, gradient fill, high/low callouts, markers, pulse, and X labels
         clipRect(
             left = chartLeftPx,
             top = 0f,
@@ -504,8 +497,8 @@ fun LineChartCompose(
                 )
 
                 maxCalloutLayout?.let { layout ->
-                    val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
-                    val labelX = (maxX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
+                    val maxAllowedX = (chartRight - layout.size.width - 4.dp.toPx()).coerceAtLeast(chartLeftPx)
+                    val labelX = (maxX - layout.size.width / 2f).coerceIn(chartLeftPx + 4.dp.toPx(), maxAllowedX)
                     val labelY = (maxY - dotRadiusPx - calloutGapPx - layout.size.height)
                         .coerceAtLeast(2.dp.toPx())
                     drawText(
@@ -532,8 +525,8 @@ fun LineChartCompose(
                     )
 
                     minCalloutLayout?.let { layout ->
-                        val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
-                        val labelX = (minX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
+                        val maxAllowedX = (chartRight - layout.size.width - 4.dp.toPx()).coerceAtLeast(chartLeftPx)
+                        val labelX = (minX - layout.size.width / 2f).coerceIn(chartLeftPx + 4.dp.toPx(), maxAllowedX)
                         val maxLabelY = (canvasHeight - reservedXAxisBottom - layout.size.height - 2.dp.toPx())
                             .coerceAtLeast(minY)
                         val labelY = (minY + dotRadiusPx + calloutGapPx).coerceAtMost(maxLabelY)
@@ -599,11 +592,12 @@ fun LineChartCompose(
                 val xLabelY = (canvasHeight - reservedXAxisBottom) + xAxisTopGap
                 val minLabelGapPx = 10.dp.toPx()
                 var lastLabelEndX = Float.NEGATIVE_INFINITY
+                val xEdgeInset = 6.dp.toPx()
 
                 xLabelLayouts.forEach { (index, layout) ->
                     val centerX = indexToX(index)
-                    val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
-                    val labelX = (centerX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
+                    val maxAllowedX = (chartRight - layout.size.width - xEdgeInset).coerceAtLeast(xEdgeInset)
+                    val labelX = (centerX - layout.size.width / 2f).coerceIn(xEdgeInset, maxAllowedX)
                     val labelEnd = labelX + layout.size.width
 
                     if (centerX >= chartLeftPx - layout.size.width &&
@@ -616,6 +610,38 @@ fun LineChartCompose(
                         )
                         lastLabelEndX = labelEnd
                     }
+                }
+            }
+        }
+
+        // 3. Draw fixed right Y-axis labels in front of the scrolling chart so data passes behind them
+        if (showYLabels && yLabelLayouts.isNotEmpty()) {
+            val yBackdropWidth = maxYLabelWidthPx + yLabelEndInsetPx + 14.dp.toPx()
+            val yBackdropStart = (chartRight - yBackdropWidth).coerceAtLeast(0f)
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        effectivePointFillColor.copy(alpha = 0.62f),
+                        effectivePointFillColor.copy(alpha = 0.82f)
+                    ),
+                    startX = yBackdropStart,
+                    endX = chartRight
+                ),
+                topLeft = Offset(yBackdropStart, 0f),
+                size = Size(chartRight - yBackdropStart, gradientBottom)
+            )
+
+            for (i in 0 until gridLineCount) {
+                if (i < yLabelLayouts.size) {
+                    val y = paddingTop + (usableHeight / (gridLineCount - 1)) * i
+                    val layout = yLabelLayouts[i]
+                    val labelX = (chartRight - layout.size.width - yLabelEndInsetPx).coerceAtLeast(0f)
+                    val labelY = (y - layout.size.height / 2f).coerceIn(0f, canvasHeight - layout.size.height)
+                    drawText(
+                        textLayoutResult = layout,
+                        topLeft = Offset(labelX, labelY)
+                    )
                 }
             }
         }

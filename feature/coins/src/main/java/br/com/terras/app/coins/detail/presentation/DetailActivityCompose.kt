@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -596,13 +597,24 @@ fun OnCoinDetailSuccess(
                 color = MaterialTheme.colorScheme.outlineVariant
             )
 
-            Text(
-                text = stringResource(R.string.detail_section_about),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.surface,
-                modifier = Modifier.padding(horizontal = 18.dp)
-            )
+            Row(
+                modifier = Modifier.padding(horizontal = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.scrim,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = stringResource(R.string.detail_section_about),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.surface
+                )
+            }
 
             Column(
                 modifier = Modifier
@@ -715,74 +727,100 @@ fun OnCoinDetailSuccess(
             )
 
             // News Section Filtered by Token in Horizontal Grid
-            when (newsState) {
-                is DetailViewModel.DetailState.SuccessNews -> {
-                    val articles = (newsState as DetailViewModel.DetailState.SuccessNews).articles
-                    if (articles.isEmpty()) {
-                        Text(
-                            text = stringResource(R.string.detail_news_empty, state.coin.name),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
-                        )
-                    } else {
-                        androidx.compose.foundation.lazy.LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            items(articles.size) { index ->
-                                val article = articles[index]
-                                Column(
-                                    modifier = Modifier
-                                        .width(248.dp)
-                                        .height(232.dp)
-                                        .clickable { onArticleClick(article.url) },
-                                    verticalArrangement = Arrangement.SpaceBetween
-                                ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("coin_news_section"),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.newspaper_24dp),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.scrim,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.detail_section_news),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.surface
+                    )
+                }
+
+                when (newsState) {
+                    is DetailViewModel.DetailState.SuccessNews -> {
+                        val articles = (newsState as DetailViewModel.DetailState.SuccessNews).articles
+                        if (articles.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.detail_news_empty, state.coin.name),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
+                            )
+                        } else {
+                            androidx.compose.foundation.lazy.LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                items(articles.size) { index ->
+                                    val article = articles[index]
                                     Column(
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        modifier = Modifier
+                                            .width(248.dp)
+                                            .height(232.dp)
+                                            .clickable { onArticleClick(article.url) },
+                                        verticalArrangement = Arrangement.SpaceBetween
                                     ) {
-                                        if (article.urlToImage.isNotBlank()) {
-                                            GlideImage(
-                                                model = article.urlToImage,
-                                                contentDescription = article.title,
-                                                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .height(112.dp)
-                                                    .clip(RoundedCornerShape(12.dp))
+                                        Column(
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            if (article.urlToImage.isNotBlank()) {
+                                                GlideImage(
+                                                    model = article.urlToImage,
+                                                    contentDescription = article.title,
+                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .height(112.dp)
+                                                        .clip(RoundedCornerShape(12.dp))
+                                                )
+                                            }
+                                            Text(
+                                                text = article.title,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.surface,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = article.description,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 2,
+                                                overflow = TextOverflow.Ellipsis
                                             )
                                         }
                                         Text(
-                                            text = article.title,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.surface,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                        Text(
-                                            text = article.description,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 2,
-                                            overflow = TextOverflow.Ellipsis
+                                            text = stringResource(R.string.action_see_more),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.surfaceTint,
+                                            textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
                                         )
                                     }
-                                    Text(
-                                        text = stringResource(R.string.action_see_more),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.surfaceTint,
-                                        textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
-                                    )
                                 }
                             }
                         }
                     }
-                }
-                else -> {
-                    DetailNewsSkeleton()
+                    else -> {
+                        DetailNewsSkeleton()
+                    }
                 }
             }
         }
