@@ -57,11 +57,22 @@ class FeedsUseCaseImpl @Inject constructor(
 
     private fun currentDateAndLanguage(): Pair<String, String> {
         val locale = Locale.getDefault()
-        val fromDate = SimpleDateFormat(YYYY_MM_DD, locale).format(
+        val fromDate = SimpleDateFormat(YYYY_MM_DD, Locale.US).format(
             Calendar.getInstance().apply {
-                set(Calendar.DAY_OF_MONTH, -7)
+                add(Calendar.DAY_OF_MONTH, -7)
             }.time
         )
-        return fromDate to locale.language
+        val language = locale.language.lowercase(Locale.US)
+            .takeIf { it in SUPPORTED_NEWS_LANGUAGES }
+            ?: DEFAULT_NEWS_LANGUAGE
+        return fromDate to language
+    }
+
+    private companion object {
+        const val DEFAULT_NEWS_LANGUAGE = "en"
+        val SUPPORTED_NEWS_LANGUAGES = setOf(
+            "ar", "de", "en", "es", "fr", "he", "it",
+            "nl", "no", "pt", "ru", "sv", "ud", "zh"
+        )
     }
 }

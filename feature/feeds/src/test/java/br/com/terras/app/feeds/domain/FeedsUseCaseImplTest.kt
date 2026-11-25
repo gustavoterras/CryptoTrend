@@ -51,4 +51,26 @@ class FeedsUseCaseImplTest {
 
         Assert.assertEquals(result, Result.success(mockArticlesVOStub))
     }
+
+    @Test
+    fun `WHEN device locale is unsupported THEN getFeeds falls back to en and uses 7-day lookback`() = runTest {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.JAPAN)
+            val expectedDate = getDateFrom()
+
+            coEvery {
+                repository.getFeeds("bitcoin", expectedDate, "en")
+            } returns Result.success(mockFeedsResponseStub)
+            every {
+                mapper.toFeeds(mockFeedsResponseStub.articles)
+            } returns mockArticlesVOStub
+
+            val result = useCase.getFeeds("bitcoin")
+
+            Assert.assertEquals(Result.success(mockArticlesVOStub), result)
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
+    }
 }

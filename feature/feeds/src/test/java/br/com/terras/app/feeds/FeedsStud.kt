@@ -36,8 +36,8 @@ val mockFeedsResponseStub = FeedsResponse(
 
 val mockArticlesVOStub = listOf(mockArticleVOStub)
 
-fun getDateFrom(): String = SimpleDateFormat(YYYY_MM_DD, Locale.getDefault()).format(
+fun getDateFrom(): String = SimpleDateFormat(YYYY_MM_DD, Locale.US).format(
     Calendar.getInstance().apply {
-        set(Calendar.DAY_OF_MONTH, -7)
+        add(Calendar.DAY_OF_MONTH, -7)
     }.time
 )

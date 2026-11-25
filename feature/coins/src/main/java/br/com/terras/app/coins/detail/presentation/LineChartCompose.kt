@@ -1,6 +1,11 @@
 package br.com.terras.app.coins.detail.presentation
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.Orientation
@@ -25,9 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -69,6 +72,7 @@ fun LineChartCompose(
     showYLabels: Boolean = true,
     showXLabels: Boolean = true,
     showHighLowCallouts: Boolean = true,
+    showLatestPointPulse: Boolean = true,
     scrollable: Boolean = true,
     pointFillColor: Color? = null,
     gridLineColor: Color? = null,
@@ -142,14 +146,36 @@ fun LineChartCompose(
     val leftPaddingPx = with(density) { 12.dp.toPx() }
     val yAxisGapPx = with(density) { 8.dp.toPx() }
     val rightOuterPaddingPx = with(density) { 10.dp.toPx() }
+    val trailingPointMarginPx = with(density) { 16.dp.toPx() }
     val chartLeftPx = leftPaddingPx
     val reservedRightPx = if (showYLabels) yAxisGapPx + maxYLabelWidthPx + rightOuterPaddingPx else rightOuterPaddingPx
 
     var canvasWidthPx by remember { mutableIntStateOf(0) }
     val viewportWidthPx = (canvasWidthPx - chartLeftPx - reservedRightPx).coerceAtLeast(1f)
-    val totalContentWidthPx = viewportWidthPx * contentScaleFactor
-    val maxScrollPx = (totalContentWidthPx - viewportWidthPx).coerceAtLeast(0f)
+    val usableSpanPx = (viewportWidthPx - trailingPointMarginPx).coerceAtLeast(1f)
+    val totalContentWidthPx = usableSpanPx * contentScaleFactor
+    val maxScrollPx = (totalContentWidthPx - usableSpanPx).coerceAtLeast(0f)
     val currentMaxScrollPx by rememberUpdatedState(maxScrollPx)
+
+    val pulseTransition = rememberInfiniteTransition(label = "latestPointPulse")
+    val pulseProgress by pulseTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "latestPointPulseRipple"
+    )
+    val pulseCoreAlpha by pulseTransition.animateFloat(
+        initialValue = 0.55f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "latestPointPulseCore"
+    )
 
     // scrollBackPx = 0f anchors newest prices at chartRight; positive values scroll backward into older history on the left
     var scrollBackPx by remember(data) { mutableFloatStateOf(0f) }
@@ -308,10 +334,11 @@ fun LineChartCompose(
 
         val chartRight = (canvasWidth - reservedRightPx).coerceAtLeast(chartLeftPx + 1f)
         val viewportWidth = chartRight - chartLeftPx
-        val virtualWidth = viewportWidth * contentScaleFactor
-        val canvasMaxScroll = (virtualWidth - viewportWidth).coerceAtLeast(0f)
+        val usableSpan = (viewportWidth - trailingPointMarginPx).coerceAtLeast(1f)
+        val virtualWidth = usableSpan * contentScaleFactor
+        val canvasMaxScroll = (virtualWidth - usableSpan).coerceAtLeast(0f)
         val effectiveBack = scrollBackPx.coerceIn(0f, canvasMaxScroll)
-        val virtualLeftPx = chartRight + effectiveBack - virtualWidth
+        val virtualLeftPx = (chartRight - trailingPointMarginPx) + effectiveBack - virtualWidth
 
         val dotRadiusPx = 4.5.dp.toPx()
         val calloutGapPx = 5.dp.toPx()
@@ -322,8 +349,7 @@ fun LineChartCompose(
         }
 
         val xAxisTopGap = 6.dp.toPx()
-        val scrollTrackReserve = if (maxScrollPx > 1f) 8.dp.toPx() else 0f
-        val bottomPadding = 4.dp.toPx() + scrollTrackReserve
+        val bottomPadding = 4.dp.toPx()
         val xLabelHeight = if (showXLabels) {
             xLabelLayouts.maxOfOrNull { it.second.size.height }?.toFloat() ?: 14.dp.toPx()
         } else 0f
@@ -540,6 +566,35 @@ fun LineChartCompose(
                 selectedMarkerId = selectedMarkerId
             )
 
+            if (showLatestPointPulse && data.isNotEmpty()) {
+                val latestX = indexToX(data.lastIndex)
+                val latestY = priceToY(data.last().y)
+                val haloMaxRadius = 9.5.dp.toPx()
+                val haloMinRadius = 3.5.dp.toPx()
+                if (latestX in (chartLeftPx - haloMaxRadius)..(chartRight + haloMaxRadius)) {
+                    val currentHaloRadius = haloMinRadius + (haloMaxRadius - haloMinRadius) * pulseProgress
+                    val currentHaloAlpha = (1f - pulseProgress) * 0.36f
+                    drawCircle(
+                        color = graphColor.copy(alpha = currentHaloAlpha),
+                        radius = currentHaloRadius,
+                        center = Offset(latestX, latestY),
+                        style = Fill
+                    )
+                    drawCircle(
+                        color = effectivePointFillColor,
+                        radius = 4.2.dp.toPx(),
+                        center = Offset(latestX, latestY),
+                        style = Fill
+                    )
+                    drawCircle(
+                        color = graphColor.copy(alpha = pulseCoreAlpha),
+                        radius = 3.0.dp.toPx(),
+                        center = Offset(latestX, latestY),
+                        style = Fill
+                    )
+                }
+            }
+
             if (showXLabels) {
                 val xLabelY = (canvasHeight - reservedXAxisBottom) + xAxisTopGap
                 val minLabelGapPx = 10.dp.toPx()
@@ -563,28 +618,6 @@ fun LineChartCompose(
                     }
                 }
             }
-        }
-
-        // 3. Subtle horizontal scroll progress indicator along bottom of plot viewport
-        if (canvasMaxScroll > 1f) {
-            val trackHeight = 2.5.dp.toPx()
-            val trackY = canvasHeight - trackHeight - 1.dp.toPx()
-            val corner = CornerRadius(trackHeight / 2f, trackHeight / 2f)
-            drawRoundRect(
-                color = effectiveGridLineColor,
-                topLeft = Offset(chartLeftPx, trackY),
-                size = Size(viewportWidth, trackHeight),
-                cornerRadius = corner
-            )
-            val thumbWidth = (viewportWidth / contentScaleFactor).coerceAtLeast(24.dp.toPx())
-            val thumbFractionFromLeft = ((canvasMaxScroll - effectiveBack) / canvasMaxScroll).coerceIn(0f, 1f)
-            val thumbX = chartLeftPx + (viewportWidth - thumbWidth) * thumbFractionFromLeft
-            drawRoundRect(
-                color = graphColor.copy(alpha = 0.65f),
-                topLeft = Offset(thumbX, trackY),
-                size = Size(thumbWidth, trackHeight),
-                cornerRadius = corner
-            )
         }
     }
 }

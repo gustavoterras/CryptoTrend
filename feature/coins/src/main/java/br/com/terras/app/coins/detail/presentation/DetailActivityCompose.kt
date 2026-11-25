@@ -609,11 +609,11 @@ fun OnCoinDetailSuccess(
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp)
             ) {
-                state.coin.marketDataList.forEachIndexed { index, pair ->
+                state.coin.marketDataList.forEach { pair ->
                     SectionInfoItem(
                         name = localizedMarketDataLabel(pair.first),
                         value = pair.second,
-                        showDivider = index != state.coin.marketDataList.lastIndex
+                        showDivider = false
                     )
                 }
             }
