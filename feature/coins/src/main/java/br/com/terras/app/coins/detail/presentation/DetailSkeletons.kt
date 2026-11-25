@@ -187,7 +187,7 @@ internal fun OnCoinDetailLoading(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 18.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -209,9 +209,7 @@ internal fun OnCoinDetailLoading(
                 }
                 repeat(4) { index ->
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {

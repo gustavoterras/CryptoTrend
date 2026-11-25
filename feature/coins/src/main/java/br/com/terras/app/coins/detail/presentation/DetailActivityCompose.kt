@@ -53,12 +53,16 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -192,6 +196,8 @@ fun OnCoinDetailSuccess(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+    val clipboardManager = LocalClipboardManager.current
+    val context = LocalContext.current
 
     LaunchedEffect(refreshErrorMessage) {
         val message = refreshErrorMessage ?: return@LaunchedEffect
@@ -576,20 +582,10 @@ fun OnCoinDetailSuccess(
                 )
             }
 
-            Row(
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight()
-            ) {
-                state.coin.priceChangePercentageList.forEachIndexed { index, item ->
-                    SectionContentItem(
-                        showPaddingStart = index == 0,
-                        showPaddingEnd = index == state.coin.priceChangePercentageList.lastIndex,
-                        item = item
-                    )
-                }
-            }
+            PriceChangePeriodStrip(
+                primaryPeriods = state.coin.priceChangePercentageList,
+                extraPeriods = state.coin.extraPriceChangePercentageList
+            )
 
             HorizontalDivider(
                 modifier = Modifier.padding(horizontal = 18.dp),
@@ -597,37 +593,70 @@ fun OnCoinDetailSuccess(
                 color = MaterialTheme.colorScheme.outlineVariant
             )
 
-            Row(
-                modifier = Modifier.padding(horizontal = 18.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Info,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.scrim,
-                    modifier = Modifier.size(20.dp)
-                )
-                Text(
-                    text = stringResource(R.string.detail_section_about),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.surface
+            state.coin.sentiment?.let { sentiment ->
+                CommunitySentimentSection(sentiment = sentiment)
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
             }
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp)
+                    .padding(horizontal = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                state.coin.marketDataList.forEach { pair ->
-                    SectionInfoItem(
-                        name = localizedMarketDataLabel(pair.first),
-                        value = pair.second,
-                        showDivider = false
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Info,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.scrim,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = stringResource(R.string.detail_section_about),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.surface
                     )
                 }
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    state.coin.marketDataList.forEach { pair ->
+                        SectionInfoItem(
+                            name = localizedMarketDataLabel(pair.first),
+                            value = pair.second,
+                            showDivider = false,
+                            verticalPadding = 0.dp,
+                            valueColor = state.coin.marketDataTrends[pair.first]?.textColor
+                                ?: MaterialTheme.colorScheme.surface
+                        )
+                    }
+                }
+
+                CoinAboutExtrasContent(
+                    categories = state.coin.categories,
+                    description = state.coin.description,
+                    platforms = state.coin.platforms,
+                    onCopyContract = { platform ->
+                        clipboardManager.setText(AnnotatedString(platform.contractAddress))
+                        coroutineScope.launch {
+                            snackbarHostState.currentSnackbarData?.dismiss()
+                            snackbarHostState.showSnackbar(
+                                context.getString(R.string.detail_contract_copied, platform.network)
+                            )
+                        }
+                    }
+                )
             }
 
             HorizontalDivider(
@@ -635,6 +664,32 @@ fun OnCoinDetailSuccess(
                 thickness = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant
             )
+
+            if (state.coin.links.isNotEmpty()) {
+                OfficialLinksSection(
+                    links = state.coin.links,
+                    onLinkClick = onArticleClick
+                )
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
+
+            if (state.coin.tickers.isNotEmpty()) {
+                WhereToTradeSection(
+                    tickers = state.coin.tickers,
+                    onTickerClick = onArticleClick
+                )
+
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
 
             // CoinGecko Insights Section
             Column(
@@ -862,43 +917,17 @@ private fun ChartHeaderStatRow(
 }
 
 @Composable
-private fun SectionContentItem(showPaddingStart: Boolean, showPaddingEnd: Boolean, item: CoinDetailPricePercentageVO) {
-    val paddingStart = if (showPaddingStart) 18.dp else 0.dp
-    val paddingEnd = if (showPaddingEnd) 18.dp else 0.dp
-    Column(
-        modifier = Modifier
-            .padding(start = paddingStart, end = paddingEnd, top = 4.dp, bottom = 4.dp)
-            .width(IntrinsicSize.Min),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        Text(
-            text = item.priceChangeTime,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Text(
-            text = item.priceChangeValue,
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = item.trendColor.textColor,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-    }
-}
-
-@Composable
 fun SectionInfoItem(
     name: String,
     value: String,
-    showDivider: Boolean
+    showDivider: Boolean,
+    verticalPadding: Dp = 7.dp,
+    valueColor: Color = MaterialTheme.colorScheme.surface
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 12.dp),
+            .padding(vertical = verticalPadding),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
@@ -908,13 +937,14 @@ fun SectionInfoItem(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
 
-        Spacer(modifier = Modifier.size(0.dp))
+        Spacer(modifier = Modifier.size(8.dp))
 
         Text(
             text = value,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.surface,
+            color = valueColor,
+            textAlign = TextAlign.End
         )
     }
 
@@ -983,6 +1013,8 @@ private fun OnCoinDetailError(
 @Composable
 private fun localizedMarketDataLabel(rawKey: String): String = when (rawKey) {
     "Market Cap" -> stringResource(R.string.detail_stat_market_cap)
+    "FDV" -> stringResource(R.string.detail_stat_fdv)
+    "TVL" -> stringResource(R.string.detail_stat_tvl)
     "Trading Volume 24h" -> stringResource(R.string.detail_stat_trading_volume_24h)
     "Highest Price 24h" -> stringResource(R.string.detail_stat_high_24h)
     "Lowest Price 24h" -> stringResource(R.string.detail_stat_low_24h)
@@ -990,9 +1022,15 @@ private fun localizedMarketDataLabel(rawKey: String): String = when (rawKey) {
     "Total Supply" -> stringResource(R.string.detail_stat_total_supply)
     "Max Supply" -> stringResource(R.string.detail_stat_max_supply)
     "All-Time High Price" -> stringResource(R.string.detail_stat_ath_price)
+    "Distance from ATH" -> stringResource(R.string.detail_stat_ath_distance)
     "All-Time Low Price" -> stringResource(R.string.detail_stat_atl_price)
+    "Distance from ATL" -> stringResource(R.string.detail_stat_atl_distance)
     "All-Time High Date" -> stringResource(R.string.detail_stat_ath_date)
     "All-Time Low Date" -> stringResource(R.string.detail_stat_atl_date)
+    "Genesis Date" -> stringResource(R.string.detail_stat_genesis_date)
+    "Hashing Algorithm" -> stringResource(R.string.detail_stat_hashing_algorithm)
+    "Block Time" -> stringResource(R.string.detail_stat_block_time)
+    "Watchlist Users" -> stringResource(R.string.detail_stat_watchlist_users)
     "Last updated" -> stringResource(R.string.detail_stat_last_updated)
     else -> rawKey
 }

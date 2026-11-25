@@ -506,35 +506,43 @@ fun CoinPortfolioSummaryCard(
             }
         }
 
-        Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
             if (insight.hasOpenPosition) {
                 SectionInfoItem(
                     name = stringResource(R.string.detail_portfolio_quantity),
                     value = insight.quantityFormatted,
-                    showDivider = true
+                    showDivider = false,
+                    verticalPadding = 0.dp
                 )
                 SectionInfoItem(
                     name = stringResource(R.string.detail_portfolio_avg_price),
                     value = insight.averageBuyPriceFormatted,
-                    showDivider = insight.hasRealizedPnL
+                    showDivider = false,
+                    verticalPadding = 0.dp
                 )
                 if (insight.hasRealizedPnL) {
                     SectionInfoItem(
                         name = stringResource(R.string.detail_portfolio_realized_pnl_full),
                         value = insight.realizedPnLFormatted,
-                        showDivider = false
+                        showDivider = false,
+                        verticalPadding = 0.dp
                     )
                 }
             } else {
                 SectionInfoItem(
                     name = stringResource(R.string.detail_portfolio_realized_pnl_short),
                     value = insight.realizedPnLFormatted,
-                    showDivider = true
+                    showDivider = false,
+                    verticalPadding = 0.dp
                 )
                 SectionInfoItem(
                     name = stringResource(R.string.detail_portfolio_recorded_trades),
                     value = "${insight.tradeMarkers.size}",
-                    showDivider = false
+                    showDivider = false,
+                    verticalPadding = 0.dp
                 )
             }
         }

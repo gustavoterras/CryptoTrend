@@ -37,6 +37,12 @@ class ApiServiceDetail(
 
     suspend fun getDetailById(id: String): CoinDetailResponse = client.get {
         url("$baseUrl$COINS_MARKET_DATA_ROUTE$id")
+        parameter("localization", true)
+        parameter("tickers", true)
+        parameter("market_data", true)
+        parameter("community_data", false)
+        parameter("developer_data", false)
+        parameter("sparkline", false)
     }.body()
 
     suspend fun getChartDetailById(id: String, days: Int): CoinDetailMarketChartResponse = client.get {

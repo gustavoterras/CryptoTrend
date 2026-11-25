@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -28,7 +30,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -234,17 +239,102 @@ fun CoinListItemView(
                 )
             }
 
-            if (!coinPriceChancePercentage.isNullOrEmpty()) {
+            if (!coinPriceChancePercentage.isNullOrEmpty() || trendColor != TrendColor.NONE) {
+                TrendChangeBadge(
+                    coinId = coinId,
+                    percentageText = coinPriceChancePercentage.orEmpty(),
+                    trendColor = trendColor
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TrendChangeBadge(
+    coinId: String,
+    percentageText: String,
+    trendColor: TrendColor
+) {
+    val hasBadgeBackground = trendColor != TrendColor.NONE
+    val contentColor = if (hasBadgeBackground) trendColor.onColor else trendColor.textColor
+    val badgeShape = RoundedCornerShape(6.dp)
+
+    Surface(
+        color = trendColor.color,
+        shape = badgeShape,
+        modifier = Modifier.testTag("coin_trend_badge_$coinId")
+    ) {
+        Row(
+            modifier = Modifier.padding(
+                horizontal = if (hasBadgeBackground) 6.dp else 0.dp,
+                vertical = if (hasBadgeBackground) 2.5.dp else 0.dp
+            ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            if (trendColor != TrendColor.NONE) {
+                TrendDirectionIcon(
+                    trendColor = trendColor,
+                    color = contentColor,
+                    modifier = Modifier.size(8.dp)
+                )
+            }
+            if (percentageText.isNotEmpty()) {
                 Text(
-                    text = coinPriceChancePercentage,
+                    text = percentageText,
                     style = MaterialTheme.typography.labelMedium,
-                    fontSize = 12.5.sp,
+                    fontSize = 11.5.sp,
                     fontWeight = FontWeight.SemiBold,
-                    color = trendColor.textColor,
+                    color = contentColor,
                     maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.End
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun TrendDirectionIcon(
+    trendColor: TrendColor,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        when (trendColor) {
+            TrendColor.UP -> {
+                val path = Path().apply {
+                    moveTo(w * 0.5f, h * 0.14f)
+                    lineTo(w * 0.92f, h * 0.84f)
+                    lineTo(w * 0.08f, h * 0.84f)
+                    close()
+                }
+                drawPath(path = path, color = color)
+            }
+            TrendColor.DOWN -> {
+                val path = Path().apply {
+                    moveTo(w * 0.08f, h * 0.16f)
+                    lineTo(w * 0.92f, h * 0.16f)
+                    lineTo(w * 0.5f, h * 0.86f)
+                    close()
+                }
+                drawPath(path = path, color = color)
+            }
+            TrendColor.FLAT -> {
+                drawLine(
+                    color = color,
+                    start = Offset(w * 0.12f, h * 0.5f),
+                    end = Offset(w * 0.88f, h * 0.5f),
+                    strokeWidth = 1.6.dp.toPx(),
+                    cap = StrokeCap.Round
+                )
+            }
+            TrendColor.NONE -> Unit
         }
     }
 }
@@ -254,19 +344,34 @@ fun CoinListItemView(
 private fun CoinListItemViewPreview() {
     DSMTheme {
         Surface(color = MaterialTheme.colorScheme.background) {
-            CoinListItemView(
-                coinId = "bitcoin",
-                coinLogo = "",
-                coinName = "Bitcoin",
-                coinSymbol = "BTC",
-                coinPosition = "1",
-                coinPrice = "$17,185.06",
-                coinPriceChancePercentage = "+2.65%",
-                trendColor = TrendColor.UP,
-                coinVolume = "$17,204,940,467",
-                sparklinePrices = listOf(16800.0, 16950.0, 16900.0, 17120.0, 17050.0, 17185.0),
-                quoteCurrency = "USDT"
-            ) {}
+            Column {
+                CoinListItemView(
+                    coinId = "bitcoin",
+                    coinLogo = "",
+                    coinName = "Bitcoin",
+                    coinSymbol = "BTC",
+                    coinPosition = "1",
+                    coinPrice = "$17,185.06",
+                    coinPriceChancePercentage = "+2.65%",
+                    trendColor = TrendColor.UP,
+                    coinVolume = "$17,204,940,467",
+                    sparklinePrices = listOf(16800.0, 16950.0, 16900.0, 17120.0, 17050.0, 17185.0),
+                    quoteCurrency = "USDT"
+                ) {}
+                CoinListItemView(
+                    coinId = "ethereum",
+                    coinLogo = "",
+                    coinName = "Ethereum",
+                    coinSymbol = "ETH",
+                    coinPosition = "2",
+                    coinPrice = "$1,265.40",
+                    coinPriceChancePercentage = "-1.84%",
+                    trendColor = TrendColor.DOWN,
+                    coinVolume = "$6,410,000,000",
+                    sparklinePrices = listOf(1310.0, 1298.0, 1302.0, 1280.0, 1274.0, 1265.4),
+                    quoteCurrency = "USDT"
+                ) {}
+            }
         }
     }
 }

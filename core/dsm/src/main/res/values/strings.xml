@@ -14,6 +14,7 @@
     <string name="action_refresh">Refresh</string>
     <string name="action_retry">Try again</string>
     <string name="action_see_more">See more</string>
+    <string name="action_see_less">See less</string>
 
     <string name="dialog_alert_title">Alert</string>
     <string name="dialog_alert_acknowledge">Got it</string>
@@ -64,11 +65,43 @@
     <string name="detail_section_about">About</string>
     <string name="detail_section_insights">Market Insights</string>
     <string name="detail_section_news">News</string>
+    <string name="detail_section_sentiment">Community Sentiment</string>
+    <string name="detail_section_links">Official Links</string>
+    <string name="detail_section_tickers">Where to Trade</string>
     <string name="detail_insights_empty">No insights available for %1$s right now.</string>
     <string name="detail_news_empty">No news found for %1$s.</string>
+    <string name="detail_price_change_more_cd">Select period</string>
+
+    <string name="detail_sentiment_bullish">Bullish</string>
+    <string name="detail_sentiment_bearish">Bearish</string>
+    <string name="detail_sentiment_watching">%1$s watching</string>
+
+    <string name="detail_about_categories">Categories</string>
+    <string name="detail_about_contracts">Networks &amp; Contracts</string>
+    <string name="detail_contract_copied">%1$s contract copied</string>
+    <string name="detail_copy_contract_cd">Copy %1$s contract address</string>
+
+    <string name="detail_link_website">Website</string>
+    <string name="detail_link_whitepaper">Whitepaper</string>
+    <string name="detail_link_explorer">Explorer</string>
+    <string name="detail_link_github">GitHub</string>
+    <string name="detail_link_bitbucket">Bitbucket</string>
+    <string name="detail_link_twitter">X (Twitter)</string>
+    <string name="detail_link_reddit">Reddit</string>
+    <string name="detail_link_forum">Forum</string>
+    <string name="detail_link_chat">Chat</string>
+    <string name="detail_link_announcements">Announcements</string>
+
+    <string name="detail_tickers_volume">Vol: %1$s</string>
+    <string name="detail_tickers_spread">Spread: %1$s</string>
+    <string name="detail_tickers_show_all">Show all (%1$d)</string>
+    <string name="detail_tickers_show_less">Show less</string>
+    <string name="detail_tickers_open_cd">Open %1$s on %2$s</string>
 
     <!-- Detail About Stats -->
     <string name="detail_stat_market_cap">Market Cap</string>
+    <string name="detail_stat_fdv">FDV (Fully Diluted)</string>
+    <string name="detail_stat_tvl">TVL (Total Value Locked)</string>
     <string name="detail_stat_trading_volume_24h">24h Trading Volume</string>
     <string name="detail_stat_high_24h">24h High</string>
     <string name="detail_stat_low_24h">24h Low</string>
@@ -76,9 +109,15 @@
     <string name="detail_stat_total_supply">Total Supply</string>
     <string name="detail_stat_max_supply">Max Supply</string>
     <string name="detail_stat_ath_price">All-Time High Price</string>
+    <string name="detail_stat_ath_distance">Distance from ATH</string>
     <string name="detail_stat_atl_price">All-Time Low Price</string>
+    <string name="detail_stat_atl_distance">Distance from ATL</string>
     <string name="detail_stat_ath_date">All-Time High Date</string>
     <string name="detail_stat_atl_date">All-Time Low Date</string>
+    <string name="detail_stat_genesis_date">Genesis Date</string>
+    <string name="detail_stat_hashing_algorithm">Hashing Algorithm</string>
+    <string name="detail_stat_block_time">Block Time</string>
+    <string name="detail_stat_watchlist_users">Watchlist Users</string>
     <string name="detail_stat_last_updated">Last Updated</string>
 
     <!-- Bar Chart Callout -->

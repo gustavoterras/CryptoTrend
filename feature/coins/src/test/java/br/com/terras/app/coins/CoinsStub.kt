@@ -2,9 +2,13 @@ package br.com.terras.app.coins
 
 import br.com.terras.app.coins.detail.data.model.CoinDate
 import br.com.terras.app.coins.detail.data.model.CoinDetailImage
+import br.com.terras.app.coins.detail.data.model.CoinDetailLinksResponse
 import br.com.terras.app.coins.detail.data.model.CoinDetailMarketChartResponse
 import br.com.terras.app.coins.detail.data.model.CoinDetailMarketData
+import br.com.terras.app.coins.detail.data.model.CoinDetailReposUrlResponse
 import br.com.terras.app.coins.detail.data.model.CoinDetailResponse
+import br.com.terras.app.coins.detail.data.model.CoinDetailTickerMarketResponse
+import br.com.terras.app.coins.detail.data.model.CoinDetailTickerResponse
 import br.com.terras.app.coins.detail.data.model.CoinInsightResponse
 import br.com.terras.app.coins.detail.data.model.CoinValue
 import br.com.terras.app.coins.detail.domain.model.CoinChartDetailVO
@@ -80,22 +84,72 @@ val mockCoinDetailResponseStub = CoinDetailResponse(
     marketData = CoinDetailMarketData(
         currentPrice = CoinValue(brl = 100.0, usd = 100.0),
         priceChangePercentage24h = 1.0,
-        priceChangePercentage7d = 1.0,
-        priceChangePercentage30d = 1.0,
-        priceChangePercentage60d = 1.0,
-        priceChangePercentage1y = 1.0,
+        priceChangePercentage7d = 2.0,
+        priceChangePercentage14d = 3.0,
+        priceChangePercentage30d = 4.0,
+        priceChangePercentage60d = 5.0,
+        priceChangePercentage200d = 6.0,
+        priceChangePercentage1y = 7.0,
         marketCap = CoinValue(brl = 100.0, usd = 100.0),
+        fullyDilutedValuation = mapOf("brl" to 210.0, "usd" to 210.0),
+        totalValueLocked = mapOf("usd" to 500.0),
         totalVolume = CoinValue(brl = 100.0, usd = 100.0),
         low24h = CoinValue(brl = 100.0, usd = 100.0),
         high24h = CoinValue(brl = 100.0, usd = 100.0),
         atlDate = CoinDate(brl = "2024-03-14T07:10:36.635Z", usd = "2024-03-14T07:10:36.635Z"),
         atlValue = CoinValue(brl = 100.0, usd = 100.0),
+        atlChangePercentage = mapOf("brl" to 120.5, "usd" to 120.5),
         athDate = CoinDate(brl = "2024-03-14T07:10:36.635Z", usd = "2024-03-14T07:10:36.635Z"),
         athValue = CoinValue(brl = 100.0, usd = 100.0),
+        athChangePercentage = mapOf("brl" to -15.2, "usd" to -15.2),
         maxSupply = 100.0,
         totalSupply = 100.0,
         circulatingSupply = 100.0,
         lastUpdated = "2024-03-14T07:10:36.635Z"
+    ),
+    description = mapOf("en" to "<p>Decentralized <b>digital</b> currency.</p>"),
+    categories = listOf("Layer 1 (L1)", "Smart Contract Platform"),
+    genesisDate = "2009-01-03",
+    hashingAlgorithm = "SHA-256",
+    blockTimeInMinutes = 10.0,
+    sentimentVotesUpPercentage = 78.5,
+    sentimentVotesDownPercentage = 21.5,
+    watchlistPortfolioUsers = 1250000,
+    platforms = mapOf("ethereum" to "0x1234567890abcdef1234567890abcdef12345678"),
+    links = CoinDetailLinksResponse(
+        homepage = listOf("https://bitcoin.org/"),
+        whitepaper = "https://bitcoin.org/bitcoin.pdf",
+        blockchainSite = listOf("https://mempool.space/", ""),
+        officialForumUrl = listOf("https://bitcointalk.org/"),
+        chatUrl = listOf("https://discord.gg/example"),
+        announcementUrl = listOf("https://blog.example.org/"),
+        twitterScreenName = "bitcoin",
+        subredditUrl = "https://www.reddit.com/r/Bitcoin/",
+        reposUrl = CoinDetailReposUrlResponse(
+            github = listOf("https://github.com/bitcoin/bitcoin")
+        )
+    ),
+    tickers = listOf(
+        CoinDetailTickerResponse(
+            base = "BTC",
+            target = "USDT",
+            market = CoinDetailTickerMarketResponse(name = "Binance", identifier = "binance"),
+            last = 65000.0,
+            volume = 12000.0,
+            convertedLast = mapOf("usd" to 65000.0),
+            convertedVolume = mapOf("usd" to 780_000_000.0),
+            trustScore = "green",
+            bidAskSpreadPercentage = 0.01,
+            tradeUrl = "https://www.binance.com/en/trade/BTC_USDT"
+        ),
+        CoinDetailTickerResponse(
+            base = "BTC",
+            target = "USD",
+            market = CoinDetailTickerMarketResponse(name = "StaleExchange", identifier = "stale"),
+            last = 65000.0,
+            volume = 10.0,
+            isStale = true
+        )
     )
 )
 
