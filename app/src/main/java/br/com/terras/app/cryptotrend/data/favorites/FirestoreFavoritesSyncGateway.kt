@@ -2,6 +2,7 @@ package br.com.terras.app.cryptotrend.data.favorites
 
 import android.content.Context
 import br.com.terras.app.cryptotrend.R
+import br.com.terras.app.cryptotrend.core.dsm.R as DsmR
 import br.com.terras.app.network.favorites.AuthUserState
 import br.com.terras.app.network.favorites.FavoritesIdsState
 import br.com.terras.app.network.favorites.FavoritesSyncGateway
@@ -38,8 +39,9 @@ class FirestoreFavoritesSyncGateway @Inject constructor(
     @ApplicationContext context: Context
 ) : FavoritesSyncGateway {
 
+    private val appContext = context.applicationContext
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(
-        context.applicationContext.getString(R.string.firestore_database_id)
+        appContext.getString(R.string.firestore_database_id)
     )
     private val auth: FirebaseAuth = Firebase.auth
     private val gatewayScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -143,7 +145,8 @@ class FirestoreFavoritesSyncGateway @Inject constructor(
                             }
                             val rootError = firestoreError ?: error
                             _favoriteIdsState.value = FavoritesIdsState.Error(
-                                rootError.localizedMessage ?: "Não foi possível carregar os favoritos."
+                                rootError.localizedMessage
+                                    ?: appContext.getString(DsmR.string.favorites_sync_load_error)
                             )
                         }
                         .collect { coinIds ->
@@ -188,7 +191,7 @@ class FirestoreFavoritesSyncGateway @Inject constructor(
             require(
                 normalizedCoinId.length in 1..128 && VALID_ID_REGEX.matches(normalizedCoinId)
             ) {
-                "ID de criptomoeda inválido para favoritos."
+                appContext.getString(DsmR.string.favorites_invalid_id)
             }
             val cleanSymbol = symbol.trim().uppercase().take(32)
             val cleanName = name.trim().take(128)
@@ -250,7 +253,7 @@ class FirestoreFavoritesSyncGateway @Inject constructor(
             require(
                 normalizedCoinId.length in 1..128 && VALID_ID_REGEX.matches(normalizedCoinId)
             ) {
-                "ID de criptomoeda inválido para remoção."
+                appContext.getString(DsmR.string.favorites_invalid_remove_id)
             }
             val docRef = db.collection("users")
                 .document(uid)

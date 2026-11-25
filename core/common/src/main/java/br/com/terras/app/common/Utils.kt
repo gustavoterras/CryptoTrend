@@ -43,6 +43,35 @@ fun Double.formatPercentage(locale: Locale = Locale.getDefault()): String {
     return formatter.format(this) + "%"
 }
 
+fun Double.formatDominancePercentage(locale: Locale = Locale.getDefault()): String {
+    val symbols = DecimalFormatSymbols(locale)
+    val formatter = DecimalFormat("#,##0.0", symbols)
+    return formatter.format(this) + "%"
+}
+
+fun Int.formatCompactCount(locale: Locale = Locale.getDefault()): String =
+    java.text.NumberFormat.getIntegerInstance(locale).format(this)
+
+fun Double.formatCompactMoney(locale: Locale = Locale.getDefault()): String {
+    val absValue = abs(this)
+    if (absValue < 1_000_000.0) return formatAxisMoney(locale)
+
+    val currencyFormatter = DecimalFormat.getCurrencyInstance(locale) as DecimalFormat
+    val currencySymbol = currencyFormatter.decimalFormatSymbols.currencySymbol
+    val isPortuguese = locale.language == "pt"
+
+    val (divisor, suffix) = when {
+        absValue >= 1_000_000_000_000.0 -> 1_000_000_000_000.0 to if (isPortuguese) " tri" else "T"
+        absValue >= 1_000_000_000.0 -> 1_000_000_000.0 to if (isPortuguese) " bi" else "B"
+        else -> 1_000_000.0 to if (isPortuguese) " mi" else "M"
+    }
+
+    val scaled = this / divisor
+    val symbols = DecimalFormatSymbols(locale)
+    val numberFormatter = DecimalFormat("#,##0.00", symbols)
+    return "$currencySymbol ${numberFormatter.format(scaled)}$suffix"
+}
+
 fun Double.formatCryptoQuantity(locale: Locale = Locale.getDefault()): String {
     val symbols = DecimalFormatSymbols(locale)
     val maxDecimals = when {

@@ -16,8 +16,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.component.PullToRefreshWrapper
 import br.com.terras.app.dsm.ui.component.RippleButton
@@ -88,7 +90,7 @@ private fun OnFeedsSuccess(
                     title,
                     description,
                     urlToImage,
-                    "Veja mais",
+                    stringResource(R.string.action_see_more),
                 ) {
                     onItemClick(url)
                 }
@@ -109,10 +111,10 @@ private fun OnCoinsListError(
         containerColor = MaterialTheme.colorScheme.primary,
         titleContentColor = MaterialTheme.colorScheme.surface,
         textContentColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-        title = { Text(text = "Alerta") },
-        text = { Text(text = "Erro ao carregar os dados, tente novamente mais tarde.") },
+        title = { Text(text = stringResource(R.string.dialog_alert_title)) },
+        text = { Text(text = stringResource(R.string.error_loading_data)) },
         confirmButton = {
-            RippleButton(text = "Entendi", onClick = onDismissRequest)
+            RippleButton(text = stringResource(R.string.dialog_alert_acknowledge), onClick = onDismissRequest)
         }
     )
 }

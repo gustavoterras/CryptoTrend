@@ -1,8 +1,10 @@
 package br.com.terras.app.portfolio.presentation
 
+import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.terras.app.common.formatCryptoQuantity
+import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.network.portfolio.PortfolioTransactionRecord
 import br.com.terras.app.network.portfolio.PortfolioTransactionType
 import br.com.terras.app.portfolio.domain.PortfolioUseCase
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.util.Locale
 import javax.inject.Inject
 
 @HiltViewModel
@@ -29,9 +32,12 @@ class PortfolioViewModel @Inject constructor(
     private val useCase: PortfolioUseCase
 ) : ViewModel() {
 
-    enum class PortfolioSubTab(val label: String) {
-        ASSETS("Ativos"),
-        HISTORY("Histórico")
+    enum class PortfolioSubTab(
+        val label: String,
+        @StringRes val labelRes: Int
+    ) {
+        ASSETS("Ativos", R.string.portfolio_tab_assets),
+        HISTORY("Histórico", R.string.portfolio_tab_history)
     }
 
     sealed interface PortfolioUiState {
@@ -117,6 +123,9 @@ class PortfolioViewModel @Inject constructor(
 
     private val _deleteErrorMessage = MutableStateFlow<String?>(null)
     val deleteErrorMessage: StateFlow<String?> = _deleteErrorMessage.asStateFlow()
+
+    private val isPortuguese: Boolean
+        get() = Locale.getDefault().language.equals("pt", ignoreCase = true)
 
     private var lastFetchedCoinIds: Set<String> = emptySet()
     private var quotesJob: Job? = null
@@ -445,7 +454,11 @@ class PortfolioViewModel @Inject constructor(
                     _editorState.update {
                         it.copy(
                             isFetchingPrice = false,
-                            validationError = "Não foi possível obter a cotação atual."
+                            validationError = if (isPortuguese) {
+                                "Não foi possível obter a cotação atual."
+                            } else {
+                                "Unable to fetch the current quote."
+                            }
                         )
                     }
                 }
@@ -470,7 +483,11 @@ class PortfolioViewModel @Inject constructor(
                     _coinPickerState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = "Não foi possível carregar a lista de moedas."
+                            errorMessage = if (isPortuguese) {
+                                "Não foi possível carregar a lista de moedas."
+                            } else {
+                                "Unable to load cryptocurrency list."
+                            }
                         )
                     }
                 }
@@ -507,7 +524,11 @@ class PortfolioViewModel @Inject constructor(
                         it.copy(
                             searchResults = emptyList(),
                             isLoading = false,
-                            errorMessage = "Erro ao buscar moedas. Verifique sua conexão."
+                            errorMessage = if (isPortuguese) {
+                                "Erro ao buscar moedas. Verifique sua conexão."
+                            } else {
+                                "Error searching coins. Check your connection."
+                            }
                         )
                     }
                 }
@@ -543,19 +564,43 @@ class PortfolioViewModel @Inject constructor(
 
         val coin = state.selectedCoin
         if (coin == null) {
-            _editorState.update { it.copy(validationError = "Selecione uma criptomoeda.") }
+            _editorState.update {
+                it.copy(
+                    validationError = if (isPortuguese) {
+                        "Selecione uma criptomoeda."
+                    } else {
+                        "Select a cryptocurrency."
+                    }
+                )
+            }
             return
         }
 
         val quantity = parseFlexibleDouble(state.quantityInput)
         if (quantity == null || quantity <= 0.0) {
-            _editorState.update { it.copy(validationError = "Informe uma quantidade válida maior que zero.") }
+            _editorState.update {
+                it.copy(
+                    validationError = if (isPortuguese) {
+                        "Informe uma quantidade válida maior que zero."
+                    } else {
+                        "Enter a valid quantity greater than zero."
+                    }
+                )
+            }
             return
         }
 
         val unitPrice = parseFlexibleDouble(state.unitPriceInput)
         if (unitPrice == null || unitPrice <= 0.0) {
-            _editorState.update { it.copy(validationError = "Informe um preço unitário válido maior que zero.") }
+            _editorState.update {
+                it.copy(
+                    validationError = if (isPortuguese) {
+                        "Informe um preço unitário válido maior que zero."
+                    } else {
+                        "Enter a valid unit price greater than zero."
+                    }
+                )
+            }
             return
         }
 
@@ -585,9 +630,17 @@ class PortfolioViewModel @Inject constructor(
             _editorState.update {
                 it.copy(
                     validationError = if (state.type == PortfolioTransactionType.SELL) {
-                        "Saldo insuficiente para venda. Disponível: ${available.formatCryptoQuantity()} ${coin.symbol}."
+                        if (isPortuguese) {
+                            "Saldo insuficiente para venda. Disponível: ${available.formatCryptoQuantity()} ${coin.symbol}."
+                        } else {
+                            "Insufficient balance to sell. Available: ${available.formatCryptoQuantity()} ${coin.symbol}."
+                        }
                     } else {
-                        "A alteração deixaria uma venda posterior sem saldo suficiente."
+                        if (isPortuguese) {
+                            "A alteração deixaria uma venda posterior sem saldo suficiente."
+                        } else {
+                            "This change would leave a later sell without sufficient balance."
+                        }
                     }
                 )
             }
@@ -607,7 +660,11 @@ class PortfolioViewModel @Inject constructor(
                 _editorState.update {
                     it.copy(
                         isSaving = false,
-                        validationError = "Não foi possível salvar a operação localmente."
+                        validationError = if (isPortuguese) {
+                            "Não foi possível salvar a operação localmente."
+                        } else {
+                            "Unable to save transaction locally."
+                        }
                     )
                 }
             }
@@ -626,8 +683,11 @@ class PortfolioViewModel @Inject constructor(
 
         if (!isTimelineValid) {
             _pendingDeleteTransaction.value = null
-            _deleteErrorMessage.value =
+            _deleteErrorMessage.value = if (isPortuguese) {
                 "Não é possível excluir esta compra porque há vendas posteriores de ${pending.coinSymbol} que dependem desse saldo."
+            } else {
+                "Cannot delete this buy because later ${pending.coinSymbol} sells depend on this balance."
+            }
             return
         }
 

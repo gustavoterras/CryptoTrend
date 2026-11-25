@@ -115,11 +115,13 @@ class FavoritesViewModelTest {
     fun `WHEN Refresh intent THEN reloads favorites and clears isRefreshing`() = runBlocking {
         val ids = listOf("id")
         coEvery { userCase.getCoinsByIds(ids) } returns Result.success(mockCoinsVOListStub)
+        coEvery { userCase.getCoinsByIds(ids, forceRefresh = true) } returns Result.success(mockCoinsVOListStub)
         favoriteIdsFlow.value = ids
 
         viewModel.handleIntent(FavoritesIntent.Refresh)
 
-        coVerify(atLeast = 2) { userCase.getCoinsByIds(ids) }
+        coVerify(exactly = 1) { userCase.getCoinsByIds(ids) }
+        coVerify(exactly = 1) { userCase.getCoinsByIds(ids, forceRefresh = true) }
         Assert.assertEquals(Success(mockCoinsVOListStub), viewModel.coins.value)
         Assert.assertFalse(viewModel.isRefreshing.value)
     }

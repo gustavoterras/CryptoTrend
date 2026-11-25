@@ -27,7 +27,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -160,10 +162,12 @@ private fun OnFavoritesLoading() {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(2.dp),
         contentPadding = PaddingValues(top = 4.dp, bottom = 112.dp),
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag("favorites_list_skeleton")
     ) {
-        items(8) {
-            CoinListItemShimmerRow()
+        items(8) { index ->
+            CoinListItemShimmerRow(variantIndex = index)
         }
     }
 }
@@ -186,7 +190,7 @@ private fun OnFavoritesEmpty() {
                 .padding(bottom = 12.dp)
         )
         Text(
-            text = "Nenhuma criptomoeda favoritada no momento.\nToque na estrela nos detalhes de uma moeda para salvá-la aqui.",
+            text = stringResource(R.string.favorites_empty_message),
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.surface,
             textAlign = TextAlign.Center
@@ -239,10 +243,10 @@ private fun OnCoinsListError(
         containerColor = MaterialTheme.colorScheme.primary,
         titleContentColor = MaterialTheme.colorScheme.surface,
         textContentColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-        title = { Text(text = "Alerta") },
-        text = { Text(text = "Erro ao carregar os dados, tente novamente mais tarde.") },
+        title = { Text(text = stringResource(R.string.dialog_alert_title)) },
+        text = { Text(text = stringResource(R.string.error_loading_data)) },
         confirmButton = {
-            RippleButton(text = "Entendi", onClick = onDismissRequest)
+            RippleButton(text = stringResource(R.string.dialog_alert_acknowledge), onClick = onDismissRequest)
         }
     )
 }

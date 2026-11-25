@@ -23,10 +23,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 
@@ -108,14 +110,14 @@ fun MarketSortBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             SortHeaderItem(
-                label = "Name",
+                label = stringResource(R.string.sort_name),
                 column = MarketSortColumn.NAME,
                 sortState = sortState,
                 onClick = { onSortClick(MarketSortColumn.NAME) },
                 modifier = Modifier.testTag("sort_header_name")
             )
             SortHeaderItem(
-                label = "Vol",
+                label = stringResource(R.string.sort_vol),
                 column = MarketSortColumn.VOLUME,
                 sortState = sortState,
                 onClick = { onSortClick(MarketSortColumn.VOLUME) },
@@ -128,7 +130,7 @@ fun MarketSortBar(
             contentAlignment = Alignment.Center
         ) {
             SortHeaderItem(
-                label = "Graph",
+                label = stringResource(R.string.sort_chart),
                 column = MarketSortColumn.GRAPH,
                 sortState = sortState,
                 onClick = { onSortClick(MarketSortColumn.GRAPH) },
@@ -142,7 +144,7 @@ fun MarketSortBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             SortHeaderItem(
-                label = "24h Change",
+                label = stringResource(R.string.sort_change_24h),
                 column = MarketSortColumn.CHANGE_24H,
                 sortState = sortState,
                 onClick = { onSortClick(MarketSortColumn.CHANGE_24H) },
@@ -193,9 +195,13 @@ private fun SortHeaderItem(
         Icon(
             imageVector = Icons.Filled.ArrowDropDown,
             contentDescription = if (isActive) {
-                if (isAscending) "$label crescente" else "$label decrescente"
+                if (isAscending) {
+                    stringResource(R.string.sort_asc_cd, label)
+                } else {
+                    stringResource(R.string.sort_desc_cd, label)
+                }
             } else {
-                "Ordenar por $label"
+                stringResource(R.string.sort_by_cd, label)
             },
             tint = contentColor,
             modifier = Modifier

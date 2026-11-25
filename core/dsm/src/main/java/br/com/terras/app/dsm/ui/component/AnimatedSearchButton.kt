@@ -52,6 +52,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import br.com.terras.app.cryptotrend.core.dsm.R
@@ -211,9 +212,9 @@ fun AnimatedSearchFab(
                             indication = LocalIndication.current,
                             role = Role.Button,
                             onClickLabel = if (isSearchOpen) {
-                                "Fechar pesquisa"
+                                stringResource(R.string.search_close_cd)
                             } else {
-                                "Pesquisar criptomoedas"
+                                stringResource(R.string.search_open_cd)
                             },
                             onClick = {
                                 hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -267,14 +268,14 @@ fun AnimatedSearchFab(
                         if (open) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Fechar pesquisa",
+                                contentDescription = stringResource(R.string.search_close_cd),
                                 tint = iconTint,
                                 modifier = Modifier.size(23.dp)
                             )
                         } else {
                             Icon(
                                 painter = painterResource(id = R.drawable.search_24dp),
-                                contentDescription = "Pesquisar criptomoedas",
+                                contentDescription = stringResource(R.string.search_open_cd),
                                 tint = iconTint,
                                 modifier = Modifier.size(23.dp)
                             )
@@ -353,7 +354,11 @@ fun AnimatedSearchClearButton(
     ) {
         Icon(
             imageVector = Icons.Filled.Close,
-            contentDescription = if (hasQuery) "Limpar pesquisa" else "Fechar pesquisa",
+            contentDescription = if (hasQuery) {
+                stringResource(R.string.search_clear_cd)
+            } else {
+                stringResource(R.string.search_close_cd)
+            },
             tint = iconTint,
             modifier = Modifier.graphicsLayer {
                 rotationZ = iconRotation

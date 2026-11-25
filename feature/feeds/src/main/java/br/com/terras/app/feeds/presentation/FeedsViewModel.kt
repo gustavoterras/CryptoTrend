@@ -65,12 +65,18 @@ class FeedsViewModel @Inject constructor(
     @VisibleForTesting
     fun getFeeds(topic: String = "bitcoin") {
         currentTopic = topic
-        _feeds.update { FeedsState.Loading }
         viewModelScope.launch {
+            val cached = useCase.getCachedFeeds(topic).orEmpty()
+            if (cached.isNotEmpty()) {
+                _feeds.update { FeedsState.Success(cached) }
+            } else if (_feeds.value !is FeedsState.Success) {
+                _feeds.update { FeedsState.Loading }
+            }
+
             useCase.getFeeds(topic)
                 .onFailure {
-                    _feeds.update {
-                        FeedsState.Error
+                    if (cached.isEmpty() && _feeds.value !is FeedsState.Success) {
+                        _feeds.update { FeedsState.Error }
                     }
                 }.onSuccess { result ->
                     _feeds.update {
@@ -85,7 +91,7 @@ class FeedsViewModel @Inject constructor(
         viewModelScope.launch {
             _isRefreshing.value = true
             try {
-                useCase.getFeeds(topic)
+                useCase.getFeeds(topic, forceRefresh = true)
                     .onFailure {
                         if (_feeds.value !is FeedsState.Success) {
                             _feeds.update { FeedsState.Error }

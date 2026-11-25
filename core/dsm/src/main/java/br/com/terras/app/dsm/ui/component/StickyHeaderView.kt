@@ -21,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -108,7 +109,7 @@ fun StickyHeaderView() {
             } else {
                 Icon(
                     painter = painterResource(id = R.drawable.person_24dp),
-                    contentDescription = "Entrar com o Google",
+                    contentDescription = stringResource(R.string.auth_sign_in_with_google),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(22.dp)
                 )

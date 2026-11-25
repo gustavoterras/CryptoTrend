@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -77,7 +78,9 @@ fun resolveLineTradeMarkers(
     priceToY: (Double) -> Float,
     paddingTop: Float,
     plotBottom: Float,
-    markerRadiusPx: Float
+    markerRadiusPx: Float,
+    viewportLeftPx: Float = chartLeftPx,
+    viewportRightPx: Float = chartLeftPx + chartWidth
 ): List<PositionedChartTradeMarker> {
     if (data.size < 2 || markers.isEmpty() || chartWidth <= 0f) return emptyList()
 
@@ -86,12 +89,12 @@ fun resolveLineTradeMarkers(
     val visible = filterVisibleTradeMarkers(markers, minTs, maxTs)
     if (visible.isEmpty()) return emptyList()
 
-    val minX = chartLeftPx + markerRadiusPx
-    val maxX = (chartLeftPx + chartWidth - markerRadiusPx).coerceAtLeast(minX)
     val minY = paddingTop + markerRadiusPx
     val maxY = (plotBottom - markerRadiusPx).coerceAtLeast(minY)
+    val allowedLeft = viewportLeftPx - markerRadiusPx
+    val allowedRight = viewportRightPx + markerRadiusPx
 
-    return visible.map { marker ->
+    return visible.mapNotNull { marker ->
         val clampedTs = marker.timestampMillis.coerceIn(minTs, maxTs)
         var fraction = 1f
         for (i in 0 until data.lastIndex) {
@@ -108,7 +111,9 @@ fun resolveLineTradeMarkers(
                 break
             }
         }
-        val x = (chartLeftPx + fraction * chartWidth).coerceIn(minX, maxX)
+        val rawX = chartLeftPx + fraction * chartWidth
+        if (rawX < allowedLeft || rawX > allowedRight) return@mapNotNull null
+        val x = rawX.coerceIn(viewportLeftPx + markerRadiusPx, (viewportRightPx - markerRadiusPx).coerceAtLeast(viewportLeftPx + markerRadiusPx))
         val y = priceToY(marker.unitPrice).coerceIn(minY, maxY)
         PositionedChartTradeMarker(marker = marker, center = Offset(x, y))
     }
@@ -122,7 +127,9 @@ fun resolveCandleTradeMarkers(
     priceToY: (Double) -> Float,
     paddingTop: Float,
     chartBottom: Float,
-    markerRadiusPx: Float
+    markerRadiusPx: Float,
+    viewportLeftPx: Float = chartLeftPx,
+    viewportRightPx: Float = chartLeftPx + chartWidth
 ): List<PositionedChartTradeMarker> {
     if (candles.isEmpty() || markers.isEmpty() || chartWidth <= 0f) return emptyList()
 
@@ -132,12 +139,12 @@ fun resolveCandleTradeMarkers(
     if (visible.isEmpty()) return emptyList()
 
     val slotWidth = chartWidth / candles.size
-    val minX = chartLeftPx + markerRadiusPx
-    val maxX = (chartLeftPx + chartWidth - markerRadiusPx).coerceAtLeast(minX)
     val minY = paddingTop + markerRadiusPx
     val maxY = (chartBottom - markerRadiusPx).coerceAtLeast(minY)
+    val allowedLeft = viewportLeftPx - markerRadiusPx
+    val allowedRight = viewportRightPx + markerRadiusPx
 
-    return visible.map { marker ->
+    return visible.mapNotNull { marker ->
         val clampedTs = marker.timestampMillis.coerceIn(minTs, maxTs)
         val candleIndex = candles.indexOfFirst { clampedTs <= it.endTimestampMillis }
             .let { if (it < 0) candles.lastIndex else it }
@@ -150,7 +157,9 @@ fun resolveCandleTradeMarkers(
         } else {
             0.5f
         }
-        val x = (chartLeftPx + slotWidth * candleIndex + slotWidth * localT).coerceIn(minX, maxX)
+        val rawX = chartLeftPx + slotWidth * candleIndex + slotWidth * localT
+        if (rawX < allowedLeft || rawX > allowedRight) return@mapNotNull null
+        val x = rawX.coerceIn(viewportLeftPx + markerRadiusPx, (viewportRightPx - markerRadiusPx).coerceAtLeast(viewportLeftPx + markerRadiusPx))
         val y = priceToY(marker.unitPrice).coerceIn(minY, maxY)
         PositionedChartTradeMarker(marker = marker, center = Offset(x, y))
     }
@@ -299,7 +308,7 @@ fun ChartTradeMarkersFooter(
             ) {
                 if (buyCount > 0) {
                     Text(
-                        text = "▲ Entrada ($buyCount)",
+                        text = stringResource(R.string.chart_marker_buy_count, buyCount),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = buyColor
@@ -307,7 +316,7 @@ fun ChartTradeMarkersFooter(
                 }
                 if (sellCount > 0) {
                     Text(
-                        text = "▼ Saída ($sellCount)",
+                        text = stringResource(R.string.chart_marker_sell_count, sellCount),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
                         color = sellColor
@@ -315,7 +324,7 @@ fun ChartTradeMarkersFooter(
                 }
                 if (visibleMarkers.isEmpty()) {
                     Text(
-                        text = "Sem operações neste período (${markers.size} no portfólio)",
+                        text = stringResource(R.string.chart_marker_none_in_period, markers.size),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -324,7 +333,7 @@ fun ChartTradeMarkersFooter(
 
             if (hiddenCount > 0 && visibleMarkers.isNotEmpty()) {
                 Text(
-                    text = "+$hiddenCount fora do período",
+                    text = stringResource(R.string.chart_marker_hidden_count, hiddenCount),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -334,7 +343,11 @@ fun ChartTradeMarkersFooter(
         if (selectedMarker != null) {
             val isBuy = selectedMarker.type == PortfolioTransactionType.BUY
             val accent = if (isBuy) buyColor else sellColor
-            val typeLabel = if (isBuy) "Entrada" else "Saída"
+            val typeLabel = if (isBuy) {
+                stringResource(R.string.chart_marker_buy)
+            } else {
+                stringResource(R.string.chart_marker_sell)
+            }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -406,7 +419,7 @@ fun CoinPortfolioSummaryCard(
                     modifier = Modifier.size(20.dp)
                 )
                 Text(
-                    text = "Seu Portfólio",
+                    text = stringResource(R.string.detail_portfolio_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.surface
@@ -423,14 +436,14 @@ fun CoinPortfolioSummaryCard(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "Ver Portfólio",
+                    text = stringResource(R.string.detail_portfolio_view),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.scrim
                 )
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = "Abrir Portfólio",
+                    contentDescription = stringResource(R.string.detail_portfolio_open_cd),
                     tint = MaterialTheme.colorScheme.scrim,
                     modifier = Modifier.size(16.dp)
                 )
@@ -444,7 +457,7 @@ fun CoinPortfolioSummaryCard(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = "Ganho / Perda total",
+                    text = stringResource(R.string.detail_portfolio_total_pnl),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -472,12 +485,20 @@ fun CoinPortfolioSummaryCard(
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Text(
-                    text = if (insight.hasOpenPosition) "Valor atual" else "Status",
+                    text = if (insight.hasOpenPosition) {
+                        stringResource(R.string.detail_portfolio_current_value)
+                    } else {
+                        stringResource(R.string.detail_portfolio_status)
+                    },
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = if (insight.hasOpenPosition) insight.currentValueFormatted else "Posição encerrada",
+                    text = if (insight.hasOpenPosition) {
+                        insight.currentValueFormatted
+                    } else {
+                        stringResource(R.string.detail_portfolio_closed_position)
+                    },
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.surface
@@ -488,30 +509,30 @@ fun CoinPortfolioSummaryCard(
         Column(modifier = Modifier.fillMaxWidth()) {
             if (insight.hasOpenPosition) {
                 SectionInfoItem(
-                    name = "Quantidade",
+                    name = stringResource(R.string.detail_portfolio_quantity),
                     value = insight.quantityFormatted,
                     showDivider = true
                 )
                 SectionInfoItem(
-                    name = "Preço médio",
+                    name = stringResource(R.string.detail_portfolio_avg_price),
                     value = insight.averageBuyPriceFormatted,
                     showDivider = insight.hasRealizedPnL
                 )
                 if (insight.hasRealizedPnL) {
                     SectionInfoItem(
-                        name = "Lucro/prejuízo realizado",
+                        name = stringResource(R.string.detail_portfolio_realized_pnl_full),
                         value = insight.realizedPnLFormatted,
                         showDivider = false
                     )
                 }
             } else {
                 SectionInfoItem(
-                    name = "P&L realizado",
+                    name = stringResource(R.string.detail_portfolio_realized_pnl_short),
                     value = insight.realizedPnLFormatted,
                     showDivider = true
                 )
                 SectionInfoItem(
-                    name = "Operações registradas",
+                    name = stringResource(R.string.detail_portfolio_recorded_trades),
                     value = "${insight.tradeMarkers.size}",
                     showDivider = false
                 )

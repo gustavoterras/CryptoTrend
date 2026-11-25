@@ -16,6 +16,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -44,6 +47,7 @@ class DetailViewModel @Inject constructor(
         data class LoadInsights(val coinId: String) : DetailIntent
         data class LoadNews(val query: String) : DetailIntent
         data class ToggleFavorite(val coinId: String) : DetailIntent
+        data class Refresh(val id: String, val days: Int = DaysOfChart.DAY.value) : DetailIntent
     }
 
     sealed interface DetailState {
@@ -57,6 +61,9 @@ class DetailViewModel @Inject constructor(
     }
 
     private val currentCoinId: MutableStateFlow<String> = MutableStateFlow("")
+    private var currentCoinName: String = ""
+    private val isPortuguese: Boolean
+        get() = Locale.getDefault().language.equals("pt", ignoreCase = true)
 
     val isFavorite: StateFlow<Boolean> = currentCoinId
         .flatMapLatest { coinId ->
@@ -105,6 +112,15 @@ class DetailViewModel @Inject constructor(
     private val _news: MutableStateFlow<DetailState> = MutableStateFlow(DetailState.Loading)
     val news: StateFlow<DetailState> = _news.asStateFlow()
 
+    private val _isRefreshing: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    private val _lastUpdatedAtMillis: MutableStateFlow<Long?> = MutableStateFlow(null)
+    val lastUpdatedAtMillis: StateFlow<Long?> = _lastUpdatedAtMillis.asStateFlow()
+
+    private val _refreshErrorMessage: MutableStateFlow<String?> = MutableStateFlow(null)
+    val refreshErrorMessage: StateFlow<String?> = _refreshErrorMessage.asStateFlow()
+
     fun handleIntent(intent: DetailIntent) {
         when (intent) {
             is DetailIntent.LoadDetail -> getDetailById(intent.id)
@@ -112,7 +128,12 @@ class DetailViewModel @Inject constructor(
             is DetailIntent.LoadInsights -> getInsightsByCoinId(intent.coinId)
             is DetailIntent.LoadNews -> getNewsByQuery(intent.query)
             is DetailIntent.ToggleFavorite -> toggleFavorite(intent.coinId)
+            is DetailIntent.Refresh -> refreshAll(intent.id, intent.days)
         }
+    }
+
+    fun consumeRefreshErrorMessage() {
+        _refreshErrorMessage.value = null
     }
 
     fun toggleFavorite(coinId: String) {
@@ -128,6 +149,8 @@ class DetailViewModel @Inject constructor(
         viewModelScope.launch {
             useCase.getDetailById(id)
                 .onSuccess { result ->
+                    currentCoinName = result.name
+                    _lastUpdatedAtMillis.value = System.currentTimeMillis()
                     _detail.update {
                         DetailState.SuccessDetail(result)
                     }
@@ -142,6 +165,7 @@ class DetailViewModel @Inject constructor(
 
     fun getChartById(id: String, days: Int = 1) {
         viewModelScope.launch {
+            _chart.update { DetailState.Loading }
             useCase.getChartDetailById(id, days)
                 .onSuccess { result ->
                     _chart.update {
@@ -164,18 +188,7 @@ class DetailViewModel @Inject constructor(
                     _insights.update { DetailState.SuccessInsights(insightsList) }
                 }
                 .onFailure { throwable ->
-                    val message = when (throwable) {
-                        is ClientRequestException -> when (throwable.response.status) {
-                            HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden ->
-                                "Insights do CoinGecko requerem uma chave de API Pro (plano Analyst+)."
-                            HttpStatusCode.TooManyRequests ->
-                                "Limite de requisições atingido. Tente novamente em instantes."
-                            else ->
-                                "Não foi possível carregar os insights (${throwable.response.status.value})."
-                        }
-                        else -> "Não foi possível carregar os insights de mercado no momento."
-                    }
-                    _insights.update { DetailState.InsightsError(message) }
+                    _insights.update { DetailState.InsightsError(mapInsightsError(throwable)) }
                 }
         }
     }
@@ -193,6 +206,112 @@ class DetailViewModel @Inject constructor(
                         DetailState.SuccessNews(emptyList())
                     }
                 }
+        }
+    }
+
+    private fun refreshAll(id: String, days: Int) {
+        if (id.isBlank() || _isRefreshing.value) return
+        currentCoinId.value = id
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            try {
+                coroutineScope {
+                    val detailDeferred = async { useCase.getDetailById(id) }
+                    val chartDeferred = async { useCase.getChartDetailById(id, days) }
+                    val insightsDeferred = async { useCase.getInsightsByCoinId(id) }
+                    val newsName = currentCoinName
+                    val newsDeferred = if (newsName.isNotBlank()) {
+                        async { feedsUseCase.getFeeds(newsName) }
+                    } else {
+                        null
+                    }
+
+                    val detailResult = detailDeferred.await()
+                    val chartResult = chartDeferred.await()
+                    val insightsResult = insightsDeferred.await()
+                    val newsResult = newsDeferred?.await()
+
+                    detailResult
+                        .onSuccess { result ->
+                            currentCoinName = result.name
+                            _lastUpdatedAtMillis.value = System.currentTimeMillis()
+                            _detail.update { DetailState.SuccessDetail(result) }
+                            if (newsName.isBlank() && result.name.isNotBlank()) {
+                                getNewsByQuery(result.name)
+                            }
+                        }
+                        .onFailure {
+                            if (_detail.value !is DetailState.SuccessDetail) {
+                                _detail.update { DetailState.Error }
+                            } else {
+                                _refreshErrorMessage.value = if (isPortuguese) {
+                                    "Não foi possível atualizar os dados no momento."
+                                } else {
+                                    "Unable to refresh data right now."
+                                }
+                            }
+                        }
+
+                    chartResult
+                        .onSuccess { result ->
+                            _chart.update { DetailState.SuccessChart(result, days) }
+                        }
+                        .onFailure {
+                            if (_chart.value !is DetailState.SuccessChart) {
+                                _chart.update { DetailState.Error }
+                            }
+                        }
+
+                    insightsResult
+                        .onSuccess { insightsList ->
+                            _insights.update { DetailState.SuccessInsights(insightsList) }
+                        }
+                        .onFailure { throwable ->
+                            if (_insights.value !is DetailState.SuccessInsights) {
+                                _insights.update {
+                                    DetailState.InsightsError(mapInsightsError(throwable))
+                                }
+                            }
+                        }
+
+                    newsResult?.onSuccess { articles ->
+                        _news.update { DetailState.SuccessNews(articles) }
+                    }
+                }
+            } finally {
+                _isRefreshing.value = false
+            }
+        }
+    }
+
+    private fun mapInsightsError(throwable: Throwable): String {
+        val pt = isPortuguese
+        return when (throwable) {
+            is ClientRequestException -> when (throwable.response.status) {
+                HttpStatusCode.Unauthorized, HttpStatusCode.Forbidden ->
+                    if (pt) {
+                        "Insights do CoinGecko requerem uma chave de API Pro (plano Analyst+)."
+                    } else {
+                        "CoinGecko Insights require a Pro API key (Analyst+ plan)."
+                    }
+                HttpStatusCode.TooManyRequests ->
+                    if (pt) {
+                        "Limite de requisições atingido. Tente novamente em instantes."
+                    } else {
+                        "Rate limit reached. Please try again shortly."
+                    }
+                else ->
+                    if (pt) {
+                        "Não foi possível carregar os insights (${throwable.response.status.value})."
+                    } else {
+                        "Unable to load insights (${throwable.response.status.value})."
+                    }
+            }
+            else -> if (pt) {
+                "Não foi possível carregar os insights de mercado no momento."
+            } else {
+                "Unable to load market insights right now."
+            }
         }
     }
 }

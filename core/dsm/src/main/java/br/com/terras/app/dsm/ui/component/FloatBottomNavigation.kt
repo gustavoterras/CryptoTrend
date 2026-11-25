@@ -58,6 +58,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -66,6 +67,7 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import kotlinx.coroutines.coroutineScope
@@ -380,7 +382,7 @@ private fun FloatingNavIconButton(
                 indication = LocalIndication.current,
                 role = Role.Tab,
                 onClickLabel = if (isCollapsed) {
-                    "Expandir barra de navegação"
+                    stringResource(R.string.nav_expand_bar)
                 } else {
                     item.title
                 },
@@ -419,7 +421,7 @@ private fun FloatingNavIconButton(
         Icon(
             painter = painterResource(id = item.icon),
             contentDescription = if (isCollapsed) {
-                "${item.title}, tocar para expandir navegação"
+                stringResource(R.string.nav_item_collapsed_cd, item.title)
             } else {
                 item.title
             },

@@ -8,6 +8,8 @@ import br.com.terras.app.coins.list.data.model.TrendingCoinsResponse
 import br.com.terras.app.coins.list.domain.model.CoinVO
 import br.com.terras.app.coins.mockCoinsListResponseStub
 import br.com.terras.app.coins.mockCoinsVOListStub
+import br.com.terras.app.coins.mockGlobalMarketResponseStub
+import br.com.terras.app.coins.mockGlobalMarketVOStub
 import br.com.terras.app.coins.mockTrendingCoinsResponseStub
 import br.com.terras.app.dsm.ui.component.TrendColor
 import io.mockk.coEvery
@@ -155,5 +157,15 @@ class CoinsUseCaseImplTest {
         Assert.assertEquals(Result.success(page1VOs), page1Result)
         Assert.assertEquals(Result.success(page2VOs), page2Result)
         Assert.assertEquals(Result.success(emptyList<CoinVO>()), page3Result)
+    }
+
+    @Test
+    fun `WHEN getGlobalMarketData is called THEN maps repository response to GlobalMarketVO`() = runTest {
+        coEvery { repository.getGlobalMarketData(forceRefresh = false) } returns Result.success(mockGlobalMarketResponseStub)
+        every { mapper.toGlobalMarket(mockGlobalMarketResponseStub) } returns mockGlobalMarketVOStub
+
+        val result = useCase.getGlobalMarketData()
+
+        Assert.assertEquals(Result.success(mockGlobalMarketVOStub), result)
     }
 }

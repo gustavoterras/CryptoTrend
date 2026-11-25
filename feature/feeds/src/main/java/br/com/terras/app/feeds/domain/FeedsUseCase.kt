@@ -10,6 +10,10 @@ import javax.inject.Inject
 
 interface FeedsUseCase {
     suspend fun getFeeds(query: String): Result<List<ArticleVO>>
+
+    suspend fun getCachedFeeds(query: String): List<ArticleVO>? = null
+    suspend fun getFeeds(query: String, forceRefresh: Boolean): Result<List<ArticleVO>> =
+        getFeeds(query)
 }
 
 class FeedsUseCaseImpl @Inject constructor(
@@ -17,20 +21,47 @@ class FeedsUseCaseImpl @Inject constructor(
     private val mapper: FeedsMapper
 ) : FeedsUseCase {
 
-    override suspend fun getFeeds(
-        query: String
-    ): Result<List<ArticleVO>> {
-        val locale = Locale.getDefault()
-        return repository.getFeeds(
+    override suspend fun getFeeds(query: String): Result<List<ArticleVO>> =
+        getFeeds(query = query, forceRefresh = false)
+
+    override suspend fun getCachedFeeds(query: String): List<ArticleVO>? {
+        val (fromDate, language) = currentDateAndLanguage()
+        val cached = repository.getCachedFeeds(
             query = query,
-            fromDate = SimpleDateFormat(YYYY_MM_DD, locale).format(
-                Calendar.getInstance().apply {
-                    set(Calendar.DAY_OF_MONTH, -7)
-                }.time,
-            ),
-            language = locale.language
-        ).map { result ->
-            mapper.toFeeds(result.articles)
+            fromDate = fromDate,
+            language = language
+        ) ?: return null
+        return mapper.toFeeds(cached.articles)
+    }
+
+    override suspend fun getFeeds(query: String, forceRefresh: Boolean): Result<List<ArticleVO>> {
+        val (fromDate, language) = currentDateAndLanguage()
+        val result = if (forceRefresh) {
+            repository.getFeeds(
+                query = query,
+                fromDate = fromDate,
+                language = language,
+                forceRefresh = true
+            )
+        } else {
+            repository.getFeeds(
+                query = query,
+                fromDate = fromDate,
+                language = language
+            )
         }
+        return result.map { response ->
+            mapper.toFeeds(response.articles)
+        }
+    }
+
+    private fun currentDateAndLanguage(): Pair<String, String> {
+        val locale = Locale.getDefault()
+        val fromDate = SimpleDateFormat(YYYY_MM_DD, locale).format(
+            Calendar.getInstance().apply {
+                set(Calendar.DAY_OF_MONTH, -7)
+            }.time
+        )
+        return fromDate to locale.language
     }
 }

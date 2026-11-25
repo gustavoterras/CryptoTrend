@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <style name="Theme.CryptoTrend" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@color/splash_brand_green</item>
+        <item name="android:windowBackground">#FF12161A</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+
+    <style name="Theme.CryptoTrend.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_brand_green</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="postSplashScreenTheme">@style/Theme.CryptoTrend</item>
         <item name="android:windowSplashScreenBackground">@color/splash_brand_green</item>
-        <item name="android:windowSplashScreenIconBackgroundColor">@color/splash_brand_green</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>

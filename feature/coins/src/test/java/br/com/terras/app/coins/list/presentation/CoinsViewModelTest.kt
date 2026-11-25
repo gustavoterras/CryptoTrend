@@ -9,7 +9,9 @@ import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Empty
 import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Error
 import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Loading
 import br.com.terras.app.coins.list.presentation.CoinsViewModel.CoinsState.Success
+import br.com.terras.app.coins.list.presentation.CoinsViewModel.GlobalMarketState
 import br.com.terras.app.coins.mockCoinsVOListStub
+import br.com.terras.app.coins.mockGlobalMarketVOStub
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.feeds.domain.FeedsUseCase
 import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
@@ -58,6 +60,8 @@ class CoinsViewModelTest {
     fun setup() {
         favoriteLocalRepository = FakeCoinsFavoriteLocalRepository(favoriteIdsFlow)
         refreshCoordinator = DataRefreshCoordinator()
+        coEvery { userCase.getCachedGlobalMarketData() } returns null
+        coEvery { userCase.getGlobalMarketData(any()) } returns Result.failure(IllegalStateException("no global stub"))
         viewModel = CoinsViewModel(
             userCase,
             searchUseCase,
@@ -164,15 +168,15 @@ class CoinsViewModelTest {
     @Test
     fun `WHEN Refresh intent THEN refresh coin prices and news feeds and stop refreshing`() = runBlocking {
         val updatedCoins = mockCoinsVOListStub
-        coEvery { userCase.getCoins() } returns Result.success(updatedCoins)
-        coEvery { feedsUseCase.getFeeds("bitcoin") } returns Result.success(emptyList())
+        coEvery { userCase.getCoins(page = 1, forceRefresh = true) } returns Result.success(updatedCoins)
+        coEvery { feedsUseCase.getFeeds("bitcoin", forceRefresh = true) } returns Result.success(emptyList())
 
         refreshCoordinator.refreshEvents.test {
             viewModel.handleIntent(CoinsIntent.Refresh)
 
             Assert.assertEquals(Unit, awaitItem())
-            coVerify(atLeast = 1) { userCase.getCoins() }
-            coVerify(exactly = 1) { feedsUseCase.getFeeds("bitcoin") }
+            coVerify(atLeast = 1) { userCase.getCoins(page = 1, forceRefresh = true) }
+            coVerify(exactly = 1) { feedsUseCase.getFeeds("bitcoin", forceRefresh = true) }
             Assert.assertEquals(Success(updatedCoins), viewModel.coins.value)
             Assert.assertFalse(viewModel.isRefreshing.value)
             cancelAndIgnoreRemainingEvents()
@@ -242,15 +246,15 @@ class CoinsViewModelTest {
     @Test
     fun `WHEN RefreshTrending intent THEN refresh trending coins and feeds and stop refreshing`() = runBlocking {
         val updatedCoins = mockCoinsVOListStub
-        coEvery { userCase.getTrendingCoins() } returns Result.success(updatedCoins)
-        coEvery { feedsUseCase.getFeeds("bitcoin") } returns Result.success(emptyList())
+        coEvery { userCase.getTrendingCoins(page = 1, forceRefresh = true) } returns Result.success(updatedCoins)
+        coEvery { feedsUseCase.getFeeds("bitcoin", forceRefresh = true) } returns Result.success(emptyList())
 
         refreshCoordinator.refreshEvents.test {
             viewModel.handleIntent(CoinsIntent.RefreshTrending)
 
             Assert.assertEquals(Unit, awaitItem())
-            coVerify(atLeast = 1) { userCase.getTrendingCoins() }
-            coVerify(exactly = 1) { feedsUseCase.getFeeds("bitcoin") }
+            coVerify(atLeast = 1) { userCase.getTrendingCoins(page = 1, forceRefresh = true) }
+            coVerify(exactly = 1) { feedsUseCase.getFeeds("bitcoin", forceRefresh = true) }
             Assert.assertEquals(Success(updatedCoins), viewModel.trendingCoins.value)
             Assert.assertFalse(viewModel.isTrendingRefreshing.value)
             cancelAndIgnoreRemainingEvents()
@@ -381,5 +385,26 @@ class CoinsViewModelTest {
         viewModel.handleIntent(CoinsIntent.LoadMoreCoins)
 
         coVerify(exactly = 0) { userCase.getCoins(page = 2) }
+    }
+
+    @Test
+    fun `WHEN LoadGlobalMarket succeeds THEN emits GlobalMarketState Success`() = runBlocking {
+        coEvery { userCase.getGlobalMarketData() } returns Result.success(mockGlobalMarketVOStub)
+
+        viewModel.handleIntent(CoinsIntent.LoadGlobalMarket)
+
+        Assert.assertEquals(GlobalMarketState.Success(mockGlobalMarketVOStub), viewModel.globalMarket.value)
+    }
+
+    @Test
+    fun `WHEN Refresh intent runs THEN refreshes global market data as well`() = runBlocking {
+        coEvery { userCase.getCoins(page = 1, forceRefresh = true) } returns Result.success(mockCoinsVOListStub)
+        coEvery { feedsUseCase.getFeeds("bitcoin", forceRefresh = true) } returns Result.success(emptyList())
+        coEvery { userCase.getGlobalMarketData(forceRefresh = true) } returns Result.success(mockGlobalMarketVOStub)
+
+        viewModel.handleIntent(CoinsIntent.Refresh)
+
+        coVerify(atLeast = 1) { userCase.getGlobalMarketData(forceRefresh = true) }
+        Assert.assertEquals(GlobalMarketState.Success(mockGlobalMarketVOStub), viewModel.globalMarket.value)
     }
 }

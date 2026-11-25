@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.terras.app.coins.list.domain.CoinsUseCase
 import br.com.terras.app.coins.list.domain.model.CoinVO
+import br.com.terras.app.coins.list.domain.model.GlobalMarketVO
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.feeds.domain.FeedsUseCase
 import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
@@ -47,6 +48,13 @@ class CoinsViewModel @Inject constructor(
         data class TrendingSearchQueryChanged(val query: String) : CoinsIntent
         data class ExecuteTrendingSearch(val query: String) : CoinsIntent
         data object ClearTrendingSearch : CoinsIntent
+        data object LoadGlobalMarket : CoinsIntent
+    }
+
+    sealed interface GlobalMarketState {
+        data object Loading : GlobalMarketState
+        data class Success(val data: GlobalMarketVO) : GlobalMarketState
+        data object Empty : GlobalMarketState
     }
 
     sealed interface CoinsState {
@@ -79,6 +87,9 @@ class CoinsViewModel @Inject constructor(
     private val _isTrendingRefreshing: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val isTrendingRefreshing: StateFlow<Boolean> = _isTrendingRefreshing.asStateFlow()
 
+    private val _globalMarket: MutableStateFlow<GlobalMarketState> = MutableStateFlow(GlobalMarketState.Loading)
+    val globalMarket: StateFlow<GlobalMarketState> = _globalMarket.asStateFlow()
+
     val favoriteIds: StateFlow<Set<String>> = favoriteLocalRepository.observeFavoriteIds()
         .map { it.toSet() }
         .stateIn(
@@ -102,6 +113,7 @@ class CoinsViewModel @Inject constructor(
 
     init {
         handleIntent(CoinsIntent.LoadCoins)
+        handleIntent(CoinsIntent.LoadGlobalMarket)
     }
 
     fun handleIntent(intent: CoinsIntent) {
@@ -118,6 +130,7 @@ class CoinsViewModel @Inject constructor(
             is CoinsIntent.TrendingSearchQueryChanged -> onTrendingSearchQueryChanged(intent.query)
             is CoinsIntent.ExecuteTrendingSearch -> onExecuteTrendingSearch(intent.query)
             is CoinsIntent.ClearTrendingSearch -> clearTrendingSearch()
+            is CoinsIntent.LoadGlobalMarket -> fetchGlobalMarketData()
         }
     }
 
@@ -132,15 +145,55 @@ class CoinsViewModel @Inject constructor(
         fetchTrendingCoins()
     }
 
+    private fun fetchGlobalMarketData() {
+        viewModelScope.launch {
+            val cached = runCatching { useCase.getCachedGlobalMarketData() }.getOrNull()
+            if (cached != null) {
+                _globalMarket.value = GlobalMarketState.Success(cached)
+            } else if (_globalMarket.value !is GlobalMarketState.Success) {
+                _globalMarket.value = GlobalMarketState.Loading
+            }
+
+            val data = runCatching {
+                useCase.getGlobalMarketData().getOrNull()
+            }.getOrNull()
+            if (data != null) {
+                _globalMarket.value = GlobalMarketState.Success(data)
+            } else if (_globalMarket.value !is GlobalMarketState.Success) {
+                _globalMarket.value = GlobalMarketState.Empty
+            }
+        }
+    }
+
     private fun fetchCoins() {
         loadMoreCoinsJob?.cancel()
         isLoadingMoreCoins = false
-        _coins.update { CoinsState.Loading }
         viewModelScope.launch {
+            val cached = useCase.getCachedCoins(page = 1).orEmpty()
+            if (cached.isNotEmpty()) {
+                currentCoinsPage = 1
+                hasMoreCoinsPages = cached.size >= CoinsUseCase.CRYPTO_PAGE_SIZE
+                allCoins = cached.distinctBy { it.id }
+                val currentQuery = _searchQuery.value.trim()
+                if (currentQuery.isEmpty()) {
+                    _coins.update {
+                        CoinsState.Success(
+                            coinsList = allCoins,
+                            isLoadingMore = false,
+                            hasMorePages = hasMoreCoinsPages
+                        )
+                    }
+                } else {
+                    searchLocalOrApi(currentQuery, debounceApi = false, showLoading = false)
+                }
+            } else if (allCoins.isEmpty()) {
+                _coins.update { CoinsState.Loading }
+            }
+
             useCase.getCoins(page = 1)
                 .onFailure {
-                    _coins.update {
-                        CoinsState.Error
+                    if (allCoins.isEmpty()) {
+                        _coins.update { CoinsState.Error }
                     }
                 }
                 .onSuccess { result ->
@@ -157,7 +210,7 @@ class CoinsViewModel @Inject constructor(
                             )
                         }
                     } else {
-                        searchLocalOrApi(currentQuery, debounceApi = false)
+                        searchLocalOrApi(currentQuery, debounceApi = false, showLoading = allCoins.isEmpty())
                     }
                 }
         }
@@ -227,12 +280,32 @@ class CoinsViewModel @Inject constructor(
     private fun fetchTrendingCoins() {
         loadMoreTrendingJob?.cancel()
         isLoadingMoreTrending = false
-        _trendingCoins.update { CoinsState.Loading }
         viewModelScope.launch {
+            val cached = useCase.getCachedTrendingCoins(page = 1).orEmpty()
+            if (cached.isNotEmpty()) {
+                currentTrendingPage = 1
+                hasMoreTrendingPages = cached.size >= CoinsUseCase.TRENDING_PAGE_SIZE
+                allTrendingCoins = cached.distinctBy { it.id }
+                val currentQuery = _trendingSearchQuery.value.trim()
+                if (currentQuery.isEmpty()) {
+                    _trendingCoins.update {
+                        CoinsState.Success(
+                            coinsList = allTrendingCoins,
+                            isLoadingMore = false,
+                            hasMorePages = hasMoreTrendingPages
+                        )
+                    }
+                } else {
+                    searchTrendingLocalOrApi(currentQuery, debounceApi = false, showLoading = false)
+                }
+            } else if (allTrendingCoins.isEmpty()) {
+                _trendingCoins.update { CoinsState.Loading }
+            }
+
             useCase.getTrendingCoins(page = 1)
                 .onFailure {
-                    _trendingCoins.update {
-                        CoinsState.Error
+                    if (allTrendingCoins.isEmpty()) {
+                        _trendingCoins.update { CoinsState.Error }
                     }
                 }
                 .onSuccess { result ->
@@ -249,7 +322,7 @@ class CoinsViewModel @Inject constructor(
                             )
                         }
                     } else {
-                        searchTrendingLocalOrApi(currentQuery, debounceApi = false)
+                        searchTrendingLocalOrApi(currentQuery, debounceApi = false, showLoading = allTrendingCoins.isEmpty())
                     }
                 }
         }
@@ -325,10 +398,16 @@ class CoinsViewModel @Inject constructor(
             try {
                 refreshCoordinator.triggerRefresh()
                 coroutineScope {
-                    val coinsDeferred = async { useCase.getCoins(page = 1) }
-                    val feedsDeferred = async { feedsUseCase.getFeeds("bitcoin") }
+                    val coinsDeferred = async { useCase.getCoins(page = 1, forceRefresh = true) }
+                    val feedsDeferred = async { feedsUseCase.getFeeds("bitcoin", forceRefresh = true) }
+                    val globalDeferred = async {
+                        runCatching { useCase.getGlobalMarketData(forceRefresh = true).getOrNull() }.getOrNull()
+                    }
                     val coinsResult = coinsDeferred.await()
                     feedsDeferred.await()
+                    globalDeferred.await()?.let { globalData ->
+                        _globalMarket.value = GlobalMarketState.Success(globalData)
+                    }
 
                     coinsResult
                         .onFailure {
@@ -373,10 +452,16 @@ class CoinsViewModel @Inject constructor(
             try {
                 refreshCoordinator.triggerRefresh()
                 coroutineScope {
-                    val trendingDeferred = async { useCase.getTrendingCoins(page = 1) }
-                    val feedsDeferred = async { feedsUseCase.getFeeds("bitcoin") }
+                    val trendingDeferred = async { useCase.getTrendingCoins(page = 1, forceRefresh = true) }
+                    val feedsDeferred = async { feedsUseCase.getFeeds("bitcoin", forceRefresh = true) }
+                    val globalDeferred = async {
+                        runCatching { useCase.getGlobalMarketData(forceRefresh = true).getOrNull() }.getOrNull()
+                    }
                     val trendingResult = trendingDeferred.await()
                     feedsDeferred.await()
+                    globalDeferred.await()?.let { globalData ->
+                        _globalMarket.value = GlobalMarketState.Success(globalData)
+                    }
 
                     trendingResult
                         .onFailure {

@@ -6,6 +6,10 @@ import javax.inject.Inject
 
 interface FavoritesUseCase {
     suspend fun getCoinsByIds(ids: List<String>): Result<List<CoinVO>>
+
+    suspend fun getCachedCoinsByIds(ids: List<String>): List<CoinVO>? = null
+    suspend fun getCoinsByIds(ids: List<String>, forceRefresh: Boolean): Result<List<CoinVO>> =
+        getCoinsByIds(ids)
 }
 
 class FavoritesUseCaseImpl @Inject constructor(
@@ -13,10 +17,27 @@ class FavoritesUseCaseImpl @Inject constructor(
     private val mapper: FavoritesMapper
 ) : FavoritesUseCase {
 
-    override suspend fun getCoinsByIds(ids: List<String>): Result<List<CoinVO>> {
+    override suspend fun getCoinsByIds(ids: List<String>): Result<List<CoinVO>> =
+        getCoinsByIds(ids = ids, forceRefresh = false)
+
+    override suspend fun getCachedCoinsByIds(ids: List<String>): List<CoinVO>? {
+        if (ids.isEmpty()) return emptyList()
+        val cached = repository.getCachedCoinsByIds(ids) ?: return null
+        return mapper.toCoins(cached)
+    }
+
+    override suspend fun getCoinsByIds(
+        ids: List<String>,
+        forceRefresh: Boolean
+    ): Result<List<CoinVO>> {
         if (ids.isEmpty()) return Result.success(emptyList())
-        return repository.getCoinsByIds(ids).map { result ->
-            mapper.toCoins(result)
+        val result = if (forceRefresh) {
+            repository.getCoinsByIds(ids, forceRefresh = true)
+        } else {
+            repository.getCoinsByIds(ids)
+        }
+        return result.map { items ->
+            mapper.toCoins(items)
         }
     }
 }

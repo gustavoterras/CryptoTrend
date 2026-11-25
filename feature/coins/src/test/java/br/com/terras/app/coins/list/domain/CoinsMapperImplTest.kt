@@ -5,14 +5,17 @@ import br.com.terras.app.coins.list.data.model.TrendingCoinData
 import br.com.terras.app.coins.list.data.model.TrendingCoinItem
 import br.com.terras.app.coins.list.data.model.TrendingCoinWrapper
 import br.com.terras.app.coins.list.data.model.TrendingCoinsResponse
+import br.com.terras.app.coins.list.domain.model.FearAndGreedSentiment
 import br.com.terras.app.coins.mockCoinVOStub
 import br.com.terras.app.coins.mockCoinsListResponseStub
 import br.com.terras.app.coins.mockCoinsResponseStub
+import br.com.terras.app.coins.mockGlobalMarketResponseStub
 import br.com.terras.app.coins.mockTrendingCoinsResponseStub
 import br.com.terras.app.dsm.ui.component.TrendColor
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
+import java.util.Locale
 
 class CoinsMapperImplTest {
 
@@ -110,5 +113,53 @@ class CoinsMapperImplTest {
         Assert.assertEquals(20, result.size)
         Assert.assertEquals("coin-1", result.first().id)
         Assert.assertEquals("coin-20", result.last().id)
+    }
+
+    @Test
+    fun `WHEN toGlobalMarket is called in pt-BR THEN formats compact BRL metrics and dominance`() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale("pt", "BR"))
+            val result = mapper.toGlobalMarket(mockGlobalMarketResponseStub)
+
+            Assert.assertEquals(44, result.fearAndGreedValue)
+            Assert.assertEquals(FearAndGreedSentiment.FEAR, result.fearAndGreedSentiment)
+            Assert.assertEquals("Medo", result.fearAndGreedLabel)
+            Assert.assertTrue(result.hasFearAndGreed)
+            Assert.assertTrue(result.totalMarketCap.contains("tri"))
+            Assert.assertTrue(result.totalVolume24h.contains("bi"))
+            Assert.assertEquals("54,2%", result.btcDominance)
+            Assert.assertEquals("16,5%", result.ethDominance)
+            Assert.assertEquals("+2,4%", result.marketCapChangePercentage)
+            Assert.assertEquals(TrendColor.UP, result.trendColor)
+            Assert.assertEquals("15.420", result.activeCryptocurrencies)
+            Assert.assertEquals("1.120", result.marketsCount)
+            Assert.assertEquals(54.2, result.btcDominancePercent, 0.01)
+            Assert.assertEquals(54, result.btcDominanceScore)
+            Assert.assertEquals(46, result.altcoinsDominanceScore)
+            Assert.assertTrue(result.hasBtcDominance)
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
+    }
+
+    @Test
+    fun `WHEN toGlobalMarket is called in en-US THEN formats compact USD metrics`() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.US)
+            val result = mapper.toGlobalMarket(mockGlobalMarketResponseStub)
+
+            Assert.assertEquals(44, result.fearAndGreedValue)
+            Assert.assertEquals("Fear", result.fearAndGreedLabel)
+            Assert.assertTrue(result.totalMarketCap.endsWith("T"))
+            Assert.assertTrue(result.totalVolume24h.endsWith("B"))
+            Assert.assertEquals("54.2%", result.btcDominance)
+            Assert.assertEquals("16.5%", result.ethDominance)
+            Assert.assertEquals("+2.4%", result.marketCapChangePercentage)
+            Assert.assertEquals("15,420", result.activeCryptocurrencies)
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
     }
 }

@@ -46,8 +46,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -112,11 +114,21 @@ fun PortfolioActivityCompose(
             containerColor = MaterialTheme.colorScheme.primary,
             titleContentColor = MaterialTheme.colorScheme.surface,
             textContentColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-            title = { Text("Excluir operação") },
+            title = { Text(stringResource(R.string.portfolio_delete_dialog_title)) },
             text = {
-                val typeLabel = if (tx.type == PortfolioTransactionType.BUY) "compra" else "venda"
+                val typeLabel = if (tx.type == PortfolioTransactionType.BUY) {
+                    stringResource(R.string.portfolio_type_buy_lower)
+                } else {
+                    stringResource(R.string.portfolio_type_sell_lower)
+                }
                 Text(
-                    "Deseja excluir esta $typeLabel de ${tx.quantityFormatted} ${tx.coinSymbol} (${tx.totalValueFormatted})?"
+                    stringResource(
+                        R.string.portfolio_delete_dialog_message,
+                        typeLabel,
+                        tx.quantityFormatted,
+                        tx.coinSymbol,
+                        tx.totalValueFormatted
+                    )
                 )
             },
             confirmButton = {
@@ -125,7 +137,7 @@ fun PortfolioActivityCompose(
                     modifier = Modifier.testTag("portfolio_confirm_delete_btn")
                 ) {
                     Text(
-                        text = "Excluir",
+                        text = stringResource(R.string.action_delete),
                         color = TrendColor.DOWN.textColor,
                         fontWeight = FontWeight.Bold
                     )
@@ -133,7 +145,7 @@ fun PortfolioActivityCompose(
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.handleIntent(PortfolioIntent.DismissDeleteDialog) }) {
-                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.action_cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
@@ -145,11 +157,11 @@ fun PortfolioActivityCompose(
             containerColor = MaterialTheme.colorScheme.primary,
             titleContentColor = MaterialTheme.colorScheme.surface,
             textContentColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-            title = { Text("Operação protegida") },
+            title = { Text(stringResource(R.string.portfolio_protected_dialog_title)) },
             text = { Text(msg) },
             confirmButton = {
                 RippleButton(
-                    text = "Entendi",
+                    text = stringResource(R.string.dialog_alert_acknowledge),
                     onClick = { viewModel.handleIntent(PortfolioIntent.ClearDeleteError) }
                 )
             }
@@ -342,7 +354,7 @@ private fun PortfolioEmptyView(
             }
 
             Text(
-                text = "Seu Portfólio Cripto",
+                text = stringResource(R.string.portfolio_empty_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.surface,
@@ -350,7 +362,7 @@ private fun PortfolioEmptyView(
             )
 
             Text(
-                text = "Registre suas compras e vendas para acompanhar saldo consolidado, preço médio, lucro/prejuízo e alocação direto no dispositivo.",
+                text = stringResource(R.string.portfolio_empty_description),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
@@ -377,7 +389,7 @@ private fun PortfolioEmptyView(
                 )
                 Spacer(modifier = Modifier.size(8.dp))
                 Text(
-                    text = "Registrar primeira operação",
+                    text = stringResource(R.string.portfolio_empty_cta),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold
                 )
@@ -393,10 +405,19 @@ private fun PortfolioSuccessContent(
     onIntent: (PortfolioIntent) -> Unit,
     onCoinClick: (String) -> Unit
 ) {
+    val context = LocalContext.current
     val snapshot = state.snapshot
     val palette = portfolioChartPalette()
-    val allocationSlices = remember(snapshot.holdings, palette) {
-        buildAllocationSlices(snapshot.holdings, palette)
+    val othersSymbol = stringResource(R.string.portfolio_others_symbol)
+    val allocationSlices = remember(snapshot.holdings, palette, othersSymbol) {
+        buildAllocationSlices(
+            holdings = snapshot.holdings,
+            palette = palette,
+            othersSymbol = othersSymbol,
+            othersLabelProvider = { count ->
+                context.getString(R.string.portfolio_others_label, count)
+            }
+        )
     }
 
     LazyColumn(
@@ -434,7 +455,7 @@ private fun PortfolioSuccessContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "Distribuição da carteira",
+                        text = stringResource(R.string.portfolio_allocation_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.surface
@@ -443,9 +464,9 @@ private fun PortfolioSuccessContent(
                         slices = allocationSlices,
                         totalValueText = snapshot.summary.totalValueFormatted,
                         assetCountLabel = if (snapshot.summary.assetCount == 1) {
-                            "1 ativo"
+                            stringResource(R.string.portfolio_asset_count_singular)
                         } else {
-                            "${snapshot.summary.assetCount} ativos"
+                            stringResource(R.string.portfolio_asset_count_plural, snapshot.summary.assetCount)
                         },
                         selectedSliceId = state.selectedSliceId,
                         onSelectSlice = { onIntent(PortfolioIntent.SelectAllocationSlice(it)) }
@@ -501,7 +522,7 @@ private fun PortfolioSuccessContent(
                         modifier = Modifier.testTag(tabTag),
                         text = {
                             Text(
-                                text = tab.label,
+                                text = stringResource(tab.labelRes),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                             )
@@ -582,14 +603,14 @@ private fun OfflineQuotesBanner(onRetry: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = "Sem cotações ao vivo. Exibindo dados locais.",
+                text = stringResource(R.string.portfolio_offline_banner),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
             TextButton(onClick = onRetry) {
                 Text(
-                    text = "Atualizar",
+                    text = stringResource(R.string.action_refresh),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.scrim
@@ -621,7 +642,7 @@ private fun PortfolioSummaryHeader(summary: PortfolioSummaryVO) {
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Text(
-                text = "Saldo total",
+                text = stringResource(R.string.portfolio_summary_total_balance),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -663,17 +684,17 @@ private fun PortfolioSummaryHeader(summary: PortfolioSummaryVO) {
             verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             PortfolioStatRow(
-                label = "P&L total",
+                label = stringResource(R.string.portfolio_summary_total_pnl),
                 value = "${summary.totalPnLFormatted} (${summary.unrealizedPnLPercentageFormatted})",
                 valueColor = summary.totalPnLTrend.textColor
             )
             PortfolioStatRow(
-                label = "Investido",
+                label = stringResource(R.string.portfolio_summary_invested),
                 value = summary.totalInvestedFormatted,
                 valueColor = MaterialTheme.colorScheme.surface
             )
             PortfolioStatRow(
-                label = "Realizado",
+                label = stringResource(R.string.portfolio_summary_realized),
                 value = summary.realizedPnLFormatted,
                 valueColor = summary.realizedPnLTrend.textColor
             )
@@ -771,8 +792,9 @@ private fun HoldingRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                val avgPrefix = stringResource(R.string.portfolio_holding_avg_prefix)
                 Text(
-                    text = "${holding.quantityFormatted} ${holding.symbol} • PM ${holding.averageBuyPriceFormatted}",
+                    text = "${holding.quantityFormatted} ${holding.symbol} • $avgPrefix ${holding.averageBuyPriceFormatted}",
                     style = MaterialTheme.typography.labelMedium,
                     fontSize = 11.5.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -819,7 +841,7 @@ private fun HoldingRow(
         ) {
             Icon(
                 imageVector = Icons.Filled.Add,
-                contentDescription = "Nova operação de ${holding.name}",
+                contentDescription = stringResource(R.string.portfolio_holding_quick_add_cd, holding.name),
                 tint = MaterialTheme.colorScheme.scrim,
                 modifier = Modifier.size(20.dp)
             )
@@ -837,20 +859,20 @@ private fun NoActivePositionsSection(onAddOperation: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
-            text = "Nenhuma posição em aberto",
+            text = stringResource(R.string.portfolio_no_open_positions_title),
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.surface
         )
         Text(
-            text = "Todas as suas posições foram encerradas. Consulte o Histórico ou registre uma nova compra.",
+            text = stringResource(R.string.portfolio_no_open_positions_body),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
         TextButton(onClick = onAddOperation) {
             Text(
-                text = "Nova operação",
+                text = stringResource(R.string.portfolio_new_transaction),
                 color = MaterialTheme.colorScheme.scrim,
                 fontWeight = FontWeight.SemiBold
             )
@@ -866,7 +888,11 @@ private fun TransactionHistoryRow(
 ) {
     val isBuy = transaction.type == PortfolioTransactionType.BUY
     val typeTrend = if (isBuy) TrendColor.UP else TrendColor.DOWN
-    val typeLabel = if (isBuy) "COMPRA" else "VENDA"
+    val typeLabel = if (isBuy) {
+        stringResource(R.string.portfolio_tx_type_buy_badge)
+    } else {
+        stringResource(R.string.portfolio_tx_type_sell_badge)
+    }
 
     Row(
         modifier = Modifier
@@ -951,7 +977,7 @@ private fun TransactionHistoryRow(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Edit,
-                    contentDescription = "Editar operação",
+                    contentDescription = stringResource(R.string.portfolio_tx_edit_cd),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(18.dp)
                 )
@@ -964,7 +990,7 @@ private fun TransactionHistoryRow(
             ) {
                 Icon(
                     imageVector = Icons.Filled.Delete,
-                    contentDescription = "Excluir operação",
+                    contentDescription = stringResource(R.string.portfolio_tx_delete_cd),
                     tint = TrendColor.DOWN.textColor,
                     modifier = Modifier.size(18.dp)
                 )
@@ -976,6 +1002,8 @@ private fun TransactionHistoryRow(
 private fun buildAllocationSlices(
     holdings: List<PortfolioHoldingVO>,
     palette: List<Color>,
+    othersSymbol: String = "OTHERS",
+    othersLabelProvider: (Int) -> String = { count -> "Others ($count)" },
     locale: Locale = Locale.getDefault()
 ): List<AllocationSlice> {
     if (holdings.isEmpty() || palette.isEmpty()) return emptyList()
@@ -1002,8 +1030,8 @@ private fun buildAllocationSlices(
         val restValue = rest.sumOf { it.currentValue }
         slices += AllocationSlice(
             id = "others",
-            symbol = "OUTROS",
-            label = "Outros (${rest.size})",
+            symbol = othersSymbol,
+            label = othersLabelProvider(rest.size),
             valueText = restValue.formatMoney(locale),
             percentage = restPct.toFloat(),
             percentageText = String.format(locale, "%.1f%%", restPct),

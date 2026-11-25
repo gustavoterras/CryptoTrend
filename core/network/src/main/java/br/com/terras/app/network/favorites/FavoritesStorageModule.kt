@@ -63,6 +63,7 @@ abstract class FavoritesStorageModule {
                 DATABASE_NAME
             )
                 .addMigrations(MIGRATION_1_2)
+                .fallbackToDestructiveMigration()
                 .build()
         }
 

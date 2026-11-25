@@ -40,8 +40,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import kotlinx.coroutines.coroutineScope
@@ -51,7 +53,7 @@ import kotlinx.coroutines.launch
 fun AnimatedAddFab(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    contentDescription: String = "Adicionar operação",
+    contentDescription: String = stringResource(R.string.portfolio_add_operation),
     testTag: String = "portfolio_add_fab"
 ) {
     val hapticFeedback = LocalHapticFeedback.current

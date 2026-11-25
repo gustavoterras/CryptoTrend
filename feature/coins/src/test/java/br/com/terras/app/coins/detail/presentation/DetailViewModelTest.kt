@@ -83,6 +83,7 @@ class DetailViewModelTest {
     fun setup() {
         favoriteLocalRepository = FakeDetailFavoriteLocalRepository()
         portfolioLocalRepository = FakeDetailPortfolioLocalRepository()
+        coEvery { feedsUseCase.getFeeds(any()) } returns Result.success(emptyList())
         viewModel = DetailViewModel(
             useCase = userCase,
             feedsUseCase = feedsUseCase,
@@ -253,5 +254,43 @@ class DetailViewModelTest {
             Assert.assertEquals(1, insight.tradeMarkers.size)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `WHEN Refresh intent succeeds THEN reloads detail chart insights news and updates timestamp`() = runBlocking {
+        val updatedDetail = mockCoinDetailVOStub.copy(name = "Bitcoin", price = "R$ 550.000,00")
+        coEvery { userCase.getDetailById("bitcoin") } returns Result.success(updatedDetail)
+        coEvery { userCase.getChartDetailById("bitcoin", 7) } returns Result.success(mockCoinChartDetailVOStub)
+        coEvery { userCase.getInsightsByCoinId("bitcoin") } returns Result.success(listOf(mockCoinInsightVOStub))
+        coEvery { feedsUseCase.getFeeds("Bitcoin") } returns Result.success(emptyList())
+
+        viewModel.handleIntent(DetailViewModel.DetailIntent.Refresh("bitcoin", days = 7))
+
+        Assert.assertFalse(viewModel.isRefreshing.value)
+        Assert.assertEquals(SuccessDetail(updatedDetail), viewModel.detail.value)
+        Assert.assertEquals(SuccessChart(mockCoinChartDetailVOStub, days = 7), viewModel.chart.value)
+        Assert.assertEquals(SuccessInsights(listOf(mockCoinInsightVOStub)), viewModel.insights.value)
+        Assert.assertNotNull(viewModel.lastUpdatedAtMillis.value)
+        Assert.assertNull(viewModel.refreshErrorMessage.value)
+    }
+
+    @Test
+    fun `WHEN Refresh intent fails after SuccessDetail THEN keeps existing detail and emits refresh error`() = runBlocking {
+        val initialDetail = mockCoinDetailVOStub.copy(name = "Bitcoin")
+        coEvery { userCase.getDetailById("bitcoin") } returns Result.success(initialDetail)
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail("bitcoin"))
+
+        coEvery { userCase.getDetailById("bitcoin") } returns Result.failure(RuntimeException("timeout"))
+        coEvery { userCase.getChartDetailById("bitcoin", 1) } returns Result.failure(RuntimeException("timeout"))
+        coEvery { userCase.getInsightsByCoinId("bitcoin") } returns Result.failure(RuntimeException("timeout"))
+
+        viewModel.handleIntent(DetailViewModel.DetailIntent.Refresh("bitcoin", days = 1))
+
+        Assert.assertFalse(viewModel.isRefreshing.value)
+        Assert.assertEquals(SuccessDetail(initialDetail), viewModel.detail.value)
+        Assert.assertNotNull(viewModel.refreshErrorMessage.value)
+
+        viewModel.consumeRefreshErrorMessage()
+        Assert.assertNull(viewModel.refreshErrorMessage.value)
     }
 }

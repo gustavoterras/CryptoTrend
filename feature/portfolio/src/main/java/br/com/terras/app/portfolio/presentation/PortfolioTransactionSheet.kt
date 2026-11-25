@@ -59,6 +59,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -69,6 +70,7 @@ import br.com.terras.app.common.formatAxisMoney
 import br.com.terras.app.common.formatCryptoQuantity
 import br.com.terras.app.common.formatMoney
 import br.com.terras.app.common.toFormatDate
+import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.network.portfolio.PortfolioTransactionType
 import br.com.terras.app.portfolio.domain.model.SelectableCoinVO
@@ -117,9 +119,9 @@ fun PortfolioTransactionSheet(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = when {
-                            selectedCoin == null -> "Escolher criptomoeda"
-                            editorState.editingTransactionId != null -> "Editar operação"
-                            else -> "Nova operação"
+                            selectedCoin == null -> stringResource(R.string.tx_sheet_choose_coin)
+                            editorState.editingTransactionId != null -> stringResource(R.string.tx_sheet_edit_title)
+                            else -> stringResource(R.string.tx_sheet_new_title)
                         },
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
@@ -127,7 +129,7 @@ fun PortfolioTransactionSheet(
                     )
                     Text(
                         text = if (selectedCoin == null) {
-                            "Pesquise ou selecione um ativo para registrar"
+                            stringResource(R.string.tx_sheet_choose_coin_subtitle)
                         } else {
                             "${selectedCoin.name} (${selectedCoin.symbol})"
                         },
@@ -142,7 +144,7 @@ fun PortfolioTransactionSheet(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Close,
-                        contentDescription = "Fechar formulário",
+                        contentDescription = stringResource(R.string.tx_sheet_close_cd),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -196,12 +198,12 @@ fun PortfolioTransactionSheet(
                         showDatePicker = false
                     }
                 ) {
-                    Text("Confirmar", color = MaterialTheme.colorScheme.scrim)
+                    Text(stringResource(R.string.action_confirm), color = MaterialTheme.colorScheme.scrim)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancelar", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(stringResource(R.string.action_cancel), color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         ) {
@@ -232,14 +234,14 @@ private fun CoinPickerContent(
             .testTag("tx_coin_search_input"),
         placeholder = {
             Text(
-                text = "Buscar por nome ou símbolo (ex: BTC, SOL)",
+                text = stringResource(R.string.tx_picker_placeholder),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
         leadingIcon = {
             Icon(
                 imageVector = Icons.Filled.Search,
-                contentDescription = "Buscar criptomoeda",
+                contentDescription = stringResource(R.string.tx_picker_search_cd),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },
@@ -248,7 +250,7 @@ private fun CoinPickerContent(
                 IconButton(onClick = { onQueryChange("") }) {
                     Icon(
                         imageVector = Icons.Filled.Close,
-                        contentDescription = "Limpar busca",
+                        contentDescription = stringResource(R.string.tx_picker_clear_cd),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -298,7 +300,7 @@ private fun CoinPickerContent(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "Nenhuma criptomoeda encontrada.",
+                    text = stringResource(R.string.tx_picker_empty),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -426,7 +428,7 @@ private fun TransactionFormContent(
                             overflow = TextOverflow.Ellipsis
                         )
                         val subtitle = coin.currentPrice?.let {
-                            "Preço atual: ${it.formatAxisMoney()}"
+                            stringResource(R.string.tx_current_price_label, it.formatAxisMoney())
                         } ?: coin.symbol
                         Text(
                             text = subtitle,
@@ -441,7 +443,7 @@ private fun TransactionFormContent(
                         modifier = Modifier.testTag("tx_change_coin_btn")
                     ) {
                         Text(
-                            text = "Trocar",
+                            text = stringResource(R.string.tx_change_coin),
                             color = MaterialTheme.colorScheme.scrim,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -460,7 +462,7 @@ private fun TransactionFormContent(
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             OperationTypeChip(
-                label = "Compra",
+                label = stringResource(R.string.tx_type_buy),
                 selected = editorState.type == PortfolioTransactionType.BUY,
                 selectedContainer = TrendColor.UP.color,
                 selectedContent = TrendColor.UP.onColor,
@@ -470,7 +472,7 @@ private fun TransactionFormContent(
                     .testTag("tx_type_buy")
             )
             OperationTypeChip(
-                label = "Venda",
+                label = stringResource(R.string.tx_type_sell),
                 selected = editorState.type == PortfolioTransactionType.SELL,
                 selectedContainer = TrendColor.DOWN.color,
                 selectedContent = TrendColor.DOWN.onColor,
@@ -488,7 +490,11 @@ private fun TransactionFormContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Saldo disponível: ${editorState.availableSellQuantity.formatCryptoQuantity()} ${coin.symbol}",
+                    text = stringResource(
+                        R.string.tx_available_balance,
+                        editorState.availableSellQuantity.formatCryptoQuantity(),
+                        coin.symbol
+                    ),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -505,7 +511,7 @@ private fun TransactionFormContent(
                         modifier = Modifier.testTag("tx_sell_max_btn")
                     ) {
                         Text(
-                            text = "Vender tudo",
+                            text = stringResource(R.string.tx_sell_all),
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.scrim
@@ -518,8 +524,8 @@ private fun TransactionFormContent(
         OutlinedTextField(
             value = editorState.quantityInput,
             onValueChange = { onIntent(PortfolioIntent.UpdateQuantityInput(it)) },
-            label = { Text("Quantidade (${coin.symbol})") },
-            placeholder = { Text("Ex: 0.25") },
+            label = { Text(stringResource(R.string.tx_quantity_label, coin.symbol)) },
+            placeholder = { Text(stringResource(R.string.tx_quantity_placeholder)) },
             singleLine = true,
             shape = RoundedCornerShape(14.dp),
             colors = fieldColors,
@@ -535,8 +541,8 @@ private fun TransactionFormContent(
         OutlinedTextField(
             value = editorState.unitPriceInput,
             onValueChange = { onIntent(PortfolioIntent.UpdateUnitPriceInput(it)) },
-            label = { Text("Preço unitário") },
-            placeholder = { Text("Ex: 350000.00") },
+            label = { Text(stringResource(R.string.tx_unit_price_label)) },
+            placeholder = { Text(stringResource(R.string.tx_unit_price_placeholder)) },
             trailingIcon = {
                 IconButton(
                     onClick = { onIntent(PortfolioIntent.UseCurrentMarketPrice) },
@@ -552,7 +558,7 @@ private fun TransactionFormContent(
                     } else {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
-                            contentDescription = "Atualizar com preço atual",
+                            contentDescription = stringResource(R.string.tx_use_current_price_cd),
                             tint = MaterialTheme.colorScheme.scrim
                         )
                     }
@@ -571,15 +577,16 @@ private fun TransactionFormContent(
         )
 
         Box(modifier = Modifier.fillMaxWidth()) {
+            val selectDateCd = stringResource(R.string.tx_date_select_cd)
             OutlinedTextField(
                 value = editorState.timestamp.toFormatDate(),
                 onValueChange = {},
                 readOnly = true,
-                label = { Text("Data da operação") },
+                label = { Text(stringResource(R.string.tx_date_label)) },
                 trailingIcon = {
                     Icon(
                         imageVector = Icons.Filled.DateRange,
-                        contentDescription = "Selecionar data da operação",
+                        contentDescription = selectDateCd,
                         tint = MaterialTheme.colorScheme.scrim
                     )
                 },
@@ -594,7 +601,7 @@ private fun TransactionFormContent(
                     .clip(RoundedCornerShape(14.dp))
                     .clickable(
                         role = Role.Button,
-                        onClickLabel = "Selecionar data da operação",
+                        onClickLabel = selectDateCd,
                         onClick = onOpenDatePicker
                     )
                     .testTag("tx_date_picker_btn")
@@ -604,8 +611,8 @@ private fun TransactionFormContent(
         OutlinedTextField(
             value = editorState.noteInput,
             onValueChange = { onIntent(PortfolioIntent.UpdateNoteInput(it)) },
-            label = { Text("Observação (opcional)") },
-            placeholder = { Text("Ex: Compra recorrente / Meta LP") },
+            label = { Text(stringResource(R.string.tx_note_label)) },
+            placeholder = { Text(stringResource(R.string.tx_note_placeholder)) },
             singleLine = true,
             shape = RoundedCornerShape(14.dp),
             colors = fieldColors,
@@ -623,7 +630,7 @@ private fun TransactionFormContent(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Total da operação",
+                    text = stringResource(R.string.tx_total_label),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -676,9 +683,9 @@ private fun TransactionFormContent(
             } else {
                 Text(
                     text = if (editorState.editingTransactionId != null) {
-                        "Salvar alterações"
+                        stringResource(R.string.tx_save_changes)
                     } else {
-                        "Confirmar operação"
+                        stringResource(R.string.tx_confirm_operation)
                     },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold

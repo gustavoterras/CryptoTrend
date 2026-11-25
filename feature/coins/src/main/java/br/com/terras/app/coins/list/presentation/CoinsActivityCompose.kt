@@ -65,9 +65,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -111,6 +113,7 @@ fun CoinsActivityCompose(
     val trendingListState by viewModel.trendingCoins.collectAsState()
     val trendingSearchQuery by viewModel.trendingSearchQuery.collectAsState()
     val isTrendingRefreshing by viewModel.isTrendingRefreshing.collectAsState()
+    val globalMarketState by viewModel.globalMarket.collectAsStateWithLifecycle()
     val favoriteIds by viewModel.favoriteIds.collectAsStateWithLifecycle()
 
     var selectedTabIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -125,6 +128,8 @@ fun CoinsActivityCompose(
     val keyboardController = LocalSoftwareKeyboardController.current
     val cryptoLazyListState = rememberLazyListState()
     val trendingLazyListState = rememberLazyListState()
+    val globalMarketCollapseState = rememberGlobalMarketCollapseState()
+    val globalMarketNestedScroll = rememberGlobalMarketNestedScrollConnection(globalMarketCollapseState)
 
     val isCurrentSearchOpen = when (selectedTabIndex) {
         1 -> isCryptoSearchOpen
@@ -145,6 +150,7 @@ fun CoinsActivityCompose(
     }
 
     LaunchedEffect(selectedTabIndex) {
+        globalMarketCollapseState.expandSmoothly()
         if (selectedTabIndex == 2) {
             viewModel.handleIntent(CoinsIntent.LoadTrendingCoins)
         }
@@ -157,9 +163,9 @@ fun CoinsActivityCompose(
     }
 
     val marketTabs = listOf(
-        "Favoritos" to R.drawable.star_24dp,
-        "Cripto" to R.drawable.ic_show_chart_24dp,
-        "Tendências" to R.drawable.ic_trending_up_24dp
+        stringResource(R.string.tab_favorites) to R.drawable.star_24dp,
+        stringResource(R.string.tab_crypto) to R.drawable.ic_show_chart_24dp,
+        stringResource(R.string.tab_trending) to R.drawable.ic_trending_up_24dp
     )
 
     Scaffold(
@@ -210,7 +216,13 @@ fun CoinsActivityCompose(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = innerPadding.calculateTopPadding())
+                .nestedScroll(globalMarketNestedScroll)
         ) {
+            CollapsingGlobalMarketHeader(
+                state = globalMarketState,
+                collapseState = globalMarketCollapseState
+            )
+
             TabRow(
                 selectedTabIndex = selectedTabIndex,
                 containerColor = MaterialTheme.colorScheme.background,
@@ -448,7 +460,7 @@ private fun MarketCoinsTabContent(
                     leadingIcon = {
                         Icon(
                             painter = painterResource(id = R.drawable.search_24dp),
-                            contentDescription = "Pesquisar",
+                            contentDescription = stringResource(R.string.search_action_cd),
                             tint = leadingIconTint,
                             modifier = Modifier.graphicsLayer {
                                 scaleX = leadingIconScale
@@ -465,7 +477,7 @@ private fun MarketCoinsTabContent(
                     },
                     placeholder = {
                         Text(
-                            text = "Procurar criptomoedas",
+                            text = stringResource(R.string.search_coins_placeholder),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
@@ -535,10 +547,12 @@ private fun OnCoinsListLoading() {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(2.dp),
         contentPadding = PaddingValues(top = 4.dp, bottom = 100.dp),
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .testTag("coins_list_skeleton")
     ) {
-        items(10) {
-            CoinListItemShimmerRow()
+        items(10) { index ->
+            CoinListItemShimmerRow(variantIndex = index)
         }
     }
 }
@@ -578,7 +592,7 @@ private fun OnCoinsListSuccess(
         if (isFromSearchApi) {
             item {
                 Text(
-                    text = "Resultados encontrados na API de pesquisa",
+                    text = stringResource(R.string.search_api_results_banner),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
@@ -603,18 +617,13 @@ private fun OnCoinsListSuccess(
         }
         if (isLoadingMore) {
             item(key = "coins_pagination_loader") {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 16.dp)
-                        .testTag("coins_pagination_loader"),
-                    contentAlignment = Alignment.Center
+                        .testTag("coins_pagination_loader")
                 ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(26.dp),
-                        color = MaterialTheme.colorScheme.scrim,
-                        strokeWidth = 2.5.dp
-                    )
+                    CoinListItemShimmerRow(variantIndex = 0)
+                    CoinListItemShimmerRow(variantIndex = 1)
                 }
             }
         }
@@ -633,9 +642,9 @@ private fun OnCoinsSearchEmpty(query: String) {
     ) {
         Text(
             text = if (query.isNotBlank()) {
-                "Nenhuma criptomoeda encontrada para \"$query\"."
+                stringResource(R.string.search_empty_for_query, query)
             } else {
-                "Nenhum resultado encontrado."
+                stringResource(R.string.search_empty_generic)
             },
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.surface,
@@ -656,10 +665,10 @@ private fun OnCoinsListError(
         containerColor = MaterialTheme.colorScheme.primary,
         titleContentColor = MaterialTheme.colorScheme.surface,
         textContentColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-        title = { Text(text = "Alerta") },
-        text = { Text(text = "Erro ao carregar os dados, tente novamente mais tarde.") },
+        title = { Text(text = stringResource(R.string.dialog_alert_title)) },
+        text = { Text(text = stringResource(R.string.error_loading_data)) },
         confirmButton = {
-            RippleButton(text = "Entendi", onClick = onDismissRequest)
+            RippleButton(text = stringResource(R.string.dialog_alert_acknowledge), onClick = onDismissRequest)
         }
     )
 }

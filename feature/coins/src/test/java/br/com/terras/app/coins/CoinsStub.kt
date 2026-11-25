@@ -11,11 +11,16 @@ import br.com.terras.app.coins.detail.domain.model.CoinChartDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinInsightVO
 import br.com.terras.app.coins.list.data.model.CoinsResponse
+import br.com.terras.app.coins.list.data.model.FearAndGreedIndexResponse
+import br.com.terras.app.coins.list.data.model.GlobalMarketDataResponse
+import br.com.terras.app.coins.list.data.model.GlobalMarketResponse
 import br.com.terras.app.coins.list.data.model.TrendingCoinData
 import br.com.terras.app.coins.list.data.model.TrendingCoinItem
 import br.com.terras.app.coins.list.data.model.TrendingCoinWrapper
 import br.com.terras.app.coins.list.data.model.TrendingCoinsResponse
 import br.com.terras.app.coins.list.domain.model.CoinVO
+import br.com.terras.app.coins.list.domain.model.FearAndGreedSentiment
+import br.com.terras.app.coins.list.domain.model.GlobalMarketVO
 import br.com.terras.app.dsm.ui.component.TrendColor
 
 val mockCoinVOStub = CoinVO(
@@ -127,4 +132,36 @@ val mockCoinInsightVOStub = CoinInsightVO(
     description = "ETF net inflows accelerated over the past 24 hours.",
     relatedCoinIds = listOf("bitcoin"),
     postedAt = "Jun 15, 2026"
+)
+
+val mockGlobalMarketResponseStub = GlobalMarketResponse(
+    data = GlobalMarketDataResponse(
+        activeCryptocurrencies = 15420,
+        markets = 1120,
+        totalMarketCap = mapOf("brl" to 16_420_000_000_000.0, "usd" to 3_210_000_000_000.0),
+        totalVolume = mapOf("brl" to 612_800_000_000.0, "usd" to 120_000_000_000.0),
+        marketCapPercentage = mapOf("btc" to 54.2, "eth" to 16.5),
+        marketCapChangePercentage24hUsd = 2.4,
+        updatedAt = 1_780_000_000L,
+        fearAndGreedIndex = FearAndGreedIndexResponse(value = 44, sentiment = "fear")
+    )
+)
+
+val mockGlobalMarketVOStub = GlobalMarketVO(
+    fearAndGreedValue = 44,
+    fearAndGreedSentiment = FearAndGreedSentiment.FEAR,
+    fearAndGreedLabel = "Medo",
+    hasFearAndGreed = true,
+    totalMarketCap = "R$ 16,42 tri",
+    marketCapChangePercentage = "+2,4%",
+    trendColor = TrendColor.UP,
+    totalVolume24h = "R$ 612,80 bi",
+    btcDominance = "54,2%",
+    ethDominance = "16,5%",
+    activeCryptocurrencies = "15.420",
+    marketsCount = "1.120",
+    btcDominancePercent = 54.2,
+    btcDominanceScore = 54,
+    altcoinsDominanceScore = 46,
+    hasBtcDominance = true
 )

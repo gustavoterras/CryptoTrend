@@ -84,11 +84,11 @@ class FeedsViewModelTest {
     @Test
     fun `WHEN Refresh intent THEN reload feeds and reset isRefreshing`() = runBlocking {
         val result = mockArticlesVOStub
-        coEvery { userCase.getFeeds("bitcoin") } returns Result.success(result)
+        coEvery { userCase.getFeeds("bitcoin", forceRefresh = true) } returns Result.success(result)
 
         viewModel.handleIntent(FeedsIntent.Refresh)
 
-        coVerify(atLeast = 1) { userCase.getFeeds("bitcoin") }
+        coVerify(exactly = 1) { userCase.getFeeds("bitcoin", forceRefresh = true) }
         Assert.assertEquals(FeedsState.Success(result), viewModel.feeds.value)
         Assert.assertFalse(viewModel.isRefreshing.value)
     }
@@ -96,11 +96,12 @@ class FeedsViewModelTest {
     @Test
     fun `WHEN market refresh coordinator triggers THEN reload feeds`() = runBlocking {
         val result = mockArticlesVOStub
-        coEvery { userCase.getFeeds("bitcoin") } returns Result.success(result)
+        coEvery { userCase.getFeeds("bitcoin", forceRefresh = true) } returns Result.success(result)
 
         refreshCoordinator.triggerRefresh()
 
-        coVerify(atLeast = 2) { userCase.getFeeds("bitcoin") }
+        coVerify(exactly = 1) { userCase.getFeeds("bitcoin") }
+        coVerify(exactly = 1) { userCase.getFeeds("bitcoin", forceRefresh = true) }
         Assert.assertEquals(FeedsState.Success(result), viewModel.feeds.value)
     }
 }

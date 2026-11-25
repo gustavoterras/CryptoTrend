@@ -26,7 +26,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -55,6 +54,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -62,6 +62,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
@@ -80,6 +82,7 @@ import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.S
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.component.AnimatedFavoriteButton
+import br.com.terras.app.dsm.ui.component.PullToRefreshWrapper
 import br.com.terras.app.dsm.ui.component.RippleButton
 import br.com.terras.app.dsm.ui.component.SegmentedControl
 import br.com.terras.app.dsm.ui.component.TrendColor
@@ -102,6 +105,11 @@ fun DetailActivityCompose(
     val insightsState by viewModel.insights.collectAsState()
     val isFavorite by viewModel.isFavorite.collectAsStateWithLifecycle()
     val portfolioInsight by viewModel.portfolioInsight.collectAsStateWithLifecycle()
+    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val lastUpdatedAtMillis by viewModel.lastUpdatedAtMillis.collectAsStateWithLifecycle()
+    val refreshErrorMessage by viewModel.refreshErrorMessage.collectAsStateWithLifecycle()
+    val activeDays = (chartDetailState as? SuccessChart)?.days ?: DaysOfChart.DAY.value
+    val loadedCoinName = (coinDetailState as? SuccessDetail)?.coin?.name
 
     LaunchedEffect(id) {
         viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail(id))
@@ -109,10 +117,9 @@ fun DetailActivityCompose(
         viewModel.handleIntent(DetailViewModel.DetailIntent.LoadInsights(id))
     }
 
-    LaunchedEffect(coinDetailState) {
-        if (coinDetailState is SuccessDetail) {
-            val coinName = (coinDetailState as SuccessDetail).coin.name
-            viewModel.handleIntent(DetailViewModel.DetailIntent.LoadNews(coinName))
+    LaunchedEffect(loadedCoinName) {
+        if (!loadedCoinName.isNullOrBlank()) {
+            viewModel.handleIntent(DetailViewModel.DetailIntent.LoadNews(loadedCoinName))
         }
     }
 
@@ -126,6 +133,13 @@ fun DetailActivityCompose(
             newsState = newsState,
             insightsState = insightsState,
             portfolioInsight = portfolioInsight,
+            isRefreshing = isRefreshing,
+            lastUpdatedAtMillis = lastUpdatedAtMillis,
+            refreshErrorMessage = refreshErrorMessage,
+            onConsumeRefreshError = viewModel::consumeRefreshErrorMessage,
+            onRefresh = {
+                viewModel.handleIntent(DetailViewModel.DetailIntent.Refresh(id, activeDays))
+            },
             onBackPress = {
                 navHostController.popBackStack()
             },
@@ -163,6 +177,11 @@ fun OnCoinDetailSuccess(
     newsState: DetailViewModel.DetailState,
     insightsState: DetailViewModel.DetailState,
     portfolioInsight: CoinPortfolioInsightVO? = null,
+    isRefreshing: Boolean = false,
+    lastUpdatedAtMillis: Long? = null,
+    refreshErrorMessage: String? = null,
+    onConsumeRefreshError: () -> Unit = {},
+    onRefresh: () -> Unit = {},
     onBackPress: () -> Unit,
     onArticleClick: (String) -> Unit,
     isFavorite: Boolean = false,
@@ -173,13 +192,18 @@ fun OnCoinDetailSuccess(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
+    LaunchedEffect(refreshErrorMessage) {
+        val message = refreshErrorMessage ?: return@LaunchedEffect
+        snackbarHostState.currentSnackbarData?.dismiss()
+        snackbarHostState.showSnackbar(message)
+        onConsumeRefreshError()
+    }
+
     var isBarChart by remember { mutableStateOf(false) }
     var selectedTradeMarker by remember(portfolioInsight, chartDetailState) {
         mutableStateOf<ChartTradeMarkerVO?>(null)
     }
-    val quoteCurrency = remember {
-        if (Locale.getDefault().language == "pt") "BRL" else "USD"
-    }
+    val quoteCurrency = stringResource(R.string.currency_quote_code)
     val volume24h = remember(state.coin.marketDataList) {
         state.coin.marketDataList
             .firstOrNull { it.first == "Trading Volume 24h" }
@@ -265,11 +289,19 @@ fun OnCoinDetailSuccess(
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Voltar"
+                        contentDescription = stringResource(R.string.action_back)
                     )
                 }
             },
             actions = {
+                val addedFavoriteText = stringResource(
+                    R.string.detail_added_favorite,
+                    state.coin.symbol.uppercase()
+                )
+                val removedFavoriteText = stringResource(
+                    R.string.detail_removed_favorite,
+                    state.coin.symbol.uppercase()
+                )
                 AnimatedFavoriteButton(
                     isFavorite = isFavorite,
                     onToggle = {
@@ -278,11 +310,7 @@ fun OnCoinDetailSuccess(
                         coroutineScope.launch {
                             snackbarHostState.currentSnackbarData?.dismiss()
                             snackbarHostState.showSnackbar(
-                                if (willFavorite) {
-                                    "${state.coin.symbol.uppercase()} adicionado aos favoritos"
-                                } else {
-                                    "${state.coin.symbol.uppercase()} removido dos favoritos"
-                                }
+                                if (willFavorite) addedFavoriteText else removedFavoriteText
                             )
                         }
                     },
@@ -291,76 +319,96 @@ fun OnCoinDetailSuccess(
             }
         )
     }) { innerPadding ->
-        Column(
+        val updatedTimeLabel = remember(lastUpdatedAtMillis) {
+            lastUpdatedAtMillis?.let { millis ->
+                SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(millis))
+            }
+        }
+        PullToRefreshWrapper(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = innerPadding.calculateTopPadding())
-                .verticalScroll(rememberScrollState())
-                .padding(
-                    top = 8.dp,
-                    bottom = innerPadding.calculateBottomPadding() + 24.dp
-                ),
-            verticalArrangement = Arrangement.spacedBy(18.dp)
+                .padding(top = innerPadding.calculateTopPadding()),
+            indicatorTestTag = "detail_pull_to_refresh"
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(
+                        top = 8.dp,
+                        bottom = innerPadding.calculateBottomPadding() + 24.dp
+                    ),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Column(
+                    Row(
                         modifier = Modifier
-                            .weight(1.05f)
-                            .padding(end = 10.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = state.coin.price,
-                            fontSize = 26.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.surface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        Column(
+                            modifier = Modifier
+                                .weight(1.05f)
+                                .padding(end = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Text(
-                                text = referencePrice,
-                                style = MaterialTheme.typography.bodySmall,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                text = state.coin.price,
+                                fontSize = 26.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.surface,
                                 maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f, fill = false)
+                                overflow = TextOverflow.Ellipsis
                             )
-                            if (change24h.isNotBlank()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
                                 Text(
-                                    text = "($change24h)",
+                                    text = referencePrice,
                                     style = MaterialTheme.typography.bodySmall,
                                     fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = state.coin.trendColor.textColor,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false)
+                                )
+                                if (change24h.isNotBlank()) {
+                                    Text(
+                                        text = "($change24h)",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = state.coin.trendColor.textColor,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                            if (updatedTimeLabel != null) {
+                                Text(
+                                    text = stringResource(R.string.detail_updated_at, updatedTimeLabel),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1
                                 )
                             }
                         }
-                    }
 
                     Column(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        ChartHeaderStatRow(label = "24h Vol", value = volume24h)
-                        ChartHeaderStatRow(label = "High Price", value = highPrice24h)
-                        ChartHeaderStatRow(label = "Low Price", value = lowPrice24h)
+                        ChartHeaderStatRow(label = stringResource(R.string.detail_header_vol_24h), value = volume24h)
+                        ChartHeaderStatRow(label = stringResource(R.string.detail_header_high_price), value = highPrice24h)
+                        ChartHeaderStatRow(label = stringResource(R.string.detail_header_low_price), value = lowPrice24h)
                     }
                 }
 
@@ -431,7 +479,7 @@ fun OnCoinDetailSuccess(
                                     ) {
                                         Icon(
                                             painter = painterResource(id = R.drawable.ic_bar_chart_24dp),
-                                            contentDescription = "Gráfico de Barras",
+                                            contentDescription = stringResource(R.string.detail_bar_chart_cd),
                                             tint = if (isBarChart) activeToggleTint else MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(18.dp)
                                         )
@@ -450,7 +498,7 @@ fun OnCoinDetailSuccess(
                                     ) {
                                         Icon(
                                             painter = painterResource(id = R.drawable.ic_show_chart_24dp),
-                                            contentDescription = "Gráfico de Linhas",
+                                            contentDescription = stringResource(R.string.detail_line_chart_cd),
                                             tint = if (!isBarChart) activeToggleTint else MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(18.dp)
                                         )
@@ -501,6 +549,9 @@ fun OnCoinDetailSuccess(
                             )
                         }
                     }
+                    is Loading -> {
+                        DetailChartSkeleton()
+                    }
                     else -> {}
                 }
             }
@@ -546,7 +597,7 @@ fun OnCoinDetailSuccess(
             )
 
             Text(
-                text = "Sobre",
+                text = stringResource(R.string.detail_section_about),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.surface,
@@ -560,7 +611,7 @@ fun OnCoinDetailSuccess(
             ) {
                 state.coin.marketDataList.forEachIndexed { index, pair ->
                     SectionInfoItem(
-                        name = pair.first,
+                        name = localizedMarketDataLabel(pair.first),
                         value = pair.second,
                         showDivider = index != state.coin.marketDataList.lastIndex
                     )
@@ -592,7 +643,7 @@ fun OnCoinDetailSuccess(
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = "Insights de Mercado",
+                        text = stringResource(R.string.detail_section_insights),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.surface
@@ -603,7 +654,7 @@ fun OnCoinDetailSuccess(
                     is SuccessInsights -> {
                         if (insightsState.insights.isEmpty()) {
                             Text(
-                                text = "Nenhum insight disponível para ${state.coin.name} no momento.",
+                                text = stringResource(R.string.detail_insights_empty, state.coin.name),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -652,11 +703,7 @@ fun OnCoinDetailSuccess(
                         )
                     }
                     else -> {
-                        Text(
-                            text = "Carregando insights de ${state.coin.name}...",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        DetailInsightsSkeleton()
                     }
                 }
             }
@@ -673,7 +720,7 @@ fun OnCoinDetailSuccess(
                     val articles = (newsState as DetailViewModel.DetailState.SuccessNews).articles
                     if (articles.isEmpty()) {
                         Text(
-                            text = "Nenhuma notícia encontrada para ${state.coin.name}.",
+                            text = stringResource(R.string.detail_news_empty, state.coin.name),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
@@ -724,7 +771,7 @@ fun OnCoinDetailSuccess(
                                         )
                                     }
                                     Text(
-                                        text = "Ver mais",
+                                        text = stringResource(R.string.action_see_more),
                                         style = MaterialTheme.typography.labelSmall,
                                         color = MaterialTheme.colorScheme.surfaceTint,
                                         textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
@@ -735,14 +782,10 @@ fun OnCoinDetailSuccess(
                     }
                 }
                 else -> {
-                    Text(
-                        text = "Carregando notícias...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
-                    )
+                    DetailNewsSkeleton()
                 }
             }
+        }
         }
     }
 }
@@ -847,49 +890,6 @@ fun SectionInfoItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun OnCoinDetailLoading(
-    onBackPress: () -> Unit
-) {
-    BackHandler(onBack = onBackPress)
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = {},
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    navigationIconContentColor = MaterialTheme.colorScheme.surface
-                ),
-                navigationIcon = {
-                    IconButton(
-                        onClick = onBackPress,
-                        modifier = Modifier.testTag("loading_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Voltar"
-                        )
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentAlignment = Alignment.Center
-        ) {
-            CircularProgressIndicator(
-                color = MaterialTheme.colorScheme.scrim
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 private fun OnCoinDetailError(
     onBackPress: () -> Unit,
     onRetry: () -> Unit
@@ -912,7 +912,7 @@ private fun OnCoinDetailError(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Voltar"
+                            contentDescription = stringResource(R.string.action_back)
                         )
                     }
                 }
@@ -928,18 +928,35 @@ private fun OnCoinDetailError(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Erro ao carregar os dados, tente novamente mais tarde.",
+                text = stringResource(R.string.error_loading_data),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(16.dp))
             RippleButton(
-                text = "Tentar novamente",
+                text = stringResource(R.string.action_retry),
                 onClick = onRetry
             )
         }
     }
+}
+
+@Composable
+private fun localizedMarketDataLabel(rawKey: String): String = when (rawKey) {
+    "Market Cap" -> stringResource(R.string.detail_stat_market_cap)
+    "Trading Volume 24h" -> stringResource(R.string.detail_stat_trading_volume_24h)
+    "Highest Price 24h" -> stringResource(R.string.detail_stat_high_24h)
+    "Lowest Price 24h" -> stringResource(R.string.detail_stat_low_24h)
+    "Available Supply" -> stringResource(R.string.detail_stat_circulating_supply)
+    "Total Supply" -> stringResource(R.string.detail_stat_total_supply)
+    "Max Supply" -> stringResource(R.string.detail_stat_max_supply)
+    "All-Time High Price" -> stringResource(R.string.detail_stat_ath_price)
+    "All-Time Low Price" -> stringResource(R.string.detail_stat_atl_price)
+    "All-Time High Date" -> stringResource(R.string.detail_stat_ath_date)
+    "All-Time Low Date" -> stringResource(R.string.detail_stat_atl_date)
+    "Last updated" -> stringResource(R.string.detail_stat_last_updated)
+    else -> rawKey
 }
 
 @ThemePreviews

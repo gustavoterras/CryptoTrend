@@ -1,6 +1,8 @@
 package br.com.terras.app.coins.detail.presentation
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -8,8 +10,11 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.rememberScrollableState
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -28,9 +33,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,14 +52,18 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.coins.detail.domain.ChartTradeMarkerVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailVO
 import br.com.terras.app.coins.detail.domain.model.DataPoint
@@ -60,6 +74,7 @@ import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 private class CandleMarkerPositionHolder {
     var items: List<PositionedChartTradeMarker> = emptyList()
@@ -81,7 +96,7 @@ data class CandlePoint(
     val isUp: Boolean get() = close >= open
 }
 
-fun List<DataPoint>.toCandlePoints(targetCount: Int = 16): List<CandlePoint> {
+fun List<DataPoint>.toCandlePoints(targetCount: Int = 48): List<CandlePoint> {
     if (isEmpty()) return emptyList()
     if (size <= targetCount) {
         return mapIndexed { index, dp ->
@@ -165,44 +180,27 @@ fun BarChartCompose(
     val effectiveGridLineColor = gridLineColor ?: if (isDark) Color(0x1FFFFFFF) else Color(0x140F172A)
     val markerHolder = remember { CandleMarkerPositionHolder() }
 
-    val candles = remember(data) { data.toCandlePoints(targetCount = 16) }
+    val candles = remember(data) { data.toCandlePoints(targetCount = 48) }
     if (candles.isEmpty()) return
 
     var selectedIndex by remember(candles) { mutableStateOf<Int?>(null) }
     val currentCandle = selectedIndex?.let { candles.getOrNull(it) }
 
-    val maxCandleIndex = remember(candles) {
-        candles.indices.maxByOrNull { candles[it].high } ?: 0
+    val allCandlesMin = remember(candles) { candles.minOf { it.low } }
+    val allCandlesMax = remember(candles) { candles.maxOf { it.high } }
+    val overallRange = remember(allCandlesMin, allCandlesMax) {
+        (allCandlesMax - allCandlesMin).let { if (it <= 0.0) 1.0 else it }
     }
-    val minCandleIndex = remember(candles) {
-        candles.indices.minByOrNull { candles[it].low } ?: 0
+
+    val candlesPerViewport = 16
+    val contentScaleFactor = remember(candles.size) {
+        if (candles.size <= candlesPerViewport) 1f
+        else candles.size.toFloat() / candlesPerViewport.toFloat()
     }
-    val overallMin = remember(candles, minCandleIndex) { candles[minCandleIndex].low }
-    val overallMax = remember(candles, maxCandleIndex) { candles[maxCandleIndex].high }
-    val actualDiff = remember(overallMin, overallMax) { overallMax - overallMin }
-    val priceRange = remember(actualDiff) { if (actualDiff <= 0.0) 1.0 else actualDiff }
 
     val gridLineCount = 5
-    val yTickLabels = remember(overallMin, overallMax, actualDiff) {
-        (0 until gridLineCount).map { i ->
-            val fraction = 1.0 - (i.toDouble() / (gridLineCount - 1))
-            (overallMin + actualDiff * fraction).formatAxisMoney()
-        }
-    }
-
-    val xTickIndices = remember(candles) {
-        val count = candles.size
-        if (count <= 1) listOf(0)
-        else {
-            val tickCount = min(4, count)
-            (0 until tickCount).map { tick ->
-                ((tick.toFloat() / (tickCount - 1)) * (count - 1)).toInt()
-            }.distinct()
-        }
-    }
-
     val density = LocalDensity.current
-    val textMeasurer = rememberTextMeasurer()
+    val textMeasurer = rememberTextMeasurer(cacheSize = 64)
     val axisTextStyle = remember(axisLabelColor) {
         TextStyle(
             color = axisLabelColor,
@@ -218,8 +216,114 @@ fun BarChartCompose(
         )
     }
 
-    val yLabelLayouts = remember(yTickLabels, axisTextStyle) {
-        yTickLabels.map { label -> textMeasurer.measure(text = label, style = axisTextStyle) }
+    val rightReferenceLabels = remember(allCandlesMin, allCandlesMax) {
+        (0 until gridLineCount).map { i ->
+            val fraction = 1.0 - (i.toDouble() / (gridLineCount - 1))
+            (allCandlesMin + (allCandlesMax - allCandlesMin) * fraction).formatAxisMoney()
+        }
+    }
+    val maxYLabelWidthPx = remember(rightReferenceLabels, axisTextStyle) {
+        rightReferenceLabels.maxOfOrNull { label ->
+            textMeasurer.measure(text = label, style = axisTextStyle).size.width
+        }?.toFloat() ?: 0f
+    }
+
+    val leftPaddingPx = with(density) { 12.dp.toPx() }
+    val yAxisGapPx = with(density) { 8.dp.toPx() }
+    val rightOuterPaddingPx = with(density) { 10.dp.toPx() }
+    val chartLeftPx = leftPaddingPx
+    val reservedRightPx = yAxisGapPx + maxYLabelWidthPx + rightOuterPaddingPx
+    val reservedRightDp = with(density) { reservedRightPx.toDp() }
+
+    var canvasWidthPx by remember { mutableIntStateOf(0) }
+    val viewportWidthPx = (canvasWidthPx - chartLeftPx - reservedRightPx).coerceAtLeast(1f)
+    val totalContentWidthPx = viewportWidthPx * contentScaleFactor
+    val maxScrollPx = (totalContentWidthPx - viewportWidthPx).coerceAtLeast(0f)
+    val currentMaxScrollPx by rememberUpdatedState(maxScrollPx)
+
+    // scrollBackPx = 0f anchors newest candles at chartRight; positive values scroll backward into older candles on the left
+    var scrollBackPx by remember(candles) { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(maxScrollPx) {
+        if (scrollBackPx > maxScrollPx) {
+            scrollBackPx = maxScrollPx
+        }
+    }
+
+    val scrollableState = rememberScrollableState { delta ->
+        val limit = currentMaxScrollPx
+        if (limit <= 0f) return@rememberScrollableState 0f
+        val next = (scrollBackPx + delta).coerceIn(0f, limit)
+        val consumed = next - scrollBackPx
+        scrollBackPx = next
+        consumed
+    }
+
+    val visibleCandleRange by remember(candles, totalContentWidthPx, viewportWidthPx, maxScrollPx) {
+        derivedStateOf {
+            if (candles.size <= 1 || totalContentWidthPx <= 0f) {
+                0..candles.lastIndex
+            } else {
+                val effectiveBack = scrollBackPx.coerceIn(0f, maxScrollPx)
+                val scrollFromLeft = (maxScrollPx - effectiveBack).coerceIn(0f, maxScrollPx)
+                val slot = totalContentWidthPx / candles.size
+                val startIdx = (scrollFromLeft / slot).toInt().coerceIn(0, candles.lastIndex)
+                val endIdx = ((scrollFromLeft + viewportWidthPx) / slot).toInt().coerceIn(startIdx, candles.lastIndex)
+                startIdx..endIdx
+            }
+        }
+    }
+
+    val maxCandleIndex = remember(candles, visibleCandleRange) {
+        visibleCandleRange.maxByOrNull { candles[it].high } ?: 0
+    }
+    val minCandleIndex = remember(candles, visibleCandleRange) {
+        visibleCandleRange.minByOrNull { candles[it].low } ?: 0
+    }
+    val overallMin = remember(candles, minCandleIndex) { candles[minCandleIndex].low }
+    val overallMax = remember(candles, maxCandleIndex) { candles[maxCandleIndex].high }
+
+    val targetMinNorm = ((overallMin - allCandlesMin) / overallRange).toFloat().coerceIn(0f, 1f)
+    val targetMaxNorm = ((overallMax - allCandlesMin) / overallRange).toFloat().coerceIn(0f, 1f)
+
+    val animatedMinNorm by animateFloatAsState(
+        targetValue = targetMinNorm,
+        animationSpec = tween(durationMillis = 160),
+        visibilityThreshold = 0.0005f,
+        label = "candleYMinNorm"
+    )
+    val animatedMaxNorm by animateFloatAsState(
+        targetValue = targetMaxNorm,
+        animationSpec = tween(durationMillis = 160),
+        visibilityThreshold = 0.0005f,
+        label = "candleYMaxNorm"
+    )
+
+    val displayMin = allCandlesMin + animatedMinNorm * overallRange
+    val displayMax = allCandlesMin + animatedMaxNorm * overallRange
+    val actualDiff = (displayMax - displayMin).coerceAtLeast(0.0)
+    val priceRange = if (actualDiff <= 0.0) 1.0 else actualDiff
+
+    val yTickLabels = remember(displayMin, actualDiff) {
+        (0 until gridLineCount).map { i ->
+            val fraction = 1.0 - (i.toDouble() / (gridLineCount - 1))
+            (displayMin + actualDiff * fraction).formatAxisMoney()
+        }
+    }
+
+    val xTickIndices = remember(candles, contentScaleFactor) {
+        val count = candles.size
+        if (count <= 1) listOf(0)
+        else {
+            val tickCount = min(count, (4 * contentScaleFactor).roundToInt().coerceAtLeast(4))
+            (0 until tickCount).map { tick ->
+                ((tick.toFloat() / (tickCount - 1)) * (count - 1)).toInt()
+            }.distinct()
+        }
+    }
+
+    val yLabelLayouts = yTickLabels.map { label ->
+        textMeasurer.measure(text = label, style = axisTextStyle)
     }
     val xLabelLayouts = remember(candles, xTickIndices, axisTextStyle) {
         xTickIndices.mapNotNull { index ->
@@ -237,20 +341,28 @@ fun BarChartCompose(
         else null
     }
 
-    val leftPaddingPx = with(density) { 10.dp.toPx() }
-    val yAxisGapPx = with(density) { 8.dp.toPx() }
-    val rightPaddingPx = with(density) { 12.dp.toPx() }
-    val maxYLabelWidthPx = yLabelLayouts.maxOfOrNull { it.size.width }?.toFloat() ?: 0f
-    val chartLeftPx = leftPaddingPx + maxYLabelWidthPx + yAxisGapPx
-    val chartLeftDp = with(density) { chartLeftPx.toDp() }
-
     val tapThresholdPx = with(density) { 24.dp.toPx() }
 
     BoxWithConstraints(modifier = modifier) {
-        Canvas(
-            modifier = Modifier
+        val scrollModifier = if (maxScrollPx > 0f) {
+            Modifier
                 .fillMaxSize()
-                .pointerInput(candles, chartLeftPx, rightPaddingPx, tradeMarkers, selectedMarkerId, tapThresholdPx) {
+                .onSizeChanged { canvasWidthPx = it.width }
+                .scrollable(
+                    state = scrollableState,
+                    orientation = Orientation.Horizontal,
+                    reverseDirection = false,
+                    flingBehavior = ScrollableDefaults.flingBehavior()
+                )
+        } else {
+            Modifier
+                .fillMaxSize()
+                .onSizeChanged { canvasWidthPx = it.width }
+        }
+
+        Canvas(
+            modifier = scrollModifier
+                .pointerInput(candles, chartLeftPx, reservedRightPx, contentScaleFactor, tradeMarkers, selectedMarkerId, tapThresholdPx) {
                     detectTapGestures(
                         onTap = { offset ->
                             if (tradeMarkers.isNotEmpty() && onMarkerClick != null) {
@@ -267,31 +379,29 @@ fun BarChartCompose(
                                     onMarkerClick(null)
                                 }
                             }
-                            val chartRightPx = (size.width - rightPaddingPx).coerceAtLeast(chartLeftPx + 1f)
-                            val chartWidthPx = chartRightPx - chartLeftPx
-                            val slotWidth = chartWidthPx / candles.size
-                            val relativeX = (offset.x - chartLeftPx).coerceIn(0f, chartWidthPx - 1f)
-                            val index = (relativeX / slotWidth).toInt().coerceIn(0, candles.lastIndex)
+                            val chartRightPx = (size.width - reservedRightPx).coerceAtLeast(chartLeftPx + 1f)
+                            val vpWidth = chartRightPx - chartLeftPx
+                            val virtualWidth = vpWidth * contentScaleFactor
+                            val canvasMaxScroll = (virtualWidth - vpWidth).coerceAtLeast(0f)
+                            val effectiveBack = scrollBackPx.coerceIn(0f, canvasMaxScroll)
+                            val virtualLeft = chartRightPx + effectiveBack - virtualWidth
+                            val slotWidth = virtualWidth / candles.size
+                            val contentX = (offset.x - virtualLeft).coerceIn(0f, virtualWidth - 1f)
+                            val index = (contentX / slotWidth).toInt().coerceIn(0, candles.lastIndex)
                             selectedIndex = if (selectedIndex == index) null else index
                         }
                     )
-                }
-                .pointerInput(candles, chartLeftPx, rightPaddingPx) {
-                    detectDragGestures { change, _ ->
-                        val chartRightPx = (size.width - rightPaddingPx).coerceAtLeast(chartLeftPx + 1f)
-                        val chartWidthPx = chartRightPx - chartLeftPx
-                        val slotWidth = chartWidthPx / candles.size
-                        val relativeX = (change.position.x - chartLeftPx).coerceIn(0f, chartWidthPx - 1f)
-                        val index = (relativeX / slotWidth).toInt().coerceIn(0, candles.lastIndex)
-                        selectedIndex = index
-                    }
                 }
         ) {
             val canvasWidth = size.width
             val canvasHeight = size.height
 
-            val chartRight = (canvasWidth - rightPaddingPx).coerceAtLeast(chartLeftPx + 1f)
-            val chartWidth = chartRight - chartLeftPx
+            val chartRight = (canvasWidth - reservedRightPx).coerceAtLeast(chartLeftPx + 1f)
+            val viewportWidth = chartRight - chartLeftPx
+            val virtualWidth = viewportWidth * contentScaleFactor
+            val canvasMaxScroll = (virtualWidth - viewportWidth).coerceAtLeast(0f)
+            val effectiveBack = scrollBackPx.coerceIn(0f, canvasMaxScroll)
+            val virtualLeftPx = chartRight + effectiveBack - virtualWidth
 
             val dotRadiusPx = 3.5.dp.toPx()
             val calloutGapPx = 4.dp.toPx()
@@ -301,7 +411,8 @@ fun BarChartCompose(
                 12.dp.toPx()
             }
             val xAxisTopGap = 6.dp.toPx()
-            val bottomPadding = 4.dp.toPx()
+            val scrollTrackReserve = if (maxScrollPx > 1f) 8.dp.toPx() else 0f
+            val bottomPadding = 4.dp.toPx() + scrollTrackReserve
             val xLabelHeight = xLabelLayouts.maxOfOrNull { it.second.size.height }?.toFloat() ?: 14.dp.toPx()
             val reservedXAxisBottom = xAxisTopGap + xLabelHeight + bottomPadding
             val showMinCallout = showHighLowCallouts && minCalloutLayout != null && (overallMax != overallMin || minCandleIndex != maxCandleIndex)
@@ -313,7 +424,7 @@ fun BarChartCompose(
             val chartBottom = (canvasHeight - reservedXAxisBottom - bottomCalloutReserve).coerceAtLeast(paddingTop + 1f)
             val usableHeight = chartBottom - paddingTop
 
-            // 1. Draw horizontal dashed grid lines (5 levels) and left Y-axis price labels
+            // 1. Draw horizontal dashed grid lines and pinned right Y-axis price labels
             val dashEffect = PathEffect.dashPathEffect(floatArrayOf(12f, 12f), 0f)
 
             for (i in 0 until gridLineCount) {
@@ -332,7 +443,7 @@ fun BarChartCompose(
                 )
 
                 val layout = yLabelLayouts[i]
-                val labelX = chartLeftPx - yAxisGapPx - layout.size.width
+                val labelX = chartRight + yAxisGapPx
                 val labelY = (y - layout.size.height / 2f).coerceIn(0f, canvasHeight - layout.size.height)
                 drawText(
                     textLayoutResult = layout,
@@ -340,167 +451,205 @@ fun BarChartCompose(
                 )
             }
 
-            // 2. Draw Candlesticks (Bars + Wicks)
-            val slotWidth = chartWidth / candles.size
+            // 2. Draw clipped horizontally scrollable candles, callouts, markers, and X-axis timestamps
+            val slotWidth = virtualWidth / candles.size
             val candleBodyWidth = slotWidth * 0.58f
             val cornerRadius = CornerRadius(4.dp.toPx(), 4.dp.toPx())
             val wickStrokeWidth = 2.dp.toPx()
 
             fun priceToY(price: Double): Float {
-                val ratio = if (actualDiff <= 0.0) 0.5f else ((price - overallMin) / priceRange).toFloat()
+                val ratio = if (actualDiff <= 0.0) 0.5f else ((price - displayMin) / priceRange).toFloat()
                 return paddingTop + usableHeight * (1f - ratio)
             }
 
-            candles.forEachIndexed { index, candle ->
-                val centerX = chartLeftPx + slotWidth * index + (slotWidth / 2f)
-                val isSelected = selectedIndex == index
+            clipRect(
+                left = chartLeftPx,
+                top = 0f,
+                right = chartRight,
+                bottom = canvasHeight
+            ) {
+                candles.forEachIndexed { index, candle ->
+                    val centerX = virtualLeftPx + slotWidth * index + (slotWidth / 2f)
+                    if (centerX + slotWidth < chartLeftPx || centerX - slotWidth > chartRight) {
+                        return@forEachIndexed
+                    }
+                    val isSelected = selectedIndex == index
+                    val candleColor = if (candle.isUp) effectiveUpColor else effectiveDownColor
 
-                val candleColor = if (candle.isUp) effectiveUpColor else effectiveDownColor
+                    val openY = priceToY(candle.open)
+                    val closeY = priceToY(candle.close)
+                    val highY = priceToY(candle.high)
+                    val lowY = priceToY(candle.low)
 
-                val openY = priceToY(candle.open)
-                val closeY = priceToY(candle.close)
-                val highY = priceToY(candle.high)
-                val lowY = priceToY(candle.low)
+                    val bodyTopY = min(openY, closeY)
+                    val bodyBottomY = max(openY, closeY)
+                    val rawBodyHeight = bodyBottomY - bodyTopY
+                    val bodyHeight = max(rawBodyHeight, 4.dp.toPx())
 
-                val bodyTopY = min(openY, closeY)
-                val bodyBottomY = max(openY, closeY)
-                val rawBodyHeight = bodyBottomY - bodyTopY
-                val bodyHeight = max(rawBodyHeight, 4.dp.toPx())
+                    if (isSelected) {
+                        drawLine(
+                            color = candleColor.copy(alpha = 0.25f),
+                            start = Offset(centerX, paddingTop),
+                            end = Offset(centerX, chartBottom),
+                            strokeWidth = 1.5.dp.toPx(),
+                            pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
+                        )
+                    }
 
-                // Draw vertical indicator line for selected candle
-                if (isSelected) {
                     drawLine(
-                        color = candleColor.copy(alpha = 0.25f),
-                        start = Offset(centerX, paddingTop),
-                        end = Offset(centerX, chartBottom),
-                        strokeWidth = 1.5.dp.toPx(),
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
+                        color = candleColor,
+                        start = Offset(centerX, highY),
+                        end = Offset(centerX, lowY),
+                        strokeWidth = wickStrokeWidth
+                    )
+
+                    drawRoundRect(
+                        color = candleColor,
+                        topLeft = Offset(centerX - (candleBodyWidth / 2f), bodyTopY),
+                        size = Size(candleBodyWidth, bodyHeight),
+                        cornerRadius = cornerRadius
                     )
                 }
 
-                // Draw Wick (thin vertical line from high to low)
-                drawLine(
-                    color = candleColor,
-                    start = Offset(centerX, highY),
-                    end = Offset(centerX, lowY),
-                    strokeWidth = wickStrokeWidth
-                )
-
-                // Draw Rounded Candle Body
-                drawRoundRect(
-                    color = candleColor,
-                    topLeft = Offset(centerX - (candleBodyWidth / 2f), bodyTopY),
-                    size = Size(candleBodyWidth, bodyHeight),
-                    cornerRadius = cornerRadius
-                )
-            }
-
-            // 3. Draw High & Low hollow ring markers and price callouts at wick extremes
-            if (showHighLowCallouts && candles.isNotEmpty()) {
-                val maxCandle = candles[maxCandleIndex]
-                val maxCenterX = chartLeftPx + slotWidth * maxCandleIndex + (slotWidth / 2f)
-                val maxY = priceToY(maxCandle.high)
-                val maxRingColor = if (maxCandle.isUp) effectiveUpColor else effectiveDownColor
-
-                drawCircle(
-                    color = pointFillColor,
-                    radius = dotRadiusPx,
-                    center = Offset(maxCenterX, maxY),
-                    style = Fill
-                )
-                drawCircle(
-                    color = maxRingColor,
-                    radius = dotRadiusPx,
-                    center = Offset(maxCenterX, maxY),
-                    style = Stroke(width = 2.dp.toPx())
-                )
-
-                maxCalloutLayout?.let { layout ->
-                    val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
-                    val labelX = (maxCenterX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
-                    val labelY = (maxY - dotRadiusPx - calloutGapPx - layout.size.height)
-                        .coerceAtLeast(2.dp.toPx())
-                    drawText(
-                        textLayoutResult = layout,
-                        topLeft = Offset(labelX, labelY)
-                    )
-                }
-
-                if (showMinCallout) {
-                    val minCandle = candles[minCandleIndex]
-                    val minCenterX = chartLeftPx + slotWidth * minCandleIndex + (slotWidth / 2f)
-                    val minY = priceToY(minCandle.low)
-                    val minRingColor = if (minCandle.isUp) effectiveUpColor else effectiveDownColor
+                if (showHighLowCallouts && candles.isNotEmpty()) {
+                    val maxCandle = candles[maxCandleIndex]
+                    val maxCenterX = virtualLeftPx + slotWidth * maxCandleIndex + (slotWidth / 2f)
+                    val maxY = priceToY(maxCandle.high)
+                    val maxRingColor = if (maxCandle.isUp) effectiveUpColor else effectiveDownColor
 
                     drawCircle(
                         color = pointFillColor,
                         radius = dotRadiusPx,
-                        center = Offset(minCenterX, minY),
+                        center = Offset(maxCenterX, maxY),
                         style = Fill
                     )
                     drawCircle(
-                        color = minRingColor,
+                        color = maxRingColor,
                         radius = dotRadiusPx,
-                        center = Offset(minCenterX, minY),
+                        center = Offset(maxCenterX, maxY),
                         style = Stroke(width = 2.dp.toPx())
                     )
 
-                    minCalloutLayout?.let { layout ->
+                    maxCalloutLayout?.let { layout ->
                         val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
-                        val labelX = (minCenterX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
-                        val maxLabelY = (canvasHeight - reservedXAxisBottom - layout.size.height - 2.dp.toPx())
-                            .coerceAtLeast(minY)
-                        val labelY = (minY + dotRadiusPx + calloutGapPx).coerceAtMost(maxLabelY)
+                        val labelX = (maxCenterX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
+                        val labelY = (maxY - dotRadiusPx - calloutGapPx - layout.size.height)
+                            .coerceAtLeast(2.dp.toPx())
                         drawText(
                             textLayoutResult = layout,
                             topLeft = Offset(labelX, labelY)
                         )
                     }
+
+                    if (showMinCallout) {
+                        val minCandle = candles[minCandleIndex]
+                        val minCenterX = virtualLeftPx + slotWidth * minCandleIndex + (slotWidth / 2f)
+                        val minY = priceToY(minCandle.low)
+                        val minRingColor = if (minCandle.isUp) effectiveUpColor else effectiveDownColor
+
+                        drawCircle(
+                            color = pointFillColor,
+                            radius = dotRadiusPx,
+                            center = Offset(minCenterX, minY),
+                            style = Fill
+                        )
+                        drawCircle(
+                            color = minRingColor,
+                            radius = dotRadiusPx,
+                            center = Offset(minCenterX, minY),
+                            style = Stroke(width = 2.dp.toPx())
+                        )
+
+                        minCalloutLayout?.let { layout ->
+                            val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
+                            val labelX = (minCenterX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
+                            val maxLabelY = (canvasHeight - reservedXAxisBottom - layout.size.height - 2.dp.toPx())
+                                .coerceAtLeast(minY)
+                            val labelY = (minY + dotRadiusPx + calloutGapPx).coerceAtMost(maxLabelY)
+                            drawText(
+                                textLayoutResult = layout,
+                                topLeft = Offset(labelX, labelY)
+                            )
+                        }
+                    }
+                }
+
+                val positionedMarkers = resolveCandleTradeMarkers(
+                    candles = candles,
+                    markers = tradeMarkers,
+                    chartLeftPx = virtualLeftPx,
+                    chartWidth = virtualWidth,
+                    priceToY = ::priceToY,
+                    paddingTop = paddingTop,
+                    chartBottom = chartBottom,
+                    markerRadiusPx = 6.dp.toPx(),
+                    viewportLeftPx = chartLeftPx,
+                    viewportRightPx = chartRight
+                )
+                markerHolder.items = positionedMarkers
+                drawTradeMarkers(
+                    positionedMarkers = positionedMarkers,
+                    plotBottom = chartBottom,
+                    pointFillColor = pointFillColor,
+                    isDark = isDark,
+                    selectedMarkerId = selectedMarkerId
+                )
+
+                val xLabelY = (canvasHeight - reservedXAxisBottom) + xAxisTopGap
+                val minLabelGapPx = 10.dp.toPx()
+                var lastLabelEndX = Float.NEGATIVE_INFINITY
+
+                xLabelLayouts.forEach { (index, layout) ->
+                    val centerX = virtualLeftPx + slotWidth * index + (slotWidth / 2f)
+                    val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
+                    val labelX = (centerX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
+                    val labelEnd = labelX + layout.size.width
+
+                    if (centerX >= chartLeftPx - layout.size.width &&
+                        centerX <= chartRight + layout.size.width &&
+                        labelX >= lastLabelEndX + minLabelGapPx
+                    ) {
+                        drawText(
+                            textLayoutResult = layout,
+                            topLeft = Offset(labelX, xLabelY)
+                        )
+                        lastLabelEndX = labelEnd
+                    }
                 }
             }
 
-            // 3b. Draw portfolio entry/exit markers mapped by timestamp & execution price
-            val positionedMarkers = resolveCandleTradeMarkers(
-                candles = candles,
-                markers = tradeMarkers,
-                chartLeftPx = chartLeftPx,
-                chartWidth = chartWidth,
-                priceToY = ::priceToY,
-                paddingTop = paddingTop,
-                chartBottom = chartBottom,
-                markerRadiusPx = 6.dp.toPx()
-            )
-            markerHolder.items = positionedMarkers
-            drawTradeMarkers(
-                positionedMarkers = positionedMarkers,
-                plotBottom = chartBottom,
-                pointFillColor = pointFillColor,
-                isDark = isDark,
-                selectedMarkerId = selectedMarkerId
-            )
-
-            // 4. Draw X-axis timestamps at the base of the chart
-            val xLabelY = (canvasHeight - reservedXAxisBottom) + xAxisTopGap
-            val minLabelGapPx = 8.dp.toPx()
-            var lastLabelEndX = Float.NEGATIVE_INFINITY
-
-            xLabelLayouts.forEach { (index, layout) ->
-                val centerX = chartLeftPx + slotWidth * index + (slotWidth / 2f)
-                val maxAllowedX = (chartRight - layout.size.width).coerceAtLeast(chartLeftPx)
-                val labelX = (centerX - layout.size.width / 2f).coerceIn(chartLeftPx, maxAllowedX)
-
-                if (labelX >= lastLabelEndX + minLabelGapPx) {
-                    drawText(
-                        textLayoutResult = layout,
-                        topLeft = Offset(labelX, xLabelY)
-                    )
-                    lastLabelEndX = labelX + layout.size.width
-                }
+            // 3. Subtle horizontal scroll progress indicator along bottom of plot viewport
+            if (canvasMaxScroll > 1f) {
+                val trackHeight = 2.5.dp.toPx()
+                val trackY = canvasHeight - trackHeight - 1.dp.toPx()
+                val corner = CornerRadius(trackHeight / 2f, trackHeight / 2f)
+                drawRoundRect(
+                    color = effectiveGridLineColor,
+                    topLeft = Offset(chartLeftPx, trackY),
+                    size = Size(viewportWidth, trackHeight),
+                    cornerRadius = corner
+                )
+                val thumbWidth = (viewportWidth / contentScaleFactor).coerceAtLeast(24.dp.toPx())
+                val thumbFractionFromLeft = ((canvasMaxScroll - effectiveBack) / canvasMaxScroll).coerceIn(0f, 1f)
+                val thumbX = chartLeftPx + (viewportWidth - thumbWidth) * thumbFractionFromLeft
+                drawRoundRect(
+                    color = effectiveUpColor.copy(alpha = 0.65f),
+                    topLeft = Offset(thumbX, trackY),
+                    size = Size(thumbWidth, trackHeight),
+                    cornerRadius = corner
+                )
             }
         }
 
-        // 5. Floating Info Card (appears ONLY when a candle is clicked, placed on opposite side to avoid obscuring selected candle)
-        val isSelectedOnRightHalf = (selectedIndex ?: 0) >= (candles.size / 2)
+        // Floating Info Card positioned on opposite side of the tapped candle's on-screen position
+        val selectedCenterXOnScreen = selectedIndex?.let { idx ->
+            val slot = totalContentWidthPx / candles.size
+            val effectiveBack = scrollBackPx.coerceIn(0f, maxScrollPx)
+            val virtualLeft = chartLeftPx + viewportWidthPx + effectiveBack - totalContentWidthPx
+            virtualLeft + slot * idx + (slot / 2f)
+        } ?: 0f
+        val viewportCenterX = chartLeftPx + viewportWidthPx / 2f
+        val isSelectedOnRightHalf = selectedCenterXOnScreen >= viewportCenterX
         val cardAlignment = if (isSelectedOnRightHalf) Alignment.BottomStart else Alignment.BottomEnd
 
         AnimatedVisibility(
@@ -509,7 +658,7 @@ fun BarChartCompose(
             exit = fadeOut() + scaleOut(targetScale = 0.88f),
             modifier = Modifier
                 .align(cardAlignment)
-                .padding(start = chartLeftDp + 4.dp, end = 12.dp, top = 8.dp, bottom = 36.dp)
+                .padding(start = 12.dp, end = reservedRightDp + 4.dp, top = 8.dp, bottom = 36.dp)
         ) {
             if (currentCandle != null) {
                 val variation = if (currentCandle.open != 0.0) {
@@ -527,7 +676,11 @@ fun BarChartCompose(
                 }
 
                 val isDayPeriod = selectedDays <= DaysOfChart.DAY.value
-                val occurrenceLabel = if (isDayPeriod) "Hora:" else "Data:"
+                val occurrenceLabel = if (isDayPeriod) {
+                    stringResource(R.string.chart_label_time)
+                } else {
+                    stringResource(R.string.chart_label_date)
+                }
                 val occurrenceValue = if (isDayPeriod) currentCandle.hourLabel else currentCandle.dayLabel
 
                 Card(
@@ -557,12 +710,12 @@ fun BarChartCompose(
                             color = cardBorderColor,
                             modifier = Modifier.padding(vertical = 1.dp)
                         )
-                        CandleInfoRow(label = "Abertura:", value = currentCandle.open.formatMoney(), labelColor = labelColor, valueColor = valueColor)
-                        CandleInfoRow(label = "Máximo:", value = currentCandle.high.formatMoney(), labelColor = labelColor, valueColor = valueColor)
-                        CandleInfoRow(label = "Mínimo:", value = currentCandle.low.formatMoney(), labelColor = labelColor, valueColor = valueColor)
-                        CandleInfoRow(label = "Fechamento:", value = currentCandle.close.formatMoney(), labelColor = labelColor, valueColor = valueColor)
+                        CandleInfoRow(label = stringResource(R.string.chart_label_open), value = currentCandle.open.formatMoney(), labelColor = labelColor, valueColor = valueColor)
+                        CandleInfoRow(label = stringResource(R.string.chart_label_high), value = currentCandle.high.formatMoney(), labelColor = labelColor, valueColor = valueColor)
+                        CandleInfoRow(label = stringResource(R.string.chart_label_low), value = currentCandle.low.formatMoney(), labelColor = labelColor, valueColor = valueColor)
+                        CandleInfoRow(label = stringResource(R.string.chart_label_close), value = currentCandle.close.formatMoney(), labelColor = labelColor, valueColor = valueColor)
                         CandleInfoRow(
-                            label = "Variação:",
+                            label = stringResource(R.string.chart_label_change),
                             value = variation.formatPercentage(),
                             labelColor = labelColor,
                             valueColor = variationColor,

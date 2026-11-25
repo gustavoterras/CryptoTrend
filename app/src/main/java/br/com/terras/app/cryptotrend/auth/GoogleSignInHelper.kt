@@ -38,6 +38,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -123,7 +124,7 @@ fun onGoogleSignInClicked(
     val clientId = try {
         context.getString(R.string.default_web_client_id)
     } catch (_: Exception) {
-        onAuthError("Configuração do Google Sign-In ausente (default_web_client_id).")
+        onAuthError(context.getString(DsmR.string.auth_missing_config))
         return
     }
     val signInOption = GetSignInWithGoogleOption.Builder(serverClientId = clientId).build()
@@ -142,14 +143,14 @@ fun onGoogleSignInClicked(
                 ).await()
                 onAuthSuccess()
             } else {
-                onAuthError("Tipo de credencial inesperado.")
+                onAuthError(context.getString(DsmR.string.auth_unexpected_credential))
             }
         } catch (e: GetCredentialCancellationException) {
             Log.w("Auth", "Google Sign-In flow cancelled or dismissed: ${e.message}", e)
             onAuthCancelled()
         } catch (e: Exception) {
             Log.e("Auth", "Google Sign-In failed", e)
-            onAuthError(e.localizedMessage ?: "Falha ao entrar com o Google.")
+            onAuthError(e.localizedMessage ?: context.getString(DsmR.string.auth_sign_in_failed))
         }
     }
 }
@@ -180,7 +181,7 @@ fun GoogleSignInButton(
     onAuthSuccess: () -> Unit,
     onAuthError: (String) -> Unit,
     modifier: Modifier = Modifier,
-    buttonText: String = "Entrar com o Google"
+    buttonText: String = stringResource(DsmR.string.auth_sign_in_with_google)
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -268,7 +269,7 @@ fun GoogleSignInPromptDialog(
                     )
                 }
                 Text(
-                    text = "Salvar favoritos na nuvem",
+                    text = stringResource(DsmR.string.auth_prompt_title),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.surface,
@@ -283,7 +284,7 @@ fun GoogleSignInPromptDialog(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Entre com sua conta Google para favoritar criptomoedas e manter sua lista sincronizada.",
+                    text = stringResource(DsmR.string.auth_prompt_message),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -317,7 +318,7 @@ fun GoogleSignInPromptDialog(
                 modifier = Modifier.testTag("dialog_google_sign_in_cancel")
             ) {
                 Text(
-                    text = "Agora não",
+                    text = stringResource(DsmR.string.auth_prompt_not_now),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -359,7 +360,8 @@ fun AccountProfileDialog(
                     )
                 }
                 Text(
-                    text = displayName?.takeIf { it.isNotBlank() } ?: "Conta Google",
+                    text = displayName?.takeIf { it.isNotBlank() }
+                        ?: stringResource(DsmR.string.auth_default_account_name),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.surface,
@@ -384,7 +386,7 @@ fun AccountProfileDialog(
                     )
                 }
                 Text(
-                    text = "Seus favoritos estão sincronizados com segurança nesta conta.",
+                    text = stringResource(DsmR.string.auth_profile_synced_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center
@@ -398,7 +400,7 @@ fun AccountProfileDialog(
                 modifier = Modifier.testTag("profile_sign_out_button")
             ) {
                 Text(
-                    text = "Sair da conta",
+                    text = stringResource(DsmR.string.auth_sign_out),
                     color = MaterialTheme.colorScheme.error,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -410,7 +412,7 @@ fun AccountProfileDialog(
                 modifier = Modifier.testTag("profile_close_button")
             ) {
                 Text(
-                    text = "Fechar",
+                    text = stringResource(DsmR.string.action_close),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }

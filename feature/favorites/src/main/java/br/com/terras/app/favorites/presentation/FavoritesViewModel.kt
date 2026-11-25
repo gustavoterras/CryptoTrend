@@ -87,23 +87,42 @@ class FavoritesViewModel @Inject constructor(
             return
         }
 
-        val immediateCached = ids.mapNotNull { cachedCoinsById[it] }
-        if (immediateCached.size == ids.size) {
-            _coins.update { FavoritesState.Success(immediateCached) }
-        } else if (!isRefresh && immediateCached.isEmpty()) {
+        val immediateMemoryCached = ids.mapNotNull { cachedCoinsById[it] }
+        val effectiveCached = if (immediateMemoryCached.size == ids.size) {
+            immediateMemoryCached
+        } else {
+            val diskCached = useCase.getCachedCoinsByIds(ids).orEmpty()
+            if (diskCached.isNotEmpty()) {
+                val diskById = diskCached.associateBy { it.id }
+                cachedCoinsById = diskById + cachedCoinsById
+                ids.mapNotNull { cachedCoinsById[it] }
+            } else {
+                immediateMemoryCached
+            }
+        }
+
+        if (effectiveCached.size == ids.size || (!isRefresh && effectiveCached.isNotEmpty())) {
+            _coins.update { FavoritesState.Success(effectiveCached) }
+        } else if (!isRefresh && effectiveCached.isEmpty()) {
             _coins.update { FavoritesState.Loading }
         }
 
-        useCase.getCoinsByIds(ids)
+        val result = if (isRefresh) {
+            useCase.getCoinsByIds(ids, forceRefresh = true)
+        } else {
+            useCase.getCoinsByIds(ids)
+        }
+
+        result
             .onFailure {
-                if (immediateCached.isNotEmpty()) {
-                    _coins.update { FavoritesState.Success(immediateCached) }
+                if (effectiveCached.isNotEmpty()) {
+                    _coins.update { FavoritesState.Success(effectiveCached) }
                 } else {
                     _coins.update { FavoritesState.Error }
                 }
             }
-            .onSuccess { result ->
-                val resultById = result.associateBy { it.id }
+            .onSuccess { resultCoins ->
+                val resultById = resultCoins.associateBy { it.id }
                 cachedCoinsById = cachedCoinsById + resultById
                 val orderedCoins = ids.mapNotNull { resultById[it] }
                 _coins.update { FavoritesState.Success(orderedCoins) }

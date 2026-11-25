@@ -25,7 +25,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,6 +32,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -46,7 +46,6 @@ import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
-import java.util.Locale
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
@@ -61,7 +60,7 @@ fun CoinListItemView(
     trendColor: TrendColor = TrendColor.NONE,
     coinVolume: String? = null,
     sparklinePrices: List<Double> = emptyList(),
-    quoteCurrency: String = remember { if (Locale.getDefault().language == "pt") "BRL" else "USD" },
+    quoteCurrency: String = stringResource(R.string.currency_quote_code),
     isFavorite: Boolean = false,
     onItemClick: (String) -> Unit
 ) {
@@ -148,7 +147,7 @@ fun CoinListItemView(
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_star_filled_24dp),
-                            contentDescription = "Favorito",
+                            contentDescription = stringResource(R.string.coin_favorite_cd),
                             tint = MaterialTheme.colorScheme.inversePrimary,
                             modifier = Modifier.size(13.dp)
                         )

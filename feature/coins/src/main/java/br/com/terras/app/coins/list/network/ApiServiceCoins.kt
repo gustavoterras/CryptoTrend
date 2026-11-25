@@ -1,6 +1,8 @@
 package br.com.terras.app.coins.list.network
 
+import br.com.terras.app.coins.list.data.model.AlternativeFngResponse
 import br.com.terras.app.coins.list.data.model.CoinsResponse
+import br.com.terras.app.coins.list.data.model.GlobalMarketResponse
 import br.com.terras.app.coins.list.data.model.TrendingCoinsResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -17,6 +19,8 @@ class ApiServiceCoins(
     companion object {
         private const val COINS_MARKET_DATA_ROUTE = "v3/coins/markets"
         private const val COINS_TRENDING_ROUTE = "v3/search/trending"
+        private const val GLOBAL_MARKET_DATA_ROUTE = "v3/global"
+        private const val FALLBACK_FEAR_GREED_URL = "https://api.alternative.me/fng/?limit=1"
         private const val COINS_MARKET_DATA_PARAMS_KEY = "vs_currency"
         private const val COINS_MARKET_DATA_PARAMS_VALUE_EN = "usd"
         private const val COINS_MARKET_DATA_PARAMS_VALUE_PT = "brl"
@@ -52,5 +56,13 @@ class ApiServiceCoins(
 
     suspend fun getTrendingCoins(): TrendingCoinsResponse = client.get {
         url("$baseUrl$COINS_TRENDING_ROUTE")
+    }.body()
+
+    suspend fun getGlobalMarketData(): GlobalMarketResponse = client.get {
+        url("$baseUrl$GLOBAL_MARKET_DATA_ROUTE")
+    }.body()
+
+    suspend fun getFallbackFearAndGreed(): AlternativeFngResponse = client.get {
+        url(FALLBACK_FEAR_GREED_URL)
     }.body()
 }

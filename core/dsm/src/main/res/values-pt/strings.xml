@@ -1,0 +1,189 @@
+<resources>
+    <!-- Navigation & Common -->
+    <string name="nav_market">Mercado</string>
+    <string name="nav_portfolio">Portfólio</string>
+    <string name="nav_news">Notícias</string>
+    <string name="nav_expand_bar">Expandir barra de navegação</string>
+    <string name="nav_item_collapsed_cd">%1$s, tocar para expandir navegação</string>
+
+    <string name="action_back">Voltar</string>
+    <string name="action_close">Fechar</string>
+    <string name="action_cancel">Cancelar</string>
+    <string name="action_confirm">Confirmar</string>
+    <string name="action_delete">Excluir</string>
+    <string name="action_refresh">Atualizar</string>
+    <string name="action_retry">Tentar novamente</string>
+    <string name="action_see_more">Ver mais</string>
+
+    <string name="dialog_alert_title">Alerta</string>
+    <string name="dialog_alert_acknowledge">Entendi</string>
+    <string name="error_loading_data">Erro ao carregar os dados, tente novamente mais tarde.</string>
+    <string name="currency_quote_code">BRL</string>
+
+    <!-- Splash -->
+    <string name="splash_logo_content_description">Logo CryptoTrend</string>
+    <string name="splash_tagline">Cotações e tendências em tempo real</string>
+    <string name="splash_live_badge">MERCADO AO VIVO</string>
+
+    <!-- Auth & Profile -->
+    <string name="auth_sign_in_with_google">Entrar com o Google</string>
+    <string name="auth_missing_config">Configuração do Google Sign-In ausente (default_web_client_id).</string>
+    <string name="auth_unexpected_credential">Tipo de credencial inesperado.</string>
+    <string name="auth_sign_in_failed">Falha ao entrar com o Google.</string>
+    <string name="auth_prompt_title">Salvar favoritos na nuvem</string>
+    <string name="auth_prompt_message">Entre com sua conta Google para favoritar criptomoedas e manter sua lista sincronizada.</string>
+    <string name="auth_prompt_not_now">Agora não</string>
+    <string name="auth_default_account_name">Conta Google</string>
+    <string name="auth_profile_synced_note">Seus favoritos estão sincronizados com segurança nesta conta.</string>
+    <string name="auth_sign_out">Sair da conta</string>
+    <string name="favorites_sync_load_error">Não foi possível carregar os favoritos.</string>
+    <string name="favorites_invalid_id">ID de criptomoeda inválido para favoritos.</string>
+    <string name="favorites_invalid_remove_id">ID de criptomoeda inválido para remoção.</string>
+
+    <!-- Market List, Tabs & Sort Bar -->
+    <string name="tab_favorites">Favoritos</string>
+    <string name="tab_crypto">Cripto</string>
+    <string name="tab_trending">Tendências</string>
+
+    <string name="sort_name">Nome</string>
+    <string name="sort_vol">Vol</string>
+    <string name="sort_chart">Gráfico</string>
+    <string name="sort_change_24h">Var. 24h</string>
+    <string name="sort_by_cd">Ordenar por %1$s</string>
+    <string name="sort_asc_cd">%1$s crescente</string>
+    <string name="sort_desc_cd">%1$s decrescente</string>
+
+    <string name="search_action_cd">Pesquisar</string>
+    <string name="search_coins_placeholder">Procurar criptomoedas</string>
+    <string name="search_open_cd">Pesquisar criptomoedas</string>
+    <string name="search_close_cd">Fechar pesquisa</string>
+    <string name="search_clear_cd">Limpar pesquisa</string>
+    <string name="search_api_results_banner">Resultados encontrados na API de pesquisa</string>
+    <string name="search_empty_for_query">Nenhuma criptomoeda encontrada para \"%1$s\".</string>
+    <string name="search_empty_generic">Nenhum resultado encontrado.</string>
+
+    <string name="coin_favorite_cd">Favorito</string>
+
+    <!-- Favorites -->
+    <string name="favorites_empty_message">Nenhuma criptomoeda favoritada no momento.\nToque na estrela nos detalhes de uma moeda para salvá-la aqui.</string>
+
+    <!-- Detail Screen -->
+    <string name="detail_added_favorite">%1$s adicionado aos favoritos</string>
+    <string name="detail_removed_favorite">%1$s removido dos favoritos</string>
+    <string name="detail_updated_at">Atualizado às %1$s</string>
+    <string name="detail_header_vol_24h">Vol 24h</string>
+    <string name="detail_header_high_price">Máxima 24h</string>
+    <string name="detail_header_low_price">Mínima 24h</string>
+    <string name="detail_bar_chart_cd">Gráfico de Barras</string>
+    <string name="detail_line_chart_cd">Gráfico de Linhas</string>
+    <string name="detail_section_about">Sobre</string>
+    <string name="detail_section_insights">Insights de Mercado</string>
+    <string name="detail_insights_empty">Nenhum insight disponível para %1$s no momento.</string>
+    <string name="detail_news_empty">Nenhuma notícia encontrada para %1$s.</string>
+
+    <!-- Detail About Stats -->
+    <string name="detail_stat_market_cap">Capitalização de Mercado</string>
+    <string name="detail_stat_trading_volume_24h">Volume de Negociação (24h)</string>
+    <string name="detail_stat_high_24h">Maior Preço (24h)</string>
+    <string name="detail_stat_low_24h">Menor Preço (24h)</string>
+    <string name="detail_stat_circulating_supply">Oferta Circulante</string>
+    <string name="detail_stat_total_supply">Oferta Total</string>
+    <string name="detail_stat_max_supply">Oferta Máxima</string>
+    <string name="detail_stat_ath_price">Máxima Histórica (ATH)</string>
+    <string name="detail_stat_atl_price">Mínima Histórica (ATL)</string>
+    <string name="detail_stat_ath_date">Data da Máxima Histórica</string>
+    <string name="detail_stat_atl_date">Data da Mínima Histórica</string>
+    <string name="detail_stat_last_updated">Última atualização</string>
+
+    <!-- Bar Chart Callout -->
+    <string name="chart_label_time">Hora:</string>
+    <string name="chart_label_date">Data:</string>
+    <string name="chart_label_open">Abertura:</string>
+    <string name="chart_label_high">Máximo:</string>
+    <string name="chart_label_low">Mínimo:</string>
+    <string name="chart_label_close">Fechamento:</string>
+    <string name="chart_label_change">Variação:</string>
+
+    <!-- Chart Trade Markers & Detail Portfolio Card -->
+    <string name="chart_marker_buy_count">▲ Entrada (%1$d)</string>
+    <string name="chart_marker_sell_count">▼ Saída (%1$d)</string>
+    <string name="chart_marker_none_in_period">Sem operações neste período (%1$d no portfólio)</string>
+    <string name="chart_marker_hidden_count">+%1$d fora do período</string>
+    <string name="chart_marker_buy">Entrada</string>
+    <string name="chart_marker_sell">Saída</string>
+
+    <string name="detail_portfolio_title">Seu Portfólio</string>
+    <string name="detail_portfolio_view">Ver Portfólio</string>
+    <string name="detail_portfolio_open_cd">Abrir Portfólio</string>
+    <string name="detail_portfolio_total_pnl">Ganho / Perda total</string>
+    <string name="detail_portfolio_current_value">Valor atual</string>
+    <string name="detail_portfolio_status">Status</string>
+    <string name="detail_portfolio_closed_position">Posição encerrada</string>
+    <string name="detail_portfolio_quantity">Quantidade</string>
+    <string name="detail_portfolio_avg_price">Preço médio</string>
+    <string name="detail_portfolio_realized_pnl_full">Lucro/prejuízo realizado</string>
+    <string name="detail_portfolio_realized_pnl_short">P&amp;L realizado</string>
+    <string name="detail_portfolio_recorded_trades">Operações registradas</string>
+
+    <!-- Portfolio -->
+    <string name="portfolio_add_operation">Adicionar operação</string>
+    <string name="portfolio_delete_dialog_title">Excluir operação</string>
+    <string name="portfolio_delete_dialog_message">Deseja excluir esta %1$s de %2$s %3$s (%4$s)?</string>
+    <string name="portfolio_type_buy_lower">compra</string>
+    <string name="portfolio_type_sell_lower">venda</string>
+    <string name="portfolio_protected_dialog_title">Operação protegida</string>
+    <string name="portfolio_empty_title">Seu Portfólio Cripto</string>
+    <string name="portfolio_empty_description">Registre suas compras e vendas para acompanhar saldo consolidado, preço médio, lucro/prejuízo e alocação direto no dispositivo.</string>
+    <string name="portfolio_empty_cta">Registrar primeira operação</string>
+    <string name="portfolio_allocation_title">Distribuição da carteira</string>
+    <string name="portfolio_allocation_center_label">Alocação</string>
+    <string name="portfolio_asset_count_singular">1 ativo</string>
+    <string name="portfolio_asset_count_plural">%1$d ativos</string>
+    <string name="portfolio_tab_assets">Ativos</string>
+    <string name="portfolio_tab_history">Histórico</string>
+    <string name="portfolio_offline_banner">Sem cotações ao vivo. Exibindo dados locais.</string>
+    <string name="portfolio_summary_total_balance">Saldo total</string>
+    <string name="portfolio_summary_total_pnl">P&amp;L total</string>
+    <string name="portfolio_summary_invested">Investido</string>
+    <string name="portfolio_summary_realized">Realizado</string>
+    <string name="portfolio_holding_avg_prefix">PM</string>
+    <string name="portfolio_holding_quick_add_cd">Nova operação de %1$s</string>
+    <string name="portfolio_no_open_positions_title">Nenhuma posição em aberto</string>
+    <string name="portfolio_no_open_positions_body">Todas as suas posições foram encerradas. Consulte o Histórico ou registre uma nova compra.</string>
+    <string name="portfolio_new_transaction">Nova operação</string>
+    <string name="portfolio_tx_type_buy_badge">COMPRA</string>
+    <string name="portfolio_tx_type_sell_badge">VENDA</string>
+    <string name="portfolio_tx_edit_cd">Editar operação</string>
+    <string name="portfolio_tx_delete_cd">Excluir operação</string>
+    <string name="portfolio_others_symbol">OUTROS</string>
+    <string name="portfolio_others_label">Outros (%1$d)</string>
+
+    <!-- Portfolio Transaction Sheet -->
+    <string name="tx_sheet_choose_coin">Escolher criptomoeda</string>
+    <string name="tx_sheet_edit_title">Editar operação</string>
+    <string name="tx_sheet_new_title">Nova operação</string>
+    <string name="tx_sheet_choose_coin_subtitle">Pesquise ou selecione um ativo para registrar</string>
+    <string name="tx_sheet_close_cd">Fechar formulário</string>
+    <string name="tx_picker_placeholder">Buscar por nome ou símbolo (ex: BTC, SOL)</string>
+    <string name="tx_picker_search_cd">Buscar criptomoeda</string>
+    <string name="tx_picker_clear_cd">Limpar busca</string>
+    <string name="tx_picker_empty">Nenhuma criptomoeda encontrada.</string>
+    <string name="tx_current_price_label">Preço atual: %1$s</string>
+    <string name="tx_change_coin">Trocar</string>
+    <string name="tx_type_buy">Compra</string>
+    <string name="tx_type_sell">Venda</string>
+    <string name="tx_available_balance">Saldo disponível: %1$s %2$s</string>
+    <string name="tx_sell_all">Vender tudo</string>
+    <string name="tx_quantity_label">Quantidade (%1$s)</string>
+    <string name="tx_quantity_placeholder">Ex: 0.25</string>
+    <string name="tx_unit_price_label">Preço unitário</string>
+    <string name="tx_unit_price_placeholder">Ex: 350000.00</string>
+    <string name="tx_use_current_price_cd">Atualizar com preço atual</string>
+    <string name="tx_date_label">Data da operação</string>
+    <string name="tx_date_select_cd">Selecionar data da operação</string>
+    <string name="tx_note_label">Observação (opcional)</string>
+    <string name="tx_note_placeholder">Ex: Compra recorrente / Meta LP</string>
+    <string name="tx_total_label">Total da operação</string>
+    <string name="tx_save_changes">Salvar alterações</string>
+    <string name="tx_confirm_operation">Confirmar operação</string>
+</resources>
