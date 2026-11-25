@@ -42,7 +42,7 @@
 
     <!-- Market List, Tabs & Sort Bar -->
     <string name="tab_favorites">Favoritos</string>
-    <string name="tab_crypto">Cripto</string>
+    <string name="tab_crypto">Criptomoedas</string>
     <string name="tab_trending">Tendências</string>
 
     <string name="sort_name">Nome</string>

@@ -42,8 +42,8 @@
 
     <!-- Market List, Tabs & Sort Bar -->
     <string name="tab_favorites">Favorites</string>
-    <string name="tab_crypto">Crypto</string>
-    <string name="tab_trending">Trending</string>
+    <string name="tab_crypto">Cryptocurrencies</string>
+    <string name="tab_trending">Trendings</string>
 
     <string name="sort_name">Name</string>
     <string name="sort_vol">Vol</string>

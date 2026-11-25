@@ -224,7 +224,7 @@ fun CollapsingGlobalMarketHeader(
         val contentModifier = Modifier
             .widthIn(max = 880.dp)
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .padding(horizontal = 12.dp, vertical = 6.dp)
 
         when (state) {
             is GlobalMarketState.Loading -> GlobalMarketSideBySideShimmer(modifier = contentModifier)
@@ -273,6 +273,7 @@ private fun GlobalMarketSideBySideHeader(
                 .fillMaxWidth()
                 .height(IntrinsicSize.Min)
                 .testTag("global_market_header"),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             FearAndGreedSection(
@@ -281,7 +282,7 @@ private fun GlobalMarketSideBySideHeader(
                 isSelected = activeSection == GlobalHeaderSection.FEAR_GREED,
                 onClick = { toggleSection(GlobalHeaderSection.FEAR_GREED) },
                 modifier = Modifier
-                    .weight(0.92f)
+                    .weight(0.94f)
                     .onGloballyPositioned { coords ->
                         sectionCenters[GlobalHeaderSection.FEAR_GREED] =
                             coords.positionInParent().x + coords.size.width / 2f
@@ -293,7 +294,7 @@ private fun GlobalMarketSideBySideHeader(
                 isSelected = activeSection == GlobalHeaderSection.ALTCOIN_SEASON,
                 onClick = { toggleSection(GlobalHeaderSection.ALTCOIN_SEASON) },
                 modifier = Modifier
-                    .weight(0.92f)
+                    .weight(0.94f)
                     .onGloballyPositioned { coords ->
                         sectionCenters[GlobalHeaderSection.ALTCOIN_SEASON] =
                             coords.positionInParent().x + coords.size.width / 2f
@@ -306,7 +307,7 @@ private fun GlobalMarketSideBySideHeader(
                 isSelected = activeSection == GlobalHeaderSection.MARKET_CAP,
                 onClick = { toggleSection(GlobalHeaderSection.MARKET_CAP) },
                 modifier = Modifier
-                    .weight(1.26f)
+                    .weight(1.22f)
                     .onGloballyPositioned { coords ->
                         sectionCenters[GlobalHeaderSection.MARKET_CAP] =
                             coords.positionInParent().x + coords.size.width / 2f
@@ -365,7 +366,7 @@ private fun HeaderMetricColumn(
             .clip(RoundedCornerShape(8.dp))
             .background(highlightColor)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 3.dp, vertical = 4.dp)
+            .padding(horizontal = 4.dp, vertical = 4.dp)
             .semantics(mergeDescendants = true) {}
             .testTag(testTag),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -406,7 +407,7 @@ private fun SectionVerticalDivider(color: Color) {
     VerticalDivider(
         modifier = Modifier
             .fillMaxHeight()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 8.dp),
         thickness = 1.dp,
         color = color
     )
@@ -436,7 +437,8 @@ private fun FearAndGreedSection(
             hasValue = data.hasFearAndGreed,
             activeColor = sentimentColor,
             modifier = Modifier
-                .width(70.dp)
+                .widthIn(max = 68.dp)
+                .fillMaxWidth()
                 .testTag("fear_greed_gauge")
         )
     }
@@ -492,7 +494,8 @@ private fun AltcoinSeasonSection(
 
             Canvas(
                 modifier = Modifier
-                    .width(68.dp)
+                    .widthIn(max = 64.dp)
+                    .fillMaxWidth()
                     .height(12.dp)
                     .testTag("altcoin_season_illustration")
             ) {
@@ -567,7 +570,7 @@ private fun MarketCapSection(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(3.dp, Alignment.CenterHorizontally)
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally)
         ) {
             Text(
                 text = data.totalMarketCap,
@@ -779,6 +782,7 @@ private fun GlobalMarketSideBySideShimmer(
         modifier = modifier
             .height(IntrinsicSize.Min)
             .testTag("global_market_shimmer"),
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // Section 1: Medo & Ganância (Arco + pontuação)
@@ -786,11 +790,12 @@ private fun GlobalMarketSideBySideShimmer(
             titleWidth = 58.dp,
             brush = brush,
             testTag = "fear_greed_shimmer",
-            modifier = Modifier.weight(0.92f)
+            modifier = Modifier.weight(0.94f)
         ) {
             Box(
                 modifier = Modifier
-                    .width(70.dp)
+                    .widthIn(max = 68.dp)
+                    .fillMaxWidth()
                     .height(38.dp),
                 contentAlignment = Alignment.BottomCenter
             ) {
@@ -833,7 +838,7 @@ private fun GlobalMarketSideBySideShimmer(
             titleWidth = 54.dp,
             brush = brush,
             testTag = "altcoin_season_shimmer",
-            modifier = Modifier.weight(0.92f)
+            modifier = Modifier.weight(0.94f)
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -848,7 +853,8 @@ private fun GlobalMarketSideBySideShimmer(
                 )
                 Box(
                     modifier = Modifier
-                        .width(68.dp)
+                        .widthIn(max = 64.dp)
+                        .fillMaxWidth()
                         .height(7.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(brush)
@@ -863,7 +869,7 @@ private fun GlobalMarketSideBySideShimmer(
             titleWidth = 54.dp,
             brush = brush,
             testTag = "market_cap_shimmer",
-            modifier = Modifier.weight(1.26f)
+            modifier = Modifier.weight(1.22f)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -917,7 +923,7 @@ private fun ShimmerHeaderSectionColumn(
     Column(
         modifier = modifier
             .heightIn(min = 48.dp)
-            .padding(horizontal = 3.dp, vertical = 4.dp)
+            .padding(horizontal = 4.dp, vertical = 4.dp)
             .testTag(testTag),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -954,7 +960,7 @@ private fun GlobalMarketSideBySideShimmerPreview() {
             GlobalMarketSideBySideShimmer(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
             )
         }
     }
@@ -984,7 +990,7 @@ private fun GlobalMarketSideBySideHeaderPreview() {
                     altcoinsDominanceScore = 42,
                     hasBtcDominance = true
                 ),
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
             )
         }
     }

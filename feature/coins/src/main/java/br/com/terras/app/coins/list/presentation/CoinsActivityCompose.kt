@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -23,8 +24,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -42,9 +46,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -53,6 +54,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -66,6 +68,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
@@ -223,73 +228,16 @@ fun CoinsActivityCompose(
                 collapseState = globalMarketCollapseState
             )
 
-            TabRow(
+            MarketTabRow(
+                tabs = marketTabs,
                 selectedTabIndex = selectedTabIndex,
-                containerColor = MaterialTheme.colorScheme.background,
-                contentColor = MaterialTheme.colorScheme.surface,
-                indicator = { tabPositions ->
-                    if (selectedTabIndex < tabPositions.size) {
-                        TabRowDefaults.SecondaryIndicator(
-                            modifier = Modifier
-                                .tabIndicatorOffset(tabPositions[selectedTabIndex])
-                                .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)),
-                            height = 3.dp,
-                            color = MaterialTheme.colorScheme.scrim
-                        )
+                onSelectTab = { index ->
+                    selectedTabIndex = index
+                    if (index == 0) {
+                        keyboardController?.hide()
                     }
-                },
-                divider = {
-                    HorizontalDivider(
-                        thickness = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .testTag("markets_tab_bar")
-            ) {
-                marketTabs.forEachIndexed { index, (title, iconRes) ->
-                    val isSelected = selectedTabIndex == index
-                    val tabTag = when (index) {
-                        0 -> "markets_tab_favorites"
-                        1 -> "markets_tab_crypto"
-                        else -> "markets_tab_trending"
-                    }
-                    Tab(
-                        selected = isSelected,
-                        onClick = {
-                            selectedTabIndex = index
-                            if (index == 0) {
-                                keyboardController?.hide()
-                            }
-                        },
-                        selectedContentColor = MaterialTheme.colorScheme.scrim,
-                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.testTag(tabTag),
-                        text = {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(5.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = iconRes),
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Text(
-                                    text = title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontSize = 13.5.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    maxLines = 1,
-                                    softWrap = false,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                        }
-                    )
                 }
-            }
+            )
 
             when (selectedTabIndex) {
                 0 -> {
@@ -627,6 +575,117 @@ private fun OnCoinsListSuccess(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun MarketTabRow(
+    tabs: List<Pair<String, Int>>,
+    selectedTabIndex: Int,
+    onSelectTab: (Int) -> Unit
+) {
+    val density = LocalDensity.current
+    val tabBounds = remember { mutableStateMapOf<Int, Pair<Int, Int>>() }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.background)
+            .testTag("markets_tab_bar")
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                tabs.forEachIndexed { index, (title, iconRes) ->
+                    val isSelected = selectedTabIndex == index
+                    val tabTag = when (index) {
+                        0 -> "markets_tab_favorites"
+                        1 -> "markets_tab_crypto"
+                        else -> "markets_tab_trending"
+                    }
+                    val tabWeight = when (index) {
+                        1 -> 1.32f
+                        else -> 0.84f
+                    }
+                    Tab(
+                        selected = isSelected,
+                        onClick = { onSelectTab(index) },
+                        selectedContentColor = MaterialTheme.colorScheme.scrim,
+                        unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .weight(tabWeight)
+                            .onGloballyPositioned { coords ->
+                                tabBounds[index] =
+                                    coords.positionInParent().x.toInt() to coords.size.width
+                            }
+                            .testTag(tabTag)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 48.dp)
+                                .padding(horizontal = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = iconRes),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            tabBounds[selectedTabIndex]?.let { (targetX, targetWidth) ->
+                val indicatorOffset by animateDpAsState(
+                    targetValue = with(density) { targetX.toDp() },
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    label = "marketTabIndicatorOffset"
+                )
+                val indicatorWidth by animateDpAsState(
+                    targetValue = with(density) { targetWidth.toDp() },
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow
+                    ),
+                    label = "marketTabIndicatorWidth"
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .offset(x = indicatorOffset)
+                        .width(indicatorWidth)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
+                        .background(MaterialTheme.colorScheme.scrim)
+                )
+            }
+        }
+
+        HorizontalDivider(
+            thickness = 1.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
     }
 }
 
