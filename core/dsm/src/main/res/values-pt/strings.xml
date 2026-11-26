@@ -57,6 +57,9 @@
     <string name="detail_added_favorite">%1$s adicionado aos favoritos</string>
     <string name="detail_removed_favorite">%1$s removido dos favoritos</string>
     <string name="detail_updated_at">Atualizado às %1$s</string>
+    <string name="detail_live_badge">AO VIVO RT</string>
+    <string name="detail_chart_period_rt">RT</string>
+    <string name="detail_rt_toggle_cd">Alternar atualização de preço em tempo real</string>
     <string name="detail_header_vol_24h">Vol 24h</string>
     <string name="detail_header_high_price">Máxima 24h</string>
     <string name="detail_header_low_price">Mínima 24h</string>

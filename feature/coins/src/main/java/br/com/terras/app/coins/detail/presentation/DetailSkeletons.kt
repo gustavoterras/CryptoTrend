@@ -398,14 +398,15 @@ internal fun DetailChartSkeleton(
                 .fillMaxWidth()
                 .padding(horizontal = 18.dp)
         ) {
-            val totalButtons = DaysOfChart.entries.size + 2
+            val totalPeriodButtons = DaysOfChart.entries.size + 1
+            val totalButtons = totalPeriodButtons + 2
             val spacingBetweenButtons = 4.dp
-            val minGroupGap = 16.dp
-            val totalOverhead = (spacingBetweenButtons * (DaysOfChart.entries.size - 1)) +
+            val minGroupGap = 12.dp
+            val totalOverhead = (spacingBetweenButtons * (totalPeriodButtons - 1)) +
                 spacingBetweenButtons +
                 minGroupGap
             val buttonWidth = ((maxWidth - totalOverhead) / totalButtons)
-                .coerceIn(28.dp, 36.dp)
+                .coerceIn(28.dp, 38.dp)
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -416,10 +417,10 @@ internal fun DetailChartSkeleton(
                     horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    repeat(DaysOfChart.entries.size) {
+                    repeat(totalPeriodButtons) {
                         Box(
                             modifier = Modifier
-                                .size(width = buttonWidth, height = 30.dp)
+                                .size(width = buttonWidth, height = 32.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(brush)
                         )

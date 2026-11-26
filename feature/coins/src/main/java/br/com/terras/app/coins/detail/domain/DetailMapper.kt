@@ -23,6 +23,7 @@ import br.com.terras.app.common.formatAxisMoney
 import br.com.terras.app.common.formatCompactCount
 import br.com.terras.app.common.formatCompactMoney
 import br.com.terras.app.common.formatDominancePercentage
+import br.com.terras.app.common.formatLivePrice
 import br.com.terras.app.common.formatMoney
 import br.com.terras.app.common.formatPercentage
 import br.com.terras.app.common.toChartAxisTime
@@ -173,7 +174,7 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
                 date = marketChartDataPoint.date,
                 y = marketChartDataPoint.price,
                 xLabel = marketChartDataPoint.axisTime,
-                yLabel = marketChartDataPoint.price.formatMoney(),
+                yLabel = marketChartDataPoint.price.formatLivePrice(),
                 hourLabel = marketChartDataPoint.hourLabel,
                 dayLabel = marketChartDataPoint.dayLabel,
                 timestampMillis = marketChartDataPoint.timestampMillis
@@ -499,7 +500,7 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
         if (Locale.getDefault().language == "pt") brl else usd
 
     private fun CoinValue.getCurrentPriceByLocale(): String {
-        return getRawPriceByLocale().formatMoney()
+        return getRawPriceByLocale().formatLivePrice()
     }
 
     private fun CoinDate.getCurrentDateByLocale(): String {

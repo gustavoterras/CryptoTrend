@@ -57,6 +57,9 @@
     <string name="detail_added_favorite">%1$s added to favorites</string>
     <string name="detail_removed_favorite">%1$s removed from favorites</string>
     <string name="detail_updated_at">Updated at %1$s</string>
+    <string name="detail_live_badge">LIVE RT</string>
+    <string name="detail_chart_period_rt">RT</string>
+    <string name="detail_rt_toggle_cd">Toggle real-time price updates</string>
     <string name="detail_header_vol_24h">24h Vol</string>
     <string name="detail_header_high_price">24h High</string>
     <string name="detail_header_low_price">24h Low</string>

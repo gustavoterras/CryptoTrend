@@ -13,6 +13,35 @@ import kotlin.math.abs
 fun Double.formatMoney(locale: Locale = Locale.getDefault()): String =
     DecimalFormat.getCurrencyInstance(locale).format(this)
 
+fun Double.formatLivePrice(locale: Locale = Locale.getDefault()): String {
+    val safeValue = if (this.isFinite() && this >= 0.0) this else 0.0
+    val formatter = DecimalFormat.getCurrencyInstance(locale)
+    val absValue = abs(safeValue)
+    when {
+        absValue >= 1.0 -> {
+            formatter.maximumFractionDigits = 2
+            formatter.minimumFractionDigits = 2
+        }
+        absValue >= 0.01 -> {
+            formatter.maximumFractionDigits = 4
+            formatter.minimumFractionDigits = 2
+        }
+        absValue >= 0.0001 -> {
+            formatter.maximumFractionDigits = 6
+            formatter.minimumFractionDigits = 4
+        }
+        absValue > 0.0 -> {
+            formatter.maximumFractionDigits = 8
+            formatter.minimumFractionDigits = 4
+        }
+        else -> {
+            formatter.maximumFractionDigits = 2
+            formatter.minimumFractionDigits = 2
+        }
+    }
+    return formatter.format(safeValue)
+}
+
 fun Double.formatAxisMoney(locale: Locale = Locale.getDefault()): String {
     val formatter = DecimalFormat.getCurrencyInstance(locale)
     val absValue = abs(this)

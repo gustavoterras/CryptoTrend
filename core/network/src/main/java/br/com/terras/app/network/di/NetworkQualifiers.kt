@@ -8,6 +8,10 @@ annotation class CoinGeckoClient
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
+annotation class CoinWebSocketClient
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
 annotation class NewsApiClient
 
 @Qualifier

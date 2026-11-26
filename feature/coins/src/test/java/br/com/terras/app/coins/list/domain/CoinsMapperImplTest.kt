@@ -162,4 +162,36 @@ class CoinsMapperImplTest {
             Locale.setDefault(originalLocale)
         }
     }
+
+    @Test
+    fun `WHEN CoinsResponse JSON has null rank or 24h change THEN coerces safely and maps coin`() {
+        val json = kotlinx.serialization.json.Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+            coerceInputValues = true
+        }
+        val payload = """
+            [
+              {
+                "id": "new-token",
+                "symbol": "new",
+                "name": "New Token",
+                "image": null,
+                "market_cap_rank": null,
+                "current_price": 1.25,
+                "price_change_percentage_24h": null,
+                "total_volume": null
+              }
+            ]
+        """.trimIndent()
+
+        val decoded = json.decodeFromString<List<br.com.terras.app.coins.list.data.model.CoinsResponse>>(payload)
+        val mapped = mapper.toCoins(decoded)
+
+        Assert.assertEquals(1, mapped.size)
+        Assert.assertEquals("new-token", mapped.first().id)
+        Assert.assertEquals("NEW", mapped.first().symbol)
+        Assert.assertEquals("", mapped.first().marketCapRank)
+        Assert.assertEquals(1.25, mapped.first().rawPrice, 0.001)
+    }
 }

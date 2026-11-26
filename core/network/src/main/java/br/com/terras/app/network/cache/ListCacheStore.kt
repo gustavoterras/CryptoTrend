@@ -83,6 +83,7 @@ object NoOpListCacheStore : ListCacheStore {
     override val json: Json = Json {
         ignoreUnknownKeys = true
         isLenient = true
+        coerceInputValues = true
         encodeDefaults = true
     }
 
@@ -121,6 +122,7 @@ class ListCacheStoreImpl @Inject constructor(
     override val json: Json = Json {
         ignoreUnknownKeys = true
         isLenient = true
+        coerceInputValues = true
         encodeDefaults = true
     }
 

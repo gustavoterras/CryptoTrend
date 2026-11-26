@@ -8,6 +8,15 @@ import br.com.terras.app.coins.detail.domain.DetailUseCase
 import br.com.terras.app.coins.detail.domain.model.CoinChartDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinInsightVO
+import br.com.terras.app.coins.detail.domain.model.DataPoint
+import br.com.terras.app.coins.detail.network.CoinWebSocketService
+import br.com.terras.app.coins.detail.network.LivePriceTick
+import br.com.terras.app.common.formatLivePrice
+import br.com.terras.app.common.formatPercentage
+import br.com.terras.app.common.toChartDay
+import br.com.terras.app.common.toChartHour
+import br.com.terras.app.common.toFormatDate
+import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.feeds.domain.FeedsUseCase
 import br.com.terras.app.feeds.domain.model.ArticleVO
 import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
@@ -16,6 +25,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -38,6 +48,7 @@ class DetailViewModel @Inject constructor(
     private val feedsUseCase: FeedsUseCase,
     private val favoriteLocalRepository: FavoriteCoinsLocalRepository,
     private val portfolioLocalRepository: PortfolioLocalRepository,
+    private val webSocketService: CoinWebSocketService,
     private val portfolioCalculator: CoinDetailPortfolioCalculator = CoinDetailPortfolioCalculator()
 ) : ViewModel() {
 
@@ -48,6 +59,11 @@ class DetailViewModel @Inject constructor(
         data class LoadNews(val query: String) : DetailIntent
         data class ToggleFavorite(val coinId: String) : DetailIntent
         data class Refresh(val id: String, val days: Int = DaysOfChart.DAY.value) : DetailIntent
+        data class ToggleRealTime(
+            val enabled: Boolean,
+            val coinId: String,
+            val coinSymbol: String = ""
+        ) : DetailIntent
     }
 
     sealed interface DetailState {
@@ -62,6 +78,7 @@ class DetailViewModel @Inject constructor(
 
     private val currentCoinId: MutableStateFlow<String> = MutableStateFlow("")
     private var currentCoinName: String = ""
+    private var currentCoinSymbol: String = ""
     private val isPortuguese: Boolean
         get() = Locale.getDefault().language.equals("pt", ignoreCase = true)
 
@@ -121,14 +138,24 @@ class DetailViewModel @Inject constructor(
     private val _refreshErrorMessage: MutableStateFlow<String?> = MutableStateFlow(null)
     val refreshErrorMessage: StateFlow<String?> = _refreshErrorMessage.asStateFlow()
 
+    private val _isRealTimeActive: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val isRealTimeActive: StateFlow<Boolean> = _isRealTimeActive.asStateFlow()
+
+    private var webSocketJob: Job? = null
+    private var activeRealTimeCoinId: String? = null
+
     fun handleIntent(intent: DetailIntent) {
         when (intent) {
             is DetailIntent.LoadDetail -> getDetailById(intent.id)
-            is DetailIntent.LoadChart -> getChartById(intent.id, intent.days)
+            is DetailIntent.LoadChart -> {
+                stopRealTime()
+                getChartById(intent.id, intent.days)
+            }
             is DetailIntent.LoadInsights -> getInsightsByCoinId(intent.coinId)
             is DetailIntent.LoadNews -> getNewsByQuery(intent.query)
             is DetailIntent.ToggleFavorite -> toggleFavorite(intent.coinId)
             is DetailIntent.Refresh -> refreshAll(intent.id, intent.days)
+            is DetailIntent.ToggleRealTime -> toggleRealTime(intent.enabled, intent.coinId, intent.coinSymbol)
         }
     }
 
@@ -145,11 +172,15 @@ class DetailViewModel @Inject constructor(
     }
 
     fun getDetailById(id: String) {
+        if (currentCoinId.value.isNotBlank() && currentCoinId.value != id) {
+            stopRealTime()
+        }
         currentCoinId.value = id
         viewModelScope.launch {
             useCase.getDetailById(id)
                 .onSuccess { result ->
                     currentCoinName = result.name
+                    currentCoinSymbol = result.symbol
                     _lastUpdatedAtMillis.value = System.currentTimeMillis()
                     _detail.update {
                         DetailState.SuccessDetail(result)
@@ -161,6 +192,149 @@ class DetailViewModel @Inject constructor(
                     }
                 }
         }
+    }
+
+    fun toggleRealTime(enabled: Boolean, coinId: String, coinSymbol: String = "") {
+        val normalizedCoinId = coinId.trim()
+        if (!enabled || normalizedCoinId.isEmpty()) {
+            stopRealTime()
+            return
+        }
+
+        if (_isRealTimeActive.value &&
+            activeRealTimeCoinId.equals(normalizedCoinId, ignoreCase = true) &&
+            webSocketJob?.isActive == true
+        ) {
+            return
+        }
+
+        webSocketJob?.cancel()
+        activeRealTimeCoinId = normalizedCoinId
+        _isRealTimeActive.value = true
+
+        val locale = Locale.getDefault()
+        val vsCurrency = if (locale.language.equals("pt", ignoreCase = true)) "brl" else "usd"
+        val resolvedSymbol = coinSymbol.trim()
+            .ifBlank { (_detail.value as? DetailState.SuccessDetail)?.coin?.symbol.orEmpty().trim() }
+            .ifBlank { currentCoinSymbol.trim() }
+
+        webSocketJob = viewModelScope.launch {
+            webSocketService.observeLivePrice(normalizedCoinId, resolvedSymbol, vsCurrency).collect { tick ->
+                val validated = validateAndFormatLiveTick(
+                    tick = tick,
+                    expectedCoinId = normalizedCoinId,
+                    expectedVsCurrency = vsCurrency,
+                    locale = locale
+                ) ?: return@collect
+
+                _lastUpdatedAtMillis.value = validated.timestampMillis
+
+                _detail.update { state ->
+                    val success = state as? DetailState.SuccessDetail ?: return@update state
+                    val updatedTrend = validated.change24h?.let { change ->
+                        when {
+                            change > 0.0 -> TrendColor.UP
+                            change < 0.0 -> TrendColor.DOWN
+                            else -> TrendColor.FLAT
+                        }
+                    } ?: success.coin.trendColor
+
+                    val updatedChanges = if (validated.formattedChange24h != null) {
+                        success.coin.priceChangePercentageList.mapIndexed { index, item ->
+                            if (index == 0 || item.priceChangeTime.equals("1D", ignoreCase = true)) {
+                                item.copy(
+                                    priceChangeValue = validated.formattedChange24h,
+                                    trendColor = updatedTrend
+                                )
+                            } else {
+                                item
+                            }
+                        }
+                    } else {
+                        success.coin.priceChangePercentageList
+                    }
+
+                    DetailState.SuccessDetail(
+                        success.coin.copy(
+                            price = validated.formattedPrice,
+                            rawPrice = validated.price,
+                            trendColor = updatedTrend,
+                            priceChangePercentageList = updatedChanges
+                        )
+                    )
+                }
+
+                _chart.update { state ->
+                    val successChart = state as? DetailState.SuccessChart ?: return@update state
+                    val livePoint = DataPoint(
+                        date = validated.timestampMillis.toFormatDate(),
+                        y = validated.price,
+                        xLabel = validated.timestampMillis.toChartHour(),
+                        yLabel = validated.formattedPrice,
+                        hourLabel = validated.timestampMillis.toChartHour(),
+                        dayLabel = validated.timestampMillis.toChartDay(),
+                        timestampMillis = validated.timestampMillis
+                    )
+                    val existing = successChart.chart.chartData
+                    val updatedPoints = when {
+                        existing.isEmpty() -> listOf(livePoint)
+                        existing.last().timestampMillis >= validated.timestampMillis - LIVE_POINT_BUCKET_MS -> {
+                            existing.dropLast(1) + livePoint
+                        }
+                        else -> (existing + livePoint).takeLast(MAX_REALTIME_CHART_POINTS)
+                    }
+                    successChart.copy(
+                        chart = successChart.chart.copy(chartData = updatedPoints)
+                    )
+                }
+            }
+        }
+    }
+
+    private fun stopRealTime() {
+        webSocketJob?.cancel()
+        webSocketJob = null
+        activeRealTimeCoinId = null
+        _isRealTimeActive.value = false
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        webSocketJob?.cancel()
+    }
+
+    internal data class ValidatedLiveTick(
+        val price: Double,
+        val formattedPrice: String,
+        val change24h: Double?,
+        val formattedChange24h: String?,
+        val timestampMillis: Long
+    )
+
+    internal fun validateAndFormatLiveTick(
+        tick: LivePriceTick,
+        expectedCoinId: String,
+        expectedVsCurrency: String,
+        locale: Locale = Locale.getDefault()
+    ): ValidatedLiveTick? {
+        if (!tick.price.isFinite() || tick.price <= 0.0) return null
+        if (tick.coinId.isNotBlank() && !tick.coinId.equals(expectedCoinId, ignoreCase = true)) {
+            return null
+        }
+        if (tick.vsCurrency.isNotBlank() && !tick.vsCurrency.equals(expectedVsCurrency, ignoreCase = true)) {
+            return null
+        }
+        val formattedPrice = tick.price.formatLivePrice(locale).takeIf { it.isNotBlank() } ?: return null
+        val validChange = tick.change24h?.takeIf { it.isFinite() }
+        val formattedChange = validChange?.formatPercentage(locale)
+        val timestamp = tick.timestampMillis.takeIf { it > 0L } ?: System.currentTimeMillis()
+        return ValidatedLiveTick(
+            price = tick.price,
+            formattedPrice = formattedPrice,
+            change24h = validChange,
+            formattedChange24h = formattedChange,
+            timestampMillis = timestamp
+        )
     }
 
     fun getChartById(id: String, days: Int = 1) {
@@ -234,6 +408,7 @@ class DetailViewModel @Inject constructor(
                     detailResult
                         .onSuccess { result ->
                             currentCoinName = result.name
+                            currentCoinSymbol = result.symbol
                             _lastUpdatedAtMillis.value = System.currentTimeMillis()
                             _detail.update { DetailState.SuccessDetail(result) }
                             if (newsName.isBlank() && result.name.isNotBlank()) {
@@ -313,5 +488,10 @@ class DetailViewModel @Inject constructor(
                 "Unable to load market insights right now."
             }
         }
+    }
+
+    companion object {
+        private const val LIVE_POINT_BUCKET_MS = 5_000L
+        private const val MAX_REALTIME_CHART_POINTS = 200
     }
 }

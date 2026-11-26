@@ -11,21 +11,20 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
-import io.ktor.client.engine.android.Android
-import io.ktor.client.engine.android.AndroidEngineConfig
+import io.ktor.client.engine.cio.CIO
+import io.ktor.client.engine.cio.CIOEngineConfig
 import io.ktor.client.plugins.DefaultRequest
 import io.ktor.client.plugins.HttpTimeout
+import io.ktor.client.plugins.compression.ContentEncoding
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
-import io.ktor.client.plugins.observer.ResponseObserver
+import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.request.accept
 import io.ktor.client.request.header
 import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
 import kotlinx.serialization.json.Json
 import javax.inject.Singleton
@@ -34,9 +33,24 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    private const val NETWORK_TIME_OUT = 6_000L
-    private const val AUTH_HEADER_COINGECKO = "x_cg_api_key"
+    private const val CONNECT_TIME_OUT = 8_000L
+    private const val REQUEST_TIME_OUT = 15_000L
+    private const val SOCKET_TIME_OUT = 15_000L
+    private const val WEBSOCKET_PING_INTERVAL_MS = 10_000L
+    private const val AUTH_HEADER_COINGECKO_DEMO = "x-cg-demo-api-key"
+    private const val AUTH_HEADER_COINGECKO_PRO = "x-cg-pro-api-key"
     private const val AUTH_HEADER_NEWS = "x-api-key"
+
+    @Provides
+    @Singleton
+    fun provideJson(): Json = Json {
+        prettyPrint = true
+        isLenient = true
+        useAlternativeNames = true
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        encodeDefaults = false
+    }
 
     @Provides
     @Singleton
@@ -48,21 +62,20 @@ object NetworkModule {
     @NewsApiBaseUrl
     fun provideNewsApiBaseUrl(): String = BASE_API_URL_NEWS
 
-    private fun HttpClientConfig<AndroidEngineConfig>.applyCommonConfiguration() {
+    private fun HttpClientConfig<CIOEngineConfig>.applyCommonConfiguration(json: Json) {
+        install(ContentEncoding) {
+            gzip()
+            deflate()
+        }
+
         install(ContentNegotiation) {
-            json(Json {
-                prettyPrint = true
-                isLenient = true
-                useAlternativeNames = true
-                ignoreUnknownKeys = true
-                encodeDefaults = false
-            })
+            json(json)
         }
 
         install(HttpTimeout) {
-            requestTimeoutMillis = NETWORK_TIME_OUT
-            connectTimeoutMillis = NETWORK_TIME_OUT
-            socketTimeoutMillis = NETWORK_TIME_OUT
+            requestTimeoutMillis = REQUEST_TIME_OUT
+            connectTimeoutMillis = CONNECT_TIME_OUT
+            socketTimeoutMillis = SOCKET_TIME_OUT
         }
 
         install(Logging) {
@@ -71,17 +84,10 @@ object NetworkModule {
                     Log.v("Logger Ktor =>", message)
                 }
             }
-            level = LogLevel.ALL
-        }
-
-        install(ResponseObserver) {
-            onResponse { response ->
-                Log.d("HTTP status:", "${response.status.value}")
-            }
+            level = LogLevel.INFO
         }
 
         defaultRequest {
-            contentType(ContentType.Application.Json)
             accept(ContentType.Application.Json)
         }
     }
@@ -89,12 +95,44 @@ object NetworkModule {
     @Provides
     @Singleton
     @CoinGeckoClient
-    fun provideCoinGeckoHttpClient(): HttpClient {
-        return HttpClient(Android) {
-            applyCommonConfiguration()
-            install(DefaultRequest) {
-                header(HttpHeaders.ContentType, ContentType.Application.Json)
-                header(AUTH_HEADER_COINGECKO, API_TOKEN)
+    fun provideCoinGeckoHttpClient(json: Json): HttpClient {
+        val trimmedToken = API_TOKEN.trim()
+        val authHeader = if (trimmedToken.startsWith("CG-", ignoreCase = true)) {
+            AUTH_HEADER_COINGECKO_DEMO
+        } else {
+            AUTH_HEADER_COINGECKO_PRO
+        }
+        return HttpClient(CIO) {
+            applyCommonConfiguration(json)
+            if (trimmedToken.isNotEmpty()) {
+                install(DefaultRequest) {
+                    header(authHeader, trimmedToken)
+                }
+            }
+        }
+    }
+
+    @Provides
+    @Singleton
+    @CoinWebSocketClient
+    fun provideWebSocketHttpClient(json: Json): HttpClient {
+        return HttpClient(CIO) {
+            install(HttpTimeout) {
+                connectTimeoutMillis = CONNECT_TIME_OUT
+            }
+            install(WebSockets) {
+                pingInterval = WEBSOCKET_PING_INTERVAL_MS
+            }
+            install(ContentNegotiation) {
+                json(json)
+            }
+            install(Logging) {
+                logger = object : Logger {
+                    override fun log(message: String) {
+                        Log.v("Logger Ktor WS =>", message)
+                    }
+                }
+                level = LogLevel.INFO
             }
         }
     }
@@ -102,11 +140,10 @@ object NetworkModule {
     @Provides
     @Singleton
     @NewsApiClient
-    fun provideNewsApiHttpClient(): HttpClient {
-        return HttpClient(Android) {
-            applyCommonConfiguration()
+    fun provideNewsApiHttpClient(json: Json): HttpClient {
+        return HttpClient(CIO) {
+            applyCommonConfiguration(json)
             install(DefaultRequest) {
-                header(HttpHeaders.ContentType, ContentType.Application.Json)
                 header(AUTH_HEADER_NEWS, API_TOKEN_NEWS)
             }
         }

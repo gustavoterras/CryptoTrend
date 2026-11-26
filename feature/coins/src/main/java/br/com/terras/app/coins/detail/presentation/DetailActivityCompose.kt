@@ -4,7 +4,15 @@ package br.com.terras.app.coins.detail.presentation
 
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -113,6 +121,7 @@ fun DetailActivityCompose(
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val lastUpdatedAtMillis by viewModel.lastUpdatedAtMillis.collectAsStateWithLifecycle()
     val refreshErrorMessage by viewModel.refreshErrorMessage.collectAsStateWithLifecycle()
+    val isRealTimeActive by viewModel.isRealTimeActive.collectAsStateWithLifecycle()
     val activeDays = (chartDetailState as? SuccessChart)?.days ?: DaysOfChart.DAY.value
     val loadedCoinName = (coinDetailState as? SuccessDetail)?.coin?.name
 
@@ -154,6 +163,16 @@ fun DetailActivityCompose(
                 }
             },
             isFavorite = isFavorite,
+            isRealTimeActive = isRealTimeActive,
+            onToggleRealTime = { enabled ->
+                viewModel.handleIntent(
+                    DetailViewModel.DetailIntent.ToggleRealTime(
+                        enabled = enabled,
+                        coinId = id,
+                        coinSymbol = state.coin.symbol
+                    )
+                )
+            },
             onToggleFavorite = {
                 viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleFavorite(id))
             },
@@ -190,6 +209,8 @@ fun OnCoinDetailSuccess(
     onBackPress: () -> Unit,
     onArticleClick: (String) -> Unit,
     isFavorite: Boolean = false,
+    isRealTimeActive: Boolean = false,
+    onToggleRealTime: (Boolean) -> Unit = {},
     onToggleFavorite: () -> Unit = {},
     onNavigateToPortfolio: () -> Unit = {},
     selectedDaysOfChart: (Int) -> Unit
@@ -326,9 +347,10 @@ fun OnCoinDetailSuccess(
             }
         )
     }) { innerPadding ->
-        val updatedTimeLabel = remember(lastUpdatedAtMillis) {
+        val updatedTimeLabel = remember(lastUpdatedAtMillis, isRealTimeActive) {
             lastUpdatedAtMillis?.let { millis ->
-                SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(millis))
+                val pattern = if (isRealTimeActive) "HH:mm:ss" else "HH:mm"
+                SimpleDateFormat(pattern, Locale.getDefault()).format(Date(millis))
             }
         }
         PullToRefreshWrapper(
@@ -399,7 +421,12 @@ fun OnCoinDetailSuccess(
                                     )
                                 }
                             }
-                            if (updatedTimeLabel != null) {
+                            if (isRealTimeActive) {
+                                LivePulseBadge(
+                                    updatedTimeLabel = updatedTimeLabel,
+                                    modifier = Modifier.testTag("detail_live_badge")
+                                )
+                            } else if (updatedTimeLabel != null) {
                                 Text(
                                     text = stringResource(R.string.detail_updated_at, updatedTimeLabel),
                                     style = MaterialTheme.typography.labelSmall,
@@ -432,34 +459,53 @@ fun OnCoinDetailSuccess(
                                 .fillMaxWidth()
                                 .padding(horizontal = 18.dp)
                         ) {
-                            val totalButtons = DaysOfChart.entries.size + 2
+                            val totalPeriodButtons = DaysOfChart.entries.size + 1
+                            val totalButtons = totalPeriodButtons + 2
                             val spacingBetweenButtons = 4.dp
-                            val minGroupGap = 16.dp
-                            val totalOverhead = (spacingBetweenButtons * (DaysOfChart.entries.size - 1)) +
+                            val minGroupGap = 12.dp
+                            val totalOverhead = (spacingBetweenButtons * (totalPeriodButtons - 1)) +
                                 spacingBetweenButtons +
                                 minGroupGap
                             val buttonWidth = ((maxWidth - totalOverhead) / totalButtons)
-                                .coerceIn(28.dp, 36.dp)
+                                .coerceIn(28.dp, 38.dp)
+                            val rtChipWidth = (buttonWidth + 8.dp).coerceAtMost(46.dp)
 
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                SegmentedControl(
-                                    items = DaysOfChart.entries.map { day -> day.text },
-                                    defaultSelectedItemIndex = DaysOfChart.entries
-                                        .indexOfFirst { it.value == chartDetailState.days }
-                                        .coerceAtLeast(0),
-                                    useFixedWidth = true,
-                                    itemWidth = buttonWidth,
-                                    itemHeight = 30.dp,
-                                    itemSpacing = spacingBetweenButtons,
-                                    chipHorizontalPadding = 0.dp,
-                                    chipVerticalPadding = 0.dp,
-                                    textStyle = MaterialTheme.typography.labelSmall
-                                ) { index ->
-                                    selectedDaysOfChart(DaysOfChart.entries[index].value)
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    SegmentedControl(
+                                        items = DaysOfChart.entries.map { day -> day.text },
+                                        defaultSelectedItemIndex = if (isRealTimeActive) {
+                                            -1
+                                        } else {
+                                            DaysOfChart.entries
+                                                .indexOfFirst { it.value == chartDetailState.days }
+                                                .coerceAtLeast(0)
+                                        },
+                                        useFixedWidth = true,
+                                        itemWidth = buttonWidth,
+                                        itemHeight = 32.dp,
+                                        itemSpacing = spacingBetweenButtons,
+                                        chipHorizontalPadding = 0.dp,
+                                        chipVerticalPadding = 0.dp,
+                                        textStyle = MaterialTheme.typography.labelSmall
+                                    ) { index ->
+                                        selectedDaysOfChart(DaysOfChart.entries[index].value)
+                                    }
+
+                                    RealTimePeriodChip(
+                                        isActive = isRealTimeActive,
+                                        width = rtChipWidth,
+                                        height = 32.dp,
+                                        onClick = { onToggleRealTime(!isRealTimeActive) },
+                                        modifier = Modifier.testTag("detail_rt_toggle_button")
+                                    )
                                 }
 
                                 Row(
@@ -475,7 +521,7 @@ fun OnCoinDetailSuccess(
 
                                     Box(
                                         modifier = Modifier
-                                            .size(width = buttonWidth, height = 30.dp)
+                                            .size(width = buttonWidth, height = 32.dp)
                                             .clip(RoundedCornerShape(8.dp))
                                             .background(
                                                 if (isBarChart) MaterialTheme.colorScheme.scrim else inactiveToggleBg
@@ -494,7 +540,7 @@ fun OnCoinDetailSuccess(
 
                                     Box(
                                         modifier = Modifier
-                                            .size(width = buttonWidth, height = 30.dp)
+                                            .size(width = buttonWidth, height = 32.dp)
                                             .clip(RoundedCornerShape(8.dp))
                                             .background(
                                                 if (!isBarChart) MaterialTheme.colorScheme.scrim else inactiveToggleBg
@@ -627,11 +673,18 @@ fun OnCoinDetailSuccess(
                     )
                 }
 
+                val aboutMarketData = remember(state.coin.marketDataList) {
+                    state.coin.marketDataList.filterNot { (key, _) ->
+                        key == "Trading Volume 24h" ||
+                            key == "Highest Price 24h" ||
+                            key == "Lowest Price 24h"
+                    }
+                }
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    state.coin.marketDataList.forEach { pair ->
+                    aboutMarketData.forEach { pair ->
                         SectionInfoItem(
                             name = localizedMarketDataLabel(pair.first),
                             value = pair.second,
@@ -643,20 +696,54 @@ fun OnCoinDetailSuccess(
                     }
                 }
 
-                CoinAboutExtrasContent(
-                    categories = state.coin.categories,
-                    description = state.coin.description,
-                    platforms = state.coin.platforms,
-                    onCopyContract = { platform ->
-                        clipboardManager.setText(AnnotatedString(platform.contractAddress))
-                        coroutineScope.launch {
-                            snackbarHostState.currentSnackbarData?.dismiss()
-                            snackbarHostState.showSnackbar(
-                                context.getString(R.string.detail_contract_copied, platform.network)
-                            )
+                if (state.coin.categories.isEmpty() &&
+                    (state.coin.description.isNotBlank() || state.coin.platforms.isNotEmpty())
+                ) {
+                    CoinAboutExtrasContent(
+                        categories = state.coin.categories,
+                        description = state.coin.description,
+                        platforms = state.coin.platforms,
+                        onCopyContract = { platform ->
+                            clipboardManager.setText(AnnotatedString(platform.contractAddress))
+                            coroutineScope.launch {
+                                snackbarHostState.currentSnackbarData?.dismiss()
+                                snackbarHostState.showSnackbar(
+                                    context.getString(R.string.detail_contract_copied, platform.network)
+                                )
+                            }
                         }
-                    }
+                    )
+                }
+            }
+
+            if (state.coin.categories.isNotEmpty()) {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    CoinAboutExtrasContent(
+                        categories = state.coin.categories,
+                        description = state.coin.description,
+                        platforms = state.coin.platforms,
+                        onCopyContract = { platform ->
+                            clipboardManager.setText(AnnotatedString(platform.contractAddress))
+                            coroutineScope.launch {
+                                snackbarHostState.currentSnackbarData?.dismiss()
+                                snackbarHostState.showSnackbar(
+                                    context.getString(R.string.detail_contract_copied, platform.network)
+                                )
+                            }
+                        }
+                    )
+                }
             }
 
             HorizontalDivider(
@@ -1005,6 +1092,144 @@ private fun OnCoinDetailError(
             RippleButton(
                 text = stringResource(R.string.action_retry),
                 onClick = onRetry
+            )
+        }
+    }
+}
+
+@Composable
+private fun LivePulseBadge(
+    updatedTimeLabel: String?,
+    modifier: Modifier = Modifier
+) {
+    val transition = rememberInfiniteTransition(label = "detailLiveBadgePulse")
+    val coreAlpha by transition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 750, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "detailLiveCoreAlpha"
+    )
+    val haloAlpha by transition.animateFloat(
+        initialValue = 0.55f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1300, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "detailLiveHaloAlpha"
+    )
+    val liveColor = TrendColor.UP.textColor
+
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = liveColor.copy(alpha = 0.14f),
+        border = BorderStroke(1.dp, liveColor.copy(alpha = 0.35f)),
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(liveColor.copy(alpha = haloAlpha))
+                )
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(liveColor.copy(alpha = coreAlpha))
+                )
+            }
+            Text(
+                text = if (updatedTimeLabel != null) {
+                    "${stringResource(R.string.detail_live_badge)} • $updatedTimeLabel"
+                } else {
+                    stringResource(R.string.detail_live_badge)
+                },
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = liveColor,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+private fun RealTimePeriodChip(
+    isActive: Boolean,
+    width: Dp,
+    height: Dp,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val transition = rememberInfiniteTransition(label = "rtChipBlink")
+    val blinkAlpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 700, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "rtChipDotAlpha"
+    )
+    val accentColor = MaterialTheme.colorScheme.scrim
+    val selectedTextColor = if (accentColor.luminance() > 0.4f) Color(0xFF052E16) else Color.White
+    val dotColor = if (isActive) {
+        selectedTextColor.copy(alpha = blinkAlpha)
+    } else {
+        TrendColor.UP.textColor
+    }
+
+    Box(
+        modifier = modifier
+            .size(width = width, height = height)
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                if (isActive) accentColor else MaterialTheme.colorScheme.background
+            )
+            .then(
+                if (isActive) {
+                    Modifier
+                } else {
+                    Modifier.border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                }
+            )
+            .clickable(onClickLabel = stringResource(R.string.detail_rt_toggle_cd), onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .clip(CircleShape)
+                    .background(dotColor)
+            )
+            Text(
+                text = stringResource(R.string.detail_chart_period_rt),
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = if (isActive) selectedTextColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                softWrap = false
             )
         }
     }

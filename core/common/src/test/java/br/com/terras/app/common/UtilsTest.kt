@@ -24,4 +24,13 @@ class UtilsTest {
         val date = 1719677287443.toFormatDate()
         Assert.assertNotNull(date)
     }
+
+    @Test
+    fun `WHEN called formatLivePrice THEN adapts decimal scale and guards non-finite input`() {
+        Assert.assertEquals("$95,432.10", 95432.1.formatLivePrice(Locale.US))
+        Assert.assertEquals("$0.1425", 0.1425.formatLivePrice(Locale.US))
+        Assert.assertEquals("$0.00001425", 0.00001425.formatLivePrice(Locale.US))
+        Assert.assertEquals("$0.00", Double.NaN.formatLivePrice(Locale.US))
+        Assert.assertEquals("$0.00", (-5.0).formatLivePrice(Locale.US))
+    }
 }

@@ -4,6 +4,12 @@ import app.cash.turbine.test
 import br.com.terras.app.coins.MainDispatcherRule
 import br.com.terras.app.coins.detail.domain.CoinDetailPortfolioCalculator
 import br.com.terras.app.coins.detail.domain.DetailUseCase
+import br.com.terras.app.coins.detail.domain.model.CoinChartDetailVO
+import br.com.terras.app.coins.detail.domain.model.CoinDetailPricePercentageVO
+import br.com.terras.app.coins.detail.domain.model.DataPoint
+import br.com.terras.app.coins.detail.network.CoinWebSocketService
+import br.com.terras.app.coins.detail.network.LivePriceSource
+import br.com.terras.app.coins.detail.network.LivePriceTick
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.Error
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.InsightsError
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.Loading
@@ -13,6 +19,7 @@ import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.S
 import br.com.terras.app.coins.mockCoinChartDetailVOStub
 import br.com.terras.app.coins.mockCoinDetailVOStub
 import br.com.terras.app.coins.mockCoinInsightVOStub
+import br.com.terras.app.common.formatLivePrice
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.feeds.domain.FeedsUseCase
 import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
@@ -23,6 +30,7 @@ import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -30,6 +38,7 @@ import org.junit.Assert
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import java.util.Locale
 
 private class FakeDetailFavoriteLocalRepository : FavoriteCoinsLocalRepository {
     val favoriteIds = MutableStateFlow<List<String>>(emptyList())
@@ -67,12 +76,31 @@ private class FakeDetailPortfolioLocalRepository : PortfolioLocalRepository {
     }
 }
 
+private class FakeCoinWebSocketService : CoinWebSocketService {
+    val ticksFlow = MutableSharedFlow<LivePriceTick>(extraBufferCapacity = 16)
+    var lastRequestedCoinId: String? = null
+    var lastRequestedSymbol: String? = null
+    var lastRequestedVsCurrency: String? = null
+
+    override fun observeLivePrice(
+        coinId: String,
+        coinSymbol: String,
+        vsCurrency: String
+    ): Flow<LivePriceTick> {
+        lastRequestedCoinId = coinId
+        lastRequestedSymbol = coinSymbol
+        lastRequestedVsCurrency = vsCurrency
+        return ticksFlow
+    }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
     private val userCase: DetailUseCase = mockk(relaxed = true)
     private val feedsUseCase: FeedsUseCase = mockk(relaxed = true)
     private lateinit var favoriteLocalRepository: FakeDetailFavoriteLocalRepository
     private lateinit var portfolioLocalRepository: FakeDetailPortfolioLocalRepository
+    private lateinit var webSocketService: FakeCoinWebSocketService
 
     private lateinit var viewModel: DetailViewModel
 
@@ -83,12 +111,14 @@ class DetailViewModelTest {
     fun setup() {
         favoriteLocalRepository = FakeDetailFavoriteLocalRepository()
         portfolioLocalRepository = FakeDetailPortfolioLocalRepository()
+        webSocketService = FakeCoinWebSocketService()
         coEvery { feedsUseCase.getFeeds(any()) } returns Result.success(emptyList())
         viewModel = DetailViewModel(
             useCase = userCase,
             feedsUseCase = feedsUseCase,
             favoriteLocalRepository = favoriteLocalRepository,
             portfolioLocalRepository = portfolioLocalRepository,
+            webSocketService = webSocketService,
             portfolioCalculator = CoinDetailPortfolioCalculator()
         )
     }
@@ -292,5 +322,115 @@ class DetailViewModelTest {
 
         viewModel.consumeRefreshErrorMessage()
         Assert.assertNull(viewModel.refreshErrorMessage.value)
+    }
+
+    @Test
+    fun `WHEN ToggleRealTime enabled THEN validates tick updates price 24h change timestamp and chart`() = runBlocking {
+        val initialDetail = mockCoinDetailVOStub.copy(
+            rawPrice = 500.0,
+            priceChangePercentageList = listOf(
+                CoinDetailPricePercentageVO("1D", "+1,0%", TrendColor.UP)
+            ),
+            trendColor = TrendColor.UP
+        )
+        val initialChart = CoinChartDetailVO(
+            chartData = listOf(
+                DataPoint("May 21", 490.0, "10:00", "$490.00", timestampMillis = 1_700_000_000_000L)
+            )
+        )
+        coEvery { userCase.getDetailById("bitcoin") } returns Result.success(initialDetail)
+        coEvery { userCase.getChartDetailById("bitcoin", 1) } returns Result.success(initialChart)
+
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail("bitcoin"))
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart("bitcoin", 1))
+        viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleRealTime(true, "bitcoin", "BTC"))
+
+        Assert.assertTrue(viewModel.isRealTimeActive.value)
+        val expectedVs = if (Locale.getDefault().language.equals("pt", ignoreCase = true)) "brl" else "usd"
+        Assert.assertEquals("bitcoin", webSocketService.lastRequestedCoinId)
+        Assert.assertEquals("BTC", webSocketService.lastRequestedSymbol)
+        Assert.assertEquals(expectedVs, webSocketService.lastRequestedVsCurrency)
+
+        val liveTimestamp = 1_700_000_060_000L
+        webSocketService.ticksFlow.tryEmit(
+            LivePriceTick(
+                coinId = "bitcoin",
+                vsCurrency = expectedVs,
+                price = 525.75,
+                change24h = -2.5,
+                timestampMillis = liveTimestamp,
+                source = LivePriceSource.WEBSOCKET
+            )
+        )
+
+        val updatedDetail = (viewModel.detail.value as SuccessDetail).coin
+        Assert.assertEquals(525.75, updatedDetail.rawPrice, 0.0001)
+        Assert.assertEquals(525.75.formatLivePrice(), updatedDetail.price)
+        Assert.assertEquals(TrendColor.DOWN, updatedDetail.trendColor)
+        Assert.assertEquals(TrendColor.DOWN, updatedDetail.priceChangePercentageList.first().trendColor)
+        Assert.assertEquals(liveTimestamp, viewModel.lastUpdatedAtMillis.value)
+
+        val updatedChart = (viewModel.chart.value as SuccessChart).chart.chartData
+        Assert.assertEquals(2, updatedChart.size)
+        Assert.assertEquals(525.75, updatedChart.last().y, 0.0001)
+        Assert.assertEquals(liveTimestamp, updatedChart.last().timestampMillis)
+
+        viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleRealTime(false, "bitcoin"))
+        Assert.assertFalse(viewModel.isRealTimeActive.value)
+    }
+
+    @Test
+    fun `WHEN ToggleRealTime receives invalid or mismatched ticks THEN ignores them`() = runBlocking {
+        val initialDetail = mockCoinDetailVOStub.copy(price = "$100.00", rawPrice = 100.0)
+        coEvery { userCase.getDetailById("bitcoin") } returns Result.success(initialDetail)
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail("bitcoin"))
+        viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleRealTime(true, "bitcoin"))
+
+        val expectedVs = if (Locale.getDefault().language.equals("pt", ignoreCase = true)) "brl" else "usd"
+
+        // Invalid NaN, <= 0, wrong coin, wrong currency
+        webSocketService.ticksFlow.tryEmit(LivePriceTick("bitcoin", expectedVs, Double.NaN))
+        webSocketService.ticksFlow.tryEmit(LivePriceTick("bitcoin", expectedVs, -10.0))
+        webSocketService.ticksFlow.tryEmit(LivePriceTick("ethereum", expectedVs, 3000.0))
+        webSocketService.ticksFlow.tryEmit(LivePriceTick("bitcoin", "eur", 90000.0))
+
+        val detailAfter = (viewModel.detail.value as SuccessDetail).coin
+        Assert.assertEquals(100.0, detailAfter.rawPrice, 0.0001)
+        Assert.assertEquals("$100.00", detailAfter.price)
+    }
+
+    @Test
+    fun `WHEN validateAndFormatLiveTick formats sub-dollar price THEN preserves small-cap precision`() {
+        val tick = LivePriceTick(
+            coinId = "shiba-inu",
+            vsCurrency = "usd",
+            price = 0.00001425,
+            change24h = 4.2,
+            timestampMillis = 1_700_000_000_000L
+        )
+
+        val validated = viewModel.validateAndFormatLiveTick(
+            tick = tick,
+            expectedCoinId = "shiba-inu",
+            expectedVsCurrency = "usd",
+            locale = Locale.US
+        )
+
+        Assert.assertNotNull(validated)
+        Assert.assertEquals("$0.00001425", validated!!.formattedPrice)
+        Assert.assertEquals("+4.2%", validated.formattedChange24h)
+    }
+
+    @Test
+    fun `WHEN LoadChart intent is dispatched while RT active THEN disables RT mode`() = runBlocking {
+        coEvery { userCase.getDetailById("bitcoin") } returns Result.success(mockCoinDetailVOStub)
+        coEvery { userCase.getChartDetailById("bitcoin", 7) } returns Result.success(mockCoinChartDetailVOStub)
+
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail("bitcoin"))
+        viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleRealTime(true, "bitcoin"))
+        Assert.assertTrue(viewModel.isRealTimeActive.value)
+
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart("bitcoin", 7))
+        Assert.assertFalse(viewModel.isRealTimeActive.value)
     }
 }

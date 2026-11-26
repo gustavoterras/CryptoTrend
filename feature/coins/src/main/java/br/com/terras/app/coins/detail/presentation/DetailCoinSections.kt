@@ -4,12 +4,13 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -19,14 +20,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -34,7 +32,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -67,114 +64,27 @@ internal fun PriceChangePeriodStrip(
     extraPeriods: List<CoinDetailPricePercentageVO>,
     modifier: Modifier = Modifier
 ) {
-    var selectedExtraIndex by remember(extraPeriods) { mutableIntStateOf(0) }
-    var dropdownExpanded by remember { mutableStateOf(false) }
-    val selectedExtra = extraPeriods.getOrNull(selectedExtraIndex)
+    val allPeriods = remember(primaryPeriods, extraPeriods) {
+        primaryPeriods + extraPeriods
+    }
+    if (allPeriods.isEmpty()) return
 
-    Row(
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically,
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
             .wrapContentHeight()
+            .testTag("price_change_period_strip")
     ) {
-        primaryPeriods.forEachIndexed { index, item ->
-            PriceChangeStatColumn(
-                showPaddingStart = index == 0,
-                showPaddingEnd = index == primaryPeriods.lastIndex && selectedExtra == null,
-                item = item
-            )
-        }
-
-        if (selectedExtra != null) {
-            Box(
-                modifier = Modifier
-                    .padding(end = 14.dp)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .clickable { dropdownExpanded = true }
-                        .padding(horizontal = 6.dp, vertical = 4.dp)
-                        .testTag("price_change_more_dropdown"),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = selectedExtra.priceChangeTime,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
-                        )
-                        Icon(
-                            imageVector = Icons.Filled.ArrowDropDown,
-                            contentDescription = stringResource(R.string.detail_price_change_more_cd),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    Text(
-                        text = selectedExtra.priceChangeValue,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = selectedExtra.trendColor.textColor,
-                        textAlign = TextAlign.Center
-                    )
-                }
-
-                DropdownMenu(
-                    expanded = dropdownExpanded,
-                    onDismissRequest = { dropdownExpanded = false },
-                    modifier = Modifier.background(MaterialTheme.colorScheme.primary)
-                ) {
-                    extraPeriods.forEachIndexed { index, option ->
-                        val isSelected = index == selectedExtraIndex
-                        DropdownMenuItem(
-                            text = {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = option.priceChangeTime,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.surface,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    Text(
-                                        text = option.priceChangeValue,
-                                        style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = option.trendColor.textColor
-                                    )
-                                }
-                            },
-                            trailingIcon = if (isSelected) {
-                                {
-                                    Icon(
-                                        imageVector = Icons.Filled.Check,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.scrim,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            } else {
-                                null
-                            },
-                            onClick = {
-                                selectedExtraIndex = index
-                                dropdownExpanded = false
-                            },
-                            modifier = Modifier.testTag("price_change_dropdown_item_${option.priceChangeTime}")
-                        )
-                    }
-                }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState())
+                .widthIn(min = maxWidth)
+                .padding(horizontal = 18.dp, vertical = 4.dp)
+        ) {
+            allPeriods.forEach { item ->
+                PriceChangeStatColumn(item = item)
             }
         }
     }
@@ -182,16 +92,13 @@ internal fun PriceChangePeriodStrip(
 
 @Composable
 private fun PriceChangeStatColumn(
-    showPaddingStart: Boolean,
-    showPaddingEnd: Boolean,
     item: CoinDetailPricePercentageVO
 ) {
-    val paddingStart = if (showPaddingStart) 18.dp else 0.dp
-    val paddingEnd = if (showPaddingEnd) 18.dp else 0.dp
     Column(
         modifier = Modifier
-            .padding(start = paddingStart, end = paddingEnd, top = 4.dp, bottom = 4.dp)
-            .width(IntrinsicSize.Min),
+            .padding(vertical = 2.dp)
+            .testTag("price_change_item_${item.priceChangeTime}"),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         Text(
@@ -199,7 +106,8 @@ private fun PriceChangeStatColumn(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
+            maxLines = 1,
+            softWrap = false
         )
         Text(
             text = item.priceChangeValue,
@@ -207,7 +115,8 @@ private fun PriceChangeStatColumn(
             fontWeight = FontWeight.SemiBold,
             color = item.trendColor.textColor,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
+            maxLines = 1,
+            softWrap = false
         )
     }
 }
@@ -324,10 +233,8 @@ internal fun CoinAboutExtrasContent(
 ) {
     if (categories.isNotEmpty()) {
         Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -592,8 +499,7 @@ internal fun WhereToTradeSection(
         }
 
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.fillMaxWidth()
         ) {
             visibleTickers.forEachIndexed { index, ticker ->
                 val trustDotColor = when (ticker.trustLevel) {
@@ -604,13 +510,11 @@ internal fun WhereToTradeSection(
                 }
                 val isClickable = ticker.tradeUrl.isNotBlank()
 
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.primary,
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(10.dp))
+                        .heightIn(min = 48.dp)
+                        .clip(RoundedCornerShape(8.dp))
                         .then(
                             if (isClickable) {
                                 Modifier.clickable { onTickerClick(ticker.tradeUrl) }
@@ -618,92 +522,94 @@ internal fun WhereToTradeSection(
                                 Modifier
                             }
                         )
-                        .testTag("ticker_item_$index")
+                        .padding(vertical = 10.dp)
+                        .testTag("ticker_item_$index"),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .weight(1f)
+                            .padding(end = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(end = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(3.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(7.dp)
-                                        .clip(CircleShape)
-                                        .background(trustDotColor)
-                                )
-                                Text(
-                                    text = ticker.marketName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.surface,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false)
-                                )
-                                Text(
-                                    text = ticker.pairLabel,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1
-                                )
-                            }
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.detail_tickers_volume, ticker.volume24h),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                ticker.spreadLabel?.let { spread ->
-                                    Text(
-                                        text = stringResource(R.string.detail_tickers_spread, spread),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(7.dp)
+                                    .clip(CircleShape)
+                                    .background(trustDotColor)
+                            )
                             Text(
-                                text = ticker.lastPrice,
-                                style = MaterialTheme.typography.bodySmall,
+                                text = ticker.marketName,
+                                style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.SemiBold,
                                 color = MaterialTheme.colorScheme.surface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            Text(
+                                text = ticker.pairLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1
                             )
-                            if (isClickable) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_open_in_new_24dp),
-                                    contentDescription = stringResource(
-                                        R.string.detail_tickers_open_cd,
-                                        ticker.pairLabel,
-                                        ticker.marketName
-                                    ),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(14.dp)
+                        }
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.detail_tickers_volume, ticker.volume24h),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            ticker.spreadLabel?.let { spread ->
+                                Text(
+                                    text = stringResource(R.string.detail_tickers_spread, spread),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
                     }
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Text(
+                            text = ticker.lastPrice,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.surface,
+                            maxLines = 1
+                        )
+                        if (isClickable) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_open_in_new_24dp),
+                                contentDescription = stringResource(
+                                    R.string.detail_tickers_open_cd,
+                                    ticker.pairLabel,
+                                    ticker.marketName
+                                ),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (index != visibleTickers.lastIndex) {
+                    HorizontalDivider(
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
                 }
             }
         }

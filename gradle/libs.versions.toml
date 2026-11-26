@@ -63,7 +63,11 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
 glide-compose = { group = "com.github.bumptech.glide", name = "compose", version.ref = "composeGlide" }
-ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktorVersion" }
+# ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktorVersion" }
+# ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktorVersion" }
+ktor-client-cio = { group = "io.ktor", name = "ktor-client-cio", version.ref = "ktorVersion" }
+ktor-client-encoding = { group = "io.ktor", name = "ktor-client-encoding", version.ref = "ktorVersion" }
+ktor-client-websockets = { group = "io.ktor", name = "ktor-client-websockets", version.ref = "ktorVersion" }
 ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version.ref = "ktorVersion" }
 ktor-client-serialization = { group = "io.ktor", name = "ktor-client-serialization", version.ref = "ktorVersion" }
 ktor-client-negotiation = { group = "io.ktor", name = "ktor-client-content-negotiation", version.ref = "ktorVersion" }
@@ -89,5 +93,5 @@ google-services = { id = "com.google.gms.google-services", version.ref = "google
 firebase-appdistribution = { id = "com.google.firebase.appdistribution", version.ref = "firebaseAppDistribution" }
 
 [bundles]
-playground-network = ["ktor-client-android", "ktor-client-logging", "ktor-client-negotiation", "ktor-client-serialization", "ktor-serialization", "dagger-hilt-core"]
+playground-network = ["ktor-client-cio", "ktor-client-encoding", "ktor-client-websockets", "ktor-client-logging", "ktor-client-negotiation", "ktor-client-serialization", "ktor-serialization", "dagger-hilt-core"]
 playground-dsm = ["androidx-ui", "androidx-ui-graphics", "androidx-ui-tooling", "androidx-ui-tooling-preview", "androidx-activity-compose", "androidx-compose-constraintlayout", "androidx-lifecycle-runtime-compose", "androidx-material3", "material", "androidx-lifecycle-viewmodel-compose", "androidx-compose-navigation", "androidx-hilt-compose", "glide-compose"]

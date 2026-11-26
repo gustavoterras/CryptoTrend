@@ -1,13 +1,18 @@
 package br.com.terras.app.coins.detail.di
 
 import br.com.terras.app.coins.detail.network.ApiServiceDetail
+import br.com.terras.app.coins.detail.network.CoinWebSocketService
+import br.com.terras.app.coins.detail.network.CoinWebSocketServiceImpl
+import br.com.terras.app.network.cache.CoinGeckoSimplePriceService
 import br.com.terras.app.network.di.CoinGeckoBaseUrl
 import br.com.terras.app.network.di.CoinGeckoClient
+import br.com.terras.app.network.di.CoinWebSocketClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import io.ktor.client.HttpClient
+import kotlinx.serialization.json.Json
 import javax.inject.Singleton
 
 @Module
@@ -20,4 +25,16 @@ object ApiModule {
         @CoinGeckoBaseUrl baseUrl: String,
         @CoinGeckoClient client: HttpClient
     ): ApiServiceDetail = ApiServiceDetail(baseUrl, client)
+
+    @Provides
+    @Singleton
+    fun provideCoinWebSocketService(
+        @CoinWebSocketClient wsClient: HttpClient,
+        simplePriceService: CoinGeckoSimplePriceService,
+        json: Json
+    ): CoinWebSocketService = CoinWebSocketServiceImpl(
+        wsClient = wsClient,
+        simplePriceService = simplePriceService,
+        json = json
+    )
 }

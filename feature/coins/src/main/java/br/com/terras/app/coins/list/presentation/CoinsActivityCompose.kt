@@ -278,6 +278,7 @@ fun CoinsActivityCompose(
                             }
                         },
                         onRefresh = { viewModel.handleIntent(CoinsIntent.Refresh) },
+                        onRetry = { viewModel.handleIntent(CoinsIntent.LoadCoins) },
                         onLoadMore = { viewModel.handleIntent(CoinsIntent.LoadMoreCoins) },
                         onDismissError = { showCryptoDialog = false },
                         favoriteIds = favoriteIds,
@@ -316,6 +317,7 @@ fun CoinsActivityCompose(
                             }
                         },
                         onRefresh = { viewModel.handleIntent(CoinsIntent.RefreshTrending) },
+                        onRetry = { viewModel.handleIntent(CoinsIntent.LoadTrendingCoins) },
                         onLoadMore = { viewModel.handleIntent(CoinsIntent.LoadMoreTrendingCoins) },
                         onDismissError = { showTrendingDialog = false },
                         favoriteIds = favoriteIds,
@@ -346,6 +348,7 @@ private fun MarketCoinsTabContent(
     onSearchExecute: () -> Unit,
     onSearchClearOrClose: () -> Unit,
     onRefresh: () -> Unit,
+    onRetry: () -> Unit,
     onLoadMore: () -> Unit,
     onDismissError: () -> Unit,
     favoriteIds: Set<String> = emptySet(),
@@ -479,7 +482,7 @@ private fun MarketCoinsTabContent(
                 }
                 is EmptySearch -> OnCoinsSearchEmpty(searchQuery)
                 is Error -> {
-                    OnCoinsSearchEmpty(searchQuery)
+                    OnCoinsErrorFallback(onRetry = onRetry)
                     OnCoinsListError(
                         showDialog = showErrorDialog,
                         onDismissRequest = onDismissError
@@ -709,6 +712,31 @@ private fun OnCoinsSearchEmpty(query: String) {
             color = MaterialTheme.colorScheme.surface,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+@Composable
+private fun OnCoinsErrorFallback(onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = stringResource(R.string.error_loading_data),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.surface,
+            textAlign = TextAlign.Center
+        )
+        Box(modifier = Modifier.testTag("coins_retry_button")) {
+            RippleButton(
+                text = stringResource(R.string.action_retry),
+                onClick = onRetry
+            )
+        }
     }
 }
 
