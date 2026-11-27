@@ -38,6 +38,7 @@ dependencies {
     implementation(project(":core:database"))
     implementation(project(":data:coingecko"))
     implementation(project(":core:common"))
+    implementation(libs.lottie.compose)
     implementation(project(":core:navigation"))
     implementation(project(":feature:feeds"))
     implementation(project(":feature:search"))

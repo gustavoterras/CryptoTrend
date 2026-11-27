@@ -28,4 +28,5 @@ android {
 
 dependencies {
     api(libs.bundles.playground.dsm)
+    api(libs.lottie.compose)
 }

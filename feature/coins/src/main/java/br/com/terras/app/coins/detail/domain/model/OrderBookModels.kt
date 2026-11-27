@@ -8,6 +8,10 @@ enum class OrderBookMultiplier(val factor: Int) {
     X1000(1000);
 
     val label: String get() = "${factor}x"
+
+    companion object {
+        val DEFAULT: OrderBookMultiplier = X50
+    }
 }
 
 data class OrderBookMultiplierOptionVO(
@@ -32,7 +36,7 @@ data class OrderBookSnapshotVO(
     val spreadAbsoluteFormatted: String,
     val spreadPercentageFormatted: String,
     val isLive: Boolean,
-    val selectedMultiplier: OrderBookMultiplier = OrderBookMultiplier.X1,
+    val selectedMultiplier: OrderBookMultiplier = OrderBookMultiplier.DEFAULT,
     val selectedStepFormatted: String = "",
     val availableMultipliers: List<OrderBookMultiplierOptionVO> = emptyList()
 )

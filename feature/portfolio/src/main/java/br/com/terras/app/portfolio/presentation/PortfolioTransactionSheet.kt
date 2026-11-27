@@ -72,6 +72,7 @@ import br.com.terras.app.common.formatMoney
 import br.com.terras.app.common.toFormatDate
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.component.TrendColor
+import br.com.terras.app.dsm.ui.component.TypewriterSearchPlaceholder
 import br.com.terras.app.database.portfolio.PortfolioTransactionType
 import br.com.terras.app.portfolio.domain.model.SelectableCoinVO
 import br.com.terras.app.portfolio.presentation.PortfolioViewModel.CoinPickerState
@@ -233,8 +234,9 @@ private fun CoinPickerContent(
             .fillMaxWidth()
             .testTag("tx_coin_search_input"),
         placeholder = {
-            Text(
+            TypewriterSearchPlaceholder(
                 text = stringResource(R.string.tx_picker_placeholder),
+                isSearchOpen = true,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         },

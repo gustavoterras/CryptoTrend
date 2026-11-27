@@ -40,6 +40,7 @@ import java.text.DecimalFormatSymbols
 import java.util.Collections
 import java.util.Locale
 import java.util.TreeMap
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.math.abs
@@ -54,7 +55,7 @@ interface CoinbaseOrderBookService {
     suspend fun isPairAvailable(coinSymbol: String): Boolean = true
     fun observeOrderBook(
         coinSymbol: String,
-        multiplier: StateFlow<OrderBookMultiplier> = MutableStateFlow(OrderBookMultiplier.X1)
+        multiplier: StateFlow<OrderBookMultiplier> = MutableStateFlow(OrderBookMultiplier.DEFAULT)
     ): Flow<OrderBookStreamEvent>
 }
 
@@ -124,7 +125,7 @@ internal class OrderBookAggregator(
         val baseTick = resolveBaseTick(midPrice)
         val availableOptions = buildAvailableMultipliers(midPrice = midPrice, baseTick = baseTick)
         val effectiveOption = availableOptions.firstOrNull { it.multiplier == multiplier }
-            ?: availableOptions.lastOrNull()
+            ?: availableOptions.getOrNull(availableOptions.size / 2)
             ?: OrderBookMultiplierOptionVO(OrderBookMultiplier.X1, formatStepPrice(baseTick))
         val effectiveMultiplier = effectiveOption.multiplier
         val step = baseTick * effectiveMultiplier.factor
@@ -355,17 +356,27 @@ class CoinbaseOrderBookServiceImpl @Inject constructor(
     private val json: Json
 ) : CoinbaseOrderBookService {
 
+    private val availabilityCache = ConcurrentHashMap<String, Boolean>()
+
     override suspend fun isPairAvailable(coinSymbol: String): Boolean {
         val cleanSymbol = coinSymbol.trim().uppercase(Locale.US)
         if (cleanSymbol.isEmpty() || cleanSymbol == QUOTE_USD) return false
+        availabilityCache[cleanSymbol]?.let { return it }
         val productId = "$cleanSymbol-$QUOTE_USD"
         return try {
             val response = wsClient.get("$COINBASE_REST_PRODUCTS_URL/$productId")
-            response.status.value in 200..299
+            val available = response.status.value in 200..299
+            availabilityCache[cleanSymbol] = available
+            available
         } catch (e: CancellationException) {
             throw e
         } catch (e: ClientRequestException) {
-            e.response.status != HttpStatusCode.NotFound
+            if (e.response.status == HttpStatusCode.NotFound) {
+                availabilityCache[cleanSymbol] = false
+                false
+            } else {
+                true
+            }
         } catch (_: Throwable) {
             true
         }

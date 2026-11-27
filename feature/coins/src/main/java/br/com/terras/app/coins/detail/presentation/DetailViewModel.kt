@@ -28,6 +28,7 @@ import br.com.terras.app.database.portfolio.PortfolioLocalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -131,38 +132,48 @@ class DetailViewModel @Inject constructor(
         initialValue = null
     )
 
+    private data class OrderBookResolvedInput(
+        val symbol: String,
+        val isPairAvailable: Boolean,
+        val isExpanded: Boolean
+    )
+
+    private val _orderBookPairAvailability: MutableStateFlow<Pair<String, Boolean>?> = MutableStateFlow(null)
     private val _isOrderBookExpanded: MutableStateFlow<Boolean> = MutableStateFlow(false)
-    private val _orderBookMultiplier: MutableStateFlow<OrderBookMultiplier> = MutableStateFlow(OrderBookMultiplier.X1)
+    private val _orderBookMultiplier: MutableStateFlow<OrderBookMultiplier> = MutableStateFlow(OrderBookMultiplier.DEFAULT)
 
     val orderBookState: StateFlow<OrderBookUiState> = combine(
-        combine(currentCoinId, _detail) { coinId, detailState ->
-            if (coinId.isBlank()) {
-                ""
-            } else {
-                (detailState as? DetailState.SuccessDetail)?.coin?.symbol?.trim().orEmpty()
-            }
-        }.distinctUntilChanged(),
+        currentCoinId,
+        _detail,
+        _orderBookPairAvailability,
         _isOrderBookExpanded
-    ) { symbol, isExpanded ->
-        symbol to isExpanded
+    ) { coinId, detailState, availability, isExpanded ->
+        val cleanSymbol = if (coinId.isBlank() || detailState !is DetailState.SuccessDetail) {
+            ""
+        } else {
+            detailState.coin.symbol.trim().uppercase(Locale.US)
+        }
+        val available = cleanSymbol.isNotEmpty() &&
+            availability?.first == cleanSymbol &&
+            availability.second
+        OrderBookResolvedInput(
+            symbol = cleanSymbol,
+            isPairAvailable = available,
+            isExpanded = isExpanded
+        )
     }
-        .flatMapLatest { (symbol, isExpanded) ->
-            val cleanSymbol = symbol.trim().uppercase(Locale.US)
-            if (cleanSymbol.isEmpty()) {
+        .distinctUntilChanged()
+        .flatMapLatest { input ->
+            if (!input.isPairAvailable || input.symbol.isEmpty()) {
                 flowOf<OrderBookUiState>(OrderBookUiState.Hidden)
             } else {
-                flow<OrderBookUiState> {
-                    val available = orderBookService.isPairAvailable(cleanSymbol)
-                    if (!available) {
-                        emit(OrderBookUiState.Hidden)
-                        return@flow
-                    }
-                    val pairSymbol = "$cleanSymbol-USD"
-                    if (!isExpanded) {
-                        emit(OrderBookUiState.Collapsed(pairSymbol))
-                    } else {
+                val pairSymbol = "${input.symbol}-USD"
+                if (!input.isExpanded) {
+                    flowOf<OrderBookUiState>(OrderBookUiState.Collapsed(pairSymbol))
+                } else {
+                    flow<OrderBookUiState> {
                         emit(OrderBookUiState.Loading(pairSymbol))
-                        orderBookService.observeOrderBook(cleanSymbol, _orderBookMultiplier)
+                        orderBookService.observeOrderBook(input.symbol, _orderBookMultiplier)
                             .map<OrderBookStreamEvent, OrderBookUiState> { event ->
                                 when (event) {
                                     is OrderBookStreamEvent.Snapshot -> OrderBookUiState.Visible(event.data)
@@ -239,17 +250,25 @@ class DetailViewModel @Inject constructor(
     }
 
     fun getDetailById(id: String) {
-        if (currentCoinId.value.isNotBlank() && currentCoinId.value != id) {
+        val isNewCoin = currentCoinId.value.isNotBlank() && currentCoinId.value != id
+        if (isNewCoin) {
             stopRealTime()
             _isOrderBookExpanded.value = false
-            _orderBookMultiplier.value = OrderBookMultiplier.X1
+            _orderBookMultiplier.value = OrderBookMultiplier.DEFAULT
+            _orderBookPairAvailability.value = null
         }
         currentCoinId.value = id
         viewModelScope.launch {
+            if (isNewCoin || _detail.value is DetailState.Error) {
+                _detail.value = DetailState.Loading
+            }
             useCase.getDetailById(id)
                 .onSuccess { result ->
                     currentCoinName = result.name
                     currentCoinSymbol = result.symbol
+                    val cleanSymbol = result.symbol.trim().uppercase(Locale.US)
+                    val pairAvailable = resolveOrderBookPairAvailability(cleanSymbol)
+                    _orderBookPairAvailability.value = cleanSymbol to pairAvailable
                     _lastUpdatedAtMillis.value = System.currentTimeMillis()
                     _detail.update {
                         DetailState.SuccessDetail(result)
@@ -260,6 +279,21 @@ class DetailViewModel @Inject constructor(
                         DetailState.Error
                     }
                 }
+        }
+    }
+
+    private suspend fun resolveOrderBookPairAvailability(cleanSymbol: String): Boolean {
+        if (cleanSymbol.isEmpty()) return false
+        val cached = _orderBookPairAvailability.value
+        if (cached != null && cached.first == cleanSymbol) {
+            return cached.second
+        }
+        return try {
+            orderBookService.isPairAvailable(cleanSymbol)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            false
         }
     }
 
@@ -478,6 +512,9 @@ class DetailViewModel @Inject constructor(
                         .onSuccess { result ->
                             currentCoinName = result.name
                             currentCoinSymbol = result.symbol
+                            val cleanSymbol = result.symbol.trim().uppercase(Locale.US)
+                            val pairAvailable = resolveOrderBookPairAvailability(cleanSymbol)
+                            _orderBookPairAvailability.value = cleanSymbol to pairAvailable
                             _lastUpdatedAtMillis.value = System.currentTimeMillis()
                             _detail.update { DetailState.SuccessDetail(result) }
                             if (newsName.isBlank() && result.name.isNotBlank()) {

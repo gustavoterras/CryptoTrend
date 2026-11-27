@@ -51,14 +51,15 @@
     <string name="coin_favorite_cd">Favorite</string>
 
     <!-- Favorites -->
-    <string name="favorites_empty_message">No favorite cryptocurrencies yet.\nTap the star on a coin\'s details to save it here.</string>
+    <string name="favorites_empty_message">Your favorites will appear here</string>
+    <string name="favorites_empty_avatar_cd">No favorite cryptocurrencies yet</string>
 
     <!-- Detail Screen -->
     <string name="detail_added_favorite">%1$s added to favorites</string>
     <string name="detail_removed_favorite">%1$s removed from favorites</string>
     <string name="detail_updated_at">Updated at %1$s</string>
-    <string name="detail_live_badge">LIVE RT</string>
-    <string name="detail_chart_period_rt">RT</string>
+    <string name="detail_live_badge">Live</string>
+    <string name="detail_chart_period_rt">Live</string>
     <string name="detail_rt_toggle_cd">Toggle real-time price updates</string>
     <string name="detail_header_vol_24h">24h Vol</string>
     <string name="detail_header_high_price">24h High</string>
@@ -175,6 +176,7 @@
     <string name="portfolio_empty_title">Your Crypto Portfolio</string>
     <string name="portfolio_empty_description">Record your buys and sells to track consolidated balance, average price, profit/loss, and allocation right on your device.</string>
     <string name="portfolio_empty_cta">Record first transaction</string>
+    <string name="portfolio_empty_animation_cd">No portfolio transactions yet</string>
     <string name="portfolio_allocation_title">Portfolio Allocation</string>
     <string name="portfolio_allocation_center_label">Allocation</string>
     <string name="portfolio_asset_count_singular">1 asset</string>

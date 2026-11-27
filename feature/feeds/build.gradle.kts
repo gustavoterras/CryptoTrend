@@ -44,6 +44,7 @@ android {
 
 dependencies {
     implementation(project(":core:dsm"))
+    implementation(libs.lottie.compose)
     implementation(project(":core:network"))
     implementation(project(":core:database"))
     implementation(project(":core:common"))

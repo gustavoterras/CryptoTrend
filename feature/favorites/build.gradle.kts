@@ -36,6 +36,7 @@ dependencies {
     implementation(project(":core:database"))
     implementation(project(":data:coingecko"))
     implementation(project(":core:common"))
+    implementation(libs.lottie.compose)
     implementation(libs.dagger.hilt.core)
     ksp(libs.dagger.hilt.compiler)
     testImplementation(libs.junit)

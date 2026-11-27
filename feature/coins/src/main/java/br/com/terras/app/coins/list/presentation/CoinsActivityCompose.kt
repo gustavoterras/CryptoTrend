@@ -38,7 +38,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -62,7 +61,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.toArgb
+import com.airbnb.lottie.LottieProperty
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.airbnb.lottie.compose.rememberLottieDynamicProperties
+import com.airbnb.lottie.compose.rememberLottieDynamicProperty
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -100,6 +108,7 @@ import br.com.terras.app.dsm.ui.component.MarketSortState
 import br.com.terras.app.dsm.ui.component.PullToRefreshWrapper
 import br.com.terras.app.dsm.ui.component.RippleButton
 import br.com.terras.app.dsm.ui.component.StickyHeaderView
+import br.com.terras.app.dsm.ui.component.TypewriterSearchPlaceholder
 import br.com.terras.app.dsm.ui.component.sortWithMarketState
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -126,8 +135,6 @@ fun CoinsActivityCompose(
     var trendingSortState by remember { mutableStateOf(MarketSortState()) }
     var isCryptoSearchOpen by rememberSaveable { mutableStateOf(false) }
     var isTrendingSearchOpen by rememberSaveable { mutableStateOf(false) }
-    var showCryptoDialog by remember(coinsListState) { mutableStateOf(coinsListState is Error) }
-    var showTrendingDialog by remember(trendingListState) { mutableStateOf(trendingListState is Error) }
 
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -256,7 +263,6 @@ fun CoinsActivityCompose(
                         isRefreshing = isRefreshing,
                         isSearchOpen = isCryptoSearchOpen,
                         sortState = cryptoSortState,
-                        showErrorDialog = showCryptoDialog,
                         focusRequester = focusRequester,
                         listState = cryptoLazyListState,
                         pullToRefreshTestTag = "market_pull_to_refresh",
@@ -280,7 +286,6 @@ fun CoinsActivityCompose(
                         onRefresh = { viewModel.handleIntent(CoinsIntent.Refresh) },
                         onRetry = { viewModel.handleIntent(CoinsIntent.LoadCoins) },
                         onLoadMore = { viewModel.handleIntent(CoinsIntent.LoadMoreCoins) },
-                        onDismissError = { showCryptoDialog = false },
                         favoriteIds = favoriteIds,
                         onItemClick = onItemClick,
                         modifier = Modifier
@@ -295,7 +300,6 @@ fun CoinsActivityCompose(
                         isRefreshing = isTrendingRefreshing,
                         isSearchOpen = isTrendingSearchOpen,
                         sortState = trendingSortState,
-                        showErrorDialog = showTrendingDialog,
                         focusRequester = focusRequester,
                         listState = trendingLazyListState,
                         pullToRefreshTestTag = "trending_pull_to_refresh",
@@ -319,7 +323,6 @@ fun CoinsActivityCompose(
                         onRefresh = { viewModel.handleIntent(CoinsIntent.RefreshTrending) },
                         onRetry = { viewModel.handleIntent(CoinsIntent.LoadTrendingCoins) },
                         onLoadMore = { viewModel.handleIntent(CoinsIntent.LoadMoreTrendingCoins) },
-                        onDismissError = { showTrendingDialog = false },
                         favoriteIds = favoriteIds,
                         onItemClick = onItemClick,
                         modifier = Modifier
@@ -339,7 +342,6 @@ private fun MarketCoinsTabContent(
     isRefreshing: Boolean,
     isSearchOpen: Boolean,
     sortState: MarketSortState,
-    showErrorDialog: Boolean,
     focusRequester: FocusRequester,
     listState: LazyListState,
     pullToRefreshTestTag: String,
@@ -350,7 +352,6 @@ private fun MarketCoinsTabContent(
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onLoadMore: () -> Unit,
-    onDismissError: () -> Unit,
     favoriteIds: Set<String> = emptySet(),
     onItemClick: (String) -> Unit,
     modifier: Modifier = Modifier
@@ -427,8 +428,9 @@ private fun MarketCoinsTabContent(
                         )
                     },
                     placeholder = {
-                        Text(
+                        TypewriterSearchPlaceholder(
                             text = stringResource(R.string.search_coins_placeholder),
+                            isSearchOpen = isSearchOpen,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
@@ -481,13 +483,7 @@ private fun MarketCoinsTabContent(
                     )
                 }
                 is EmptySearch -> OnCoinsSearchEmpty(searchQuery)
-                is Error -> {
-                    OnCoinsErrorFallback(onRetry = onRetry)
-                    OnCoinsListError(
-                        showDialog = showErrorDialog,
-                        onDismissRequest = onDismissError
-                    )
-                }
+                is Error -> OnCoinsErrorFallback(onRetry = onRetry)
             }
         }
     }
@@ -632,14 +628,39 @@ private fun MarketTabRow(
                                 .padding(horizontal = 4.dp),
                             contentAlignment = Alignment.Center
                         ) {
+                            val iconScale by animateFloatAsState(
+                                targetValue = if (isSelected) 1.18f else 1f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                ),
+                                label = "marketTabIconScale"
+                            )
+                            val labelScale by animateFloatAsState(
+                                targetValue = if (isSelected) 1.04f else 1f,
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                    stiffness = Spring.StiffnessMedium
+                                ),
+                                label = "marketTabLabelScale"
+                            )
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                modifier = Modifier.graphicsLayer {
+                                    scaleX = labelScale
+                                    scaleY = labelScale
+                                }
                             ) {
                                 Icon(
                                     painter = painterResource(id = iconRes),
                                     contentDescription = null,
-                                    modifier = Modifier.size(15.dp)
+                                    modifier = Modifier
+                                        .size(15.dp)
+                                        .graphicsLayer {
+                                            scaleX = iconScale
+                                            scaleY = iconScale
+                                        }
                                 )
                                 Text(
                                     text = title,
@@ -717,18 +738,71 @@ private fun OnCoinsSearchEmpty(query: String) {
 
 @Composable
 private fun OnCoinsErrorFallback(onRetry: () -> Unit) {
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.error_avatar_animation)
+    )
+    val errorTint = MaterialTheme.colorScheme.error
+    val dynamicProperties = rememberLottieDynamicProperties(
+        rememberLottieDynamicProperty(
+            property = LottieProperty.COLOR,
+            value = errorTint.toArgb(),
+            keyPath = arrayOf("**", "ErrorAvatarFill")
+        ),
+        rememberLottieDynamicProperty(
+            property = LottieProperty.COLOR,
+            value = errorTint.toArgb(),
+            keyPath = arrayOf("**", "ErrorSoftFill")
+        ),
+        rememberLottieDynamicProperty(
+            property = LottieProperty.COLOR,
+            value = errorTint.toArgb(),
+            keyPath = arrayOf("**", "ErrorStroke")
+        ),
+        rememberLottieDynamicProperty(
+            property = LottieProperty.STROKE_COLOR,
+            value = errorTint.toArgb(),
+            keyPath = arrayOf("**", "ErrorStroke")
+        ),
+        rememberLottieDynamicProperty(
+            property = LottieProperty.COLOR,
+            value = errorTint.toArgb(),
+            keyPath = arrayOf("**", "AlertAccentFill")
+        ),
+        rememberLottieDynamicProperty(
+            property = LottieProperty.COLOR,
+            value = errorTint.toArgb(),
+            keyPath = arrayOf("**", "AlertAccentStroke")
+        ),
+        rememberLottieDynamicProperty(
+            property = LottieProperty.STROKE_COLOR,
+            value = errorTint.toArgb(),
+            keyPath = arrayOf("**", "AlertAccentStroke")
+        )
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 24.dp, vertical = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(14.dp, Alignment.CenterVertically),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        LottieAnimation(
+            composition = composition,
+            iterations = LottieConstants.IterateForever,
+            speed = 0.85f,
+            dynamicProperties = dynamicProperties,
+            modifier = Modifier
+                .size(200.dp)
+                .alpha(0.85f)
+                .testTag("coins_error_watermark_lottie")
+        )
         Text(
             text = stringResource(R.string.error_loading_data),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.surface,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
             textAlign = TextAlign.Center
         )
         Box(modifier = Modifier.testTag("coins_retry_button")) {
@@ -740,25 +814,7 @@ private fun OnCoinsErrorFallback(onRetry: () -> Unit) {
     }
 }
 
-@Composable
-private fun OnCoinsListError(
-    showDialog: Boolean,
-    onDismissRequest: () -> Unit
-) {
-    if (showDialog.not()) return
 
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        containerColor = MaterialTheme.colorScheme.primary,
-        titleContentColor = MaterialTheme.colorScheme.surface,
-        textContentColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-        title = { Text(text = stringResource(R.string.dialog_alert_title)) },
-        text = { Text(text = stringResource(R.string.error_loading_data)) },
-        confirmButton = {
-            RippleButton(text = stringResource(R.string.dialog_alert_acknowledge), onClick = onDismissRequest)
-        }
-    )
-}
 
 @ThemePreviews
 @Composable

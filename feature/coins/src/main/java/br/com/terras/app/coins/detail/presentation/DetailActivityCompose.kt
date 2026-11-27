@@ -4,12 +4,17 @@ package br.com.terras.app.coins.detail.presentation
 
 import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,6 +32,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -61,9 +67,18 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import com.airbnb.lottie.LottieProperty
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.airbnb.lottie.compose.rememberLottieDynamicProperties
+import com.airbnb.lottie.compose.rememberLottieDynamicProperty
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -140,65 +155,87 @@ fun DetailActivityCompose(
         }
     }
 
-    when (val state = coinDetailState) {
-        is Loading -> OnCoinDetailLoading(
-            onBackPress = { navHostController.popBackStack() }
-        )
-        is SuccessDetail -> OnCoinDetailSuccess(
-            state = state,
-            chartDetailState = chartDetailState,
-            newsState = newsState,
-            insightsState = insightsState,
-            portfolioInsight = portfolioInsight,
-            orderBookState = orderBookState,
-            isRefreshing = isRefreshing,
-            lastUpdatedAtMillis = lastUpdatedAtMillis,
-            refreshErrorMessage = refreshErrorMessage,
-            onConsumeRefreshError = viewModel::consumeRefreshErrorMessage,
-            onRefresh = {
-                viewModel.handleIntent(DetailViewModel.DetailIntent.Refresh(id, activeDays))
-            },
-            onBackPress = {
-                navHostController.popBackStack()
-            },
-            onArticleClick = { url ->
-                if (url.isNotBlank()) {
-                    navHostController.navigate(Screen.WebView(url = url))
-                }
-            },
-            isFavorite = isFavorite,
-            isRealTimeActive = isRealTimeActive,
-            onToggleRealTime = { enabled ->
-                viewModel.handleIntent(
-                    DetailViewModel.DetailIntent.ToggleRealTime(
-                        enabled = enabled,
-                        coinId = id,
-                        coinSymbol = state.coin.symbol
-                    )
-                )
-            },
-            onToggleFavorite = {
-                viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleFavorite(id))
-            },
-            onToggleOrderBook = { expanded ->
-                viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleOrderBookExpanded(expanded))
-            },
-            onSelectOrderBookMultiplier = { multiplier ->
-                viewModel.handleIntent(DetailViewModel.DetailIntent.SelectOrderBookMultiplier(multiplier))
-            },
-            onNavigateToPortfolio = onNavigateToPortfolio
-        ) { days ->
-            viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart(id, days))
-        }
-        is DetailViewModel.DetailState.Error -> OnCoinDetailError(
-            onBackPress = { navHostController.popBackStack() },
-            onRetry = {
-                viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail(id))
-                viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart(id))
-                viewModel.handleIntent(DetailViewModel.DetailIntent.LoadInsights(id))
+    AnimatedContent(
+        targetState = coinDetailState,
+        contentKey = { state ->
+            when (state) {
+                is Loading -> "detail_loading"
+                is SuccessDetail -> "detail_success"
+                is DetailViewModel.DetailState.Error -> "detail_error"
+                else -> "detail_other"
             }
-        )
-        else -> {}
+        },
+        transitionSpec = {
+            fadeIn(
+                animationSpec = tween(durationMillis = 340, easing = FastOutSlowInEasing)
+            ).togetherWith(
+                fadeOut(
+                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing)
+                )
+            ).using(SizeTransform(clip = false))
+        },
+        label = "coinDetailStateTransition"
+    ) { state ->
+        when (state) {
+            is Loading -> OnCoinDetailLoading(
+                onBackPress = { navHostController.popBackStack() }
+            )
+            is SuccessDetail -> OnCoinDetailSuccess(
+                state = state,
+                chartDetailState = chartDetailState,
+                newsState = newsState,
+                insightsState = insightsState,
+                portfolioInsight = portfolioInsight,
+                orderBookState = orderBookState,
+                isRefreshing = isRefreshing,
+                lastUpdatedAtMillis = lastUpdatedAtMillis,
+                refreshErrorMessage = refreshErrorMessage,
+                onConsumeRefreshError = viewModel::consumeRefreshErrorMessage,
+                onRefresh = {
+                    viewModel.handleIntent(DetailViewModel.DetailIntent.Refresh(id, activeDays))
+                },
+                onBackPress = {
+                    navHostController.popBackStack()
+                },
+                onArticleClick = { url ->
+                    if (url.isNotBlank()) {
+                        navHostController.navigate(Screen.WebView(url = url))
+                    }
+                },
+                isFavorite = isFavorite,
+                isRealTimeActive = isRealTimeActive,
+                onToggleRealTime = { enabled ->
+                    viewModel.handleIntent(
+                        DetailViewModel.DetailIntent.ToggleRealTime(
+                            enabled = enabled,
+                            coinId = id,
+                            coinSymbol = state.coin.symbol
+                        )
+                    )
+                },
+                onToggleFavorite = {
+                    viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleFavorite(id))
+                },
+                onToggleOrderBook = { expanded ->
+                    viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleOrderBookExpanded(expanded))
+                },
+                onSelectOrderBookMultiplier = { multiplier ->
+                    viewModel.handleIntent(DetailViewModel.DetailIntent.SelectOrderBookMultiplier(multiplier))
+                },
+                onNavigateToPortfolio = onNavigateToPortfolio
+            ) { days ->
+                viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart(id, days))
+            }
+            is DetailViewModel.DetailState.Error -> OnCoinDetailError(
+                onBackPress = { navHostController.popBackStack() },
+                onRetry = {
+                    viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail(id))
+                    viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart(id))
+                    viewModel.handleIntent(DetailViewModel.DetailIntent.LoadInsights(id))
+                }
+            )
+            else -> {}
+        }
     }
 }
 
@@ -403,8 +440,11 @@ fun OnCoinDetailSuccess(
                         ) {
                             Text(
                                 text = state.coin.price,
-                                fontSize = 26.sp,
-                                fontWeight = FontWeight.Bold,
+                                style = MaterialTheme.typography.headlineMedium.copy(
+                                    fontSize = 26.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFeatureSettings = "tnum"
+                                ),
                                 color = MaterialTheme.colorScheme.surface,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -434,18 +474,45 @@ fun OnCoinDetailSuccess(
                                     )
                                 }
                             }
-                            if (isRealTimeActive) {
-                                LivePulseBadge(
-                                    updatedTimeLabel = updatedTimeLabel,
-                                    modifier = Modifier.testTag("detail_live_badge")
-                                )
-                            } else if (updatedTimeLabel != null) {
-                                Text(
-                                    text = stringResource(R.string.detail_updated_at, updatedTimeLabel),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1
-                                )
+                            val statusSlotHeight = with(LocalDensity.current) { 22.sp.toDp() }.coerceAtLeast(24.dp)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(statusSlotHeight),
+                                contentAlignment = Alignment.CenterStart
+                            ) {
+                                AnimatedContent(
+                                    targetState = isRealTimeActive,
+                                    contentAlignment = Alignment.CenterStart,
+                                    transitionSpec = {
+                                        fadeIn(
+                                            animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+                                        ).togetherWith(
+                                            fadeOut(
+                                                animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing)
+                                            )
+                                        ).using(null)
+                                    },
+                                    label = "detailStatusBadgeTransition"
+                                ) { liveActive ->
+                                    if (liveActive) {
+                                        LivePulseBadge(
+                                            updatedTimeLabel = updatedTimeLabel,
+                                            modifier = Modifier.testTag("detail_live_badge")
+                                        )
+                                    } else if (updatedTimeLabel != null) {
+                                        Text(
+                                            text = stringResource(R.string.detail_updated_at, updatedTimeLabel),
+                                            style = MaterialTheme.typography.labelSmall.copy(
+                                                fontFeatureSettings = "tnum"
+                                            ),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            softWrap = false,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
                             }
                         }
 
@@ -465,160 +532,188 @@ fun OnCoinDetailSuccess(
                     color = MaterialTheme.colorScheme.outlineVariant
                 )
 
-                when (chartDetailState) {
-                    is SuccessChart -> {
-                        BoxWithConstraints(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 18.dp)
-                        ) {
-                            val totalPeriodButtons = DaysOfChart.entries.size + 1
-                            val totalButtons = totalPeriodButtons + 2
-                            val spacingBetweenButtons = 4.dp
-                            val minGroupGap = 12.dp
-                            val totalOverhead = (spacingBetweenButtons * (totalPeriodButtons - 1)) +
-                                spacingBetweenButtons +
-                                minGroupGap
-                            val buttonWidth = ((maxWidth - totalOverhead) / totalButtons)
-                                .coerceIn(28.dp, 38.dp)
-                            val rtChipWidth = (buttonWidth + 8.dp).coerceAtMost(46.dp)
-
-                            Row(
+                AnimatedContent(
+                    targetState = chartDetailState,
+                    contentKey = { chartState ->
+                        when (chartState) {
+                            is SuccessChart -> "chart_success_${chartState.days}"
+                            is Loading -> "chart_loading"
+                            else -> "chart_other"
+                        }
+                    },
+                    transitionSpec = {
+                        fadeIn(
+                            animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                        ).togetherWith(
+                            fadeOut(
+                                animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
+                            )
+                        )
+                    },
+                    label = "detailChartStateTransition"
+                ) { currentChartState ->
+                    when (currentChartState) {
+                        is SuccessChart -> {
+                            Column(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
-                                    verticalAlignment = Alignment.CenterVertically
+                                BoxWithConstraints(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 18.dp)
                                 ) {
-                                    SegmentedControl(
-                                        items = DaysOfChart.entries.map { day -> day.text },
-                                        defaultSelectedItemIndex = if (isRealTimeActive) {
-                                            -1
-                                        } else {
-                                            DaysOfChart.entries
-                                                .indexOfFirst { it.value == chartDetailState.days }
-                                                .coerceAtLeast(0)
-                                        },
-                                        useFixedWidth = true,
-                                        itemWidth = buttonWidth,
-                                        itemHeight = 32.dp,
-                                        itemSpacing = spacingBetweenButtons,
-                                        chipHorizontalPadding = 0.dp,
-                                        chipVerticalPadding = 0.dp,
-                                        textStyle = MaterialTheme.typography.labelSmall
-                                    ) { index ->
-                                        selectedDaysOfChart(DaysOfChart.entries[index].value)
-                                    }
+                                    val totalPeriodButtons = DaysOfChart.entries.size + 1
+                                    val totalButtons = totalPeriodButtons + 2
+                                    val spacingBetweenButtons = 4.dp
+                                    val minGroupGap = 10.dp
+                                    val extraLiveChipWidth = 14.dp
+                                    val totalOverhead = (spacingBetweenButtons * (totalPeriodButtons - 1)) +
+                                        spacingBetweenButtons +
+                                        minGroupGap +
+                                        extraLiveChipWidth
+                                    val buttonWidth = ((maxWidth - totalOverhead) / totalButtons)
+                                        .coerceIn(26.dp, 36.dp)
+                                    val rtChipWidth = (buttonWidth + extraLiveChipWidth).coerceIn(44.dp, 54.dp)
 
-                                    RealTimePeriodChip(
-                                        isActive = isRealTimeActive,
-                                        width = rtChipWidth,
-                                        height = 32.dp,
-                                        onClick = { onToggleRealTime(!isRealTimeActive) },
-                                        modifier = Modifier.testTag("detail_rt_toggle_button")
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            SegmentedControl(
+                                                items = DaysOfChart.entries.map { day -> day.text },
+                                                defaultSelectedItemIndex = if (isRealTimeActive) {
+                                                    -1
+                                                } else {
+                                                    DaysOfChart.entries
+                                                        .indexOfFirst { it.value == currentChartState.days }
+                                                        .coerceAtLeast(0)
+                                                },
+                                                useFixedWidth = true,
+                                                itemWidth = buttonWidth,
+                                                itemHeight = 32.dp,
+                                                itemSpacing = spacingBetweenButtons,
+                                                chipHorizontalPadding = 0.dp,
+                                                chipVerticalPadding = 0.dp,
+                                                textStyle = MaterialTheme.typography.labelSmall
+                                            ) { index ->
+                                                selectedDaysOfChart(DaysOfChart.entries[index].value)
+                                            }
+
+                                            RealTimePeriodChip(
+                                                isActive = isRealTimeActive,
+                                                width = rtChipWidth,
+                                                height = 32.dp,
+                                                onClick = { onToggleRealTime(!isRealTimeActive) },
+                                                modifier = Modifier.testTag("detail_rt_toggle_button")
+                                            )
+                                        }
+
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            val activeToggleTint = if (MaterialTheme.colorScheme.scrim.luminance() > 0.4f) {
+                                                Color(0xFF052E16)
+                                            } else {
+                                                Color.White
+                                            }
+                                            val inactiveToggleBg = Color.Transparent
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(width = buttonWidth, height = 32.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(
+                                                        if (isBarChart) MaterialTheme.colorScheme.scrim else inactiveToggleBg
+                                                    )
+                                                    .testTag("chart_type_bar_button")
+                                                    .clickable { isBarChart = true },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.ic_bar_chart_24dp),
+                                                    contentDescription = stringResource(R.string.detail_bar_chart_cd),
+                                                    tint = if (isBarChart) activeToggleTint else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(width = buttonWidth, height = 32.dp)
+                                                    .clip(RoundedCornerShape(8.dp))
+                                                    .background(
+                                                        if (!isBarChart) MaterialTheme.colorScheme.scrim else inactiveToggleBg
+                                                    )
+                                                    .testTag("chart_type_line_button")
+                                                    .clickable { isBarChart = false },
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.ic_show_chart_24dp),
+                                                    contentDescription = stringResource(R.string.detail_line_chart_cd),
+                                                    tint = if (!isBarChart) activeToggleTint else MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                val chartMarkers = portfolioInsight?.tradeMarkers.orEmpty()
+                                if (isBarChart) {
+                                    BarChartCompose(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(265.dp),
+                                        data = currentChartState.chart.chartData,
+                                        coinInfo = state.coin,
+                                        selectedDays = currentChartState.days,
+                                        showHighLowCallouts = true,
+                                        pointFillColor = MaterialTheme.colorScheme.background,
+                                        tradeMarkers = chartMarkers,
+                                        selectedMarkerId = selectedTradeMarker?.transactionId,
+                                        onMarkerClick = { selectedTradeMarker = it }
+                                    )
+                                } else {
+                                    LineChartCompose(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(265.dp),
+                                        data = currentChartState.chart.chartData,
+                                        graphColor = MaterialTheme.colorScheme.scrim,
+                                        showDashedLine = false,
+                                        showYLabels = true,
+                                        showHighLowCallouts = true,
+                                        pointFillColor = MaterialTheme.colorScheme.background,
+                                        tradeMarkers = chartMarkers,
+                                        selectedMarkerId = selectedTradeMarker?.transactionId,
+                                        onMarkerClick = { selectedTradeMarker = it }
                                     )
                                 }
 
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    val activeToggleTint = if (MaterialTheme.colorScheme.scrim.luminance() > 0.4f) {
-                                        Color(0xFF052E16)
-                                    } else {
-                                        Color.White
-                                    }
-                                    val inactiveToggleBg = Color.Transparent
-
-                                    Box(
-                                        modifier = Modifier
-                                            .size(width = buttonWidth, height = 32.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(
-                                                if (isBarChart) MaterialTheme.colorScheme.scrim else inactiveToggleBg
-                                            )
-                                            .testTag("chart_type_bar_button")
-                                            .clickable { isBarChart = true },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.ic_bar_chart_24dp),
-                                            contentDescription = stringResource(R.string.detail_bar_chart_cd),
-                                            tint = if (isBarChart) activeToggleTint else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-
-                                    Box(
-                                        modifier = Modifier
-                                            .size(width = buttonWidth, height = 32.dp)
-                                            .clip(RoundedCornerShape(8.dp))
-                                            .background(
-                                                if (!isBarChart) MaterialTheme.colorScheme.scrim else inactiveToggleBg
-                                            )
-                                            .testTag("chart_type_line_button")
-                                            .clickable { isBarChart = false },
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(id = R.drawable.ic_show_chart_24dp),
-                                            contentDescription = stringResource(R.string.detail_line_chart_cd),
-                                            tint = if (!isBarChart) activeToggleTint else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
+                                if (chartMarkers.isNotEmpty() && currentChartState.chart.chartData.size >= 2) {
+                                    ChartTradeMarkersFooter(
+                                        markers = chartMarkers,
+                                        minChartTimestampMillis = currentChartState.chart.chartData.first().timestampMillis,
+                                        maxChartTimestampMillis = currentChartState.chart.chartData.last().timestampMillis,
+                                        selectedMarker = selectedTradeMarker,
+                                        onSelectMarker = { selectedTradeMarker = it }
+                                    )
                                 }
                             }
                         }
-
-                        val chartMarkers = portfolioInsight?.tradeMarkers.orEmpty()
-                        if (isBarChart) {
-                            BarChartCompose(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(265.dp),
-                                data = chartDetailState.chart.chartData,
-                                coinInfo = state.coin,
-                                selectedDays = chartDetailState.days,
-                                showHighLowCallouts = true,
-                                pointFillColor = MaterialTheme.colorScheme.background,
-                                tradeMarkers = chartMarkers,
-                                selectedMarkerId = selectedTradeMarker?.transactionId,
-                                onMarkerClick = { selectedTradeMarker = it }
-                            )
-                        } else {
-                            LineChartCompose(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(265.dp),
-                                data = chartDetailState.chart.chartData,
-                                graphColor = MaterialTheme.colorScheme.scrim,
-                                showDashedLine = false,
-                                showYLabels = true,
-                                showHighLowCallouts = true,
-                                pointFillColor = MaterialTheme.colorScheme.background,
-                                tradeMarkers = chartMarkers,
-                                selectedMarkerId = selectedTradeMarker?.transactionId,
-                                onMarkerClick = { selectedTradeMarker = it }
-                            )
+                        is Loading -> {
+                            DetailChartSkeleton()
                         }
-
-                        if (chartMarkers.isNotEmpty() && chartDetailState.chart.chartData.size >= 2) {
-                            ChartTradeMarkersFooter(
-                                markers = chartMarkers,
-                                minChartTimestampMillis = chartDetailState.chart.chartData.first().timestampMillis,
-                                maxChartTimestampMillis = chartDetailState.chart.chartData.last().timestampMillis,
-                                selectedMarker = selectedTradeMarker,
-                                onSelectMarker = { selectedTradeMarker = it }
-                            )
-                        }
+                        else -> {}
                     }
-                    is Loading -> {
-                        DetailChartSkeleton()
-                    }
-                    else -> {}
                 }
             }
 
@@ -846,60 +941,83 @@ fun OnCoinDetailSuccess(
                     )
                 }
 
-                when (insightsState) {
-                    is SuccessInsights -> {
-                        if (insightsState.insights.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.detail_insights_empty, state.coin.name),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                AnimatedContent(
+                    targetState = insightsState,
+                    contentKey = { current ->
+                        when (current) {
+                            is SuccessInsights -> "insights_success"
+                            is InsightsError -> "insights_error"
+                            else -> "insights_loading"
+                        }
+                    },
+                    transitionSpec = {
+                        fadeIn(
+                            animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                        ).togetherWith(
+                            fadeOut(
+                                animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
                             )
-                        } else {
-                            insightsState.insights.forEachIndexed { index, insight ->
-                                Column(
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    if (insight.title.isNotBlank()) {
-                                        Text(
-                                            text = insight.title,
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MaterialTheme.colorScheme.surface
-                                        )
+                        )
+                    },
+                    label = "detailInsightsStateTransition"
+                ) { currentInsightsState ->
+                    when (currentInsightsState) {
+                        is SuccessInsights -> {
+                            if (currentInsightsState.insights.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.detail_insights_empty, state.coin.name),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    currentInsightsState.insights.forEachIndexed { index, insight ->
+                                        Column(
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            if (insight.title.isNotBlank()) {
+                                                Text(
+                                                    text = insight.title,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    color = MaterialTheme.colorScheme.surface
+                                                )
+                                            }
+                                            if (insight.description.isNotBlank()) {
+                                                Text(
+                                                    text = insight.description,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                            if (insight.postedAt.isNotBlank()) {
+                                                Text(
+                                                    text = insight.postedAt,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                                                )
+                                            }
+                                        }
+                                        if (index != currentInsightsState.insights.lastIndex) {
+                                            HorizontalDivider(
+                                                thickness = 1.dp,
+                                                color = MaterialTheme.colorScheme.outlineVariant
+                                            )
+                                        }
                                     }
-                                    if (insight.description.isNotBlank()) {
-                                        Text(
-                                            text = insight.description,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                    if (insight.postedAt.isNotBlank()) {
-                                        Text(
-                                            text = insight.postedAt,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                                        )
-                                    }
-                                }
-                                if (index != insightsState.insights.lastIndex) {
-                                    HorizontalDivider(
-                                        thickness = 1.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant
-                                    )
                                 }
                             }
                         }
-                    }
-                    is InsightsError -> {
-                        Text(
-                            text = insightsState.message,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    else -> {
-                        DetailInsightsSkeleton()
+                        is InsightsError -> {
+                            Text(
+                                text = currentInsightsState.message,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        else -> {
+                            DetailInsightsSkeleton()
+                        }
                     }
                 }
             }
@@ -936,74 +1054,91 @@ fun OnCoinDetailSuccess(
                     )
                 }
 
-                when (newsState) {
-                    is DetailViewModel.DetailState.SuccessNews -> {
-                        val articles = (newsState as DetailViewModel.DetailState.SuccessNews).articles
-                        if (articles.isEmpty()) {
-                            Text(
-                                text = stringResource(R.string.detail_news_empty, state.coin.name),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
+                AnimatedContent(
+                    targetState = newsState,
+                    contentKey = { current ->
+                        if (current is DetailViewModel.DetailState.SuccessNews) "news_success" else "news_loading"
+                    },
+                    transitionSpec = {
+                        fadeIn(
+                            animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing)
+                        ).togetherWith(
+                            fadeOut(
+                                animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing)
                             )
-                        } else {
-                            androidx.compose.foundation.lazy.LazyRow(
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                items(articles.size) { index ->
-                                    val article = articles[index]
-                                    Column(
-                                        modifier = Modifier
-                                            .width(248.dp)
-                                            .height(232.dp)
-                                            .clickable { onArticleClick(article.url) },
-                                        verticalArrangement = Arrangement.SpaceBetween
-                                    ) {
+                        )
+                    },
+                    label = "detailNewsStateTransition"
+                ) { currentNewsState ->
+                    when (currentNewsState) {
+                        is DetailViewModel.DetailState.SuccessNews -> {
+                            val articles = currentNewsState.articles
+                            if (articles.isEmpty()) {
+                                Text(
+                                    text = stringResource(R.string.detail_news_empty, state.coin.name),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 4.dp)
+                                )
+                            } else {
+                                androidx.compose.foundation.lazy.LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 18.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    items(articles.size) { index ->
+                                        val article = articles[index]
                                         Column(
-                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            modifier = Modifier
+                                                .width(248.dp)
+                                                .height(232.dp)
+                                                .clickable { onArticleClick(article.url) },
+                                            verticalArrangement = Arrangement.SpaceBetween
                                         ) {
-                                            if (article.urlToImage.isNotBlank()) {
-                                                GlideImage(
-                                                    model = article.urlToImage,
-                                                    contentDescription = article.title,
-                                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .height(112.dp)
-                                                        .clip(RoundedCornerShape(12.dp))
+                                            Column(
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                if (article.urlToImage.isNotBlank()) {
+                                                    GlideImage(
+                                                        model = article.urlToImage,
+                                                        contentDescription = article.title,
+                                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .height(112.dp)
+                                                            .clip(RoundedCornerShape(12.dp))
+                                                    )
+                                                }
+                                                Text(
+                                                    text = article.title,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = MaterialTheme.colorScheme.surface,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                                Text(
+                                                    text = article.description,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 2,
+                                                    overflow = TextOverflow.Ellipsis
                                                 )
                                             }
                                             Text(
-                                                text = article.title,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.surface,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            Text(
-                                                text = article.description,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                maxLines = 2,
-                                                overflow = TextOverflow.Ellipsis
+                                                text = stringResource(R.string.action_see_more),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.surfaceTint,
+                                                textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
                                             )
                                         }
-                                        Text(
-                                            text = stringResource(R.string.action_see_more),
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.surfaceTint,
-                                            textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline
-                                        )
                                     }
                                 }
                             }
                         }
-                    }
-                    else -> {
-                        DetailNewsSkeleton()
+                        else -> {
+                            DetailNewsSkeleton()
+                        }
                     }
                 }
             }
@@ -1116,25 +1251,86 @@ private fun OnCoinDetailError(
             )
         }
     ) { innerPadding ->
-        Column(
+        val composition by rememberLottieComposition(
+            LottieCompositionSpec.RawRes(R.raw.error_avatar_animation)
+        )
+        val errorTint = MaterialTheme.colorScheme.error
+        val dynamicProperties = rememberLottieDynamicProperties(
+            rememberLottieDynamicProperty(
+                property = LottieProperty.COLOR,
+                value = errorTint.toArgb(),
+                keyPath = arrayOf("**", "ErrorAvatarFill")
+            ),
+            rememberLottieDynamicProperty(
+                property = LottieProperty.COLOR,
+                value = errorTint.toArgb(),
+                keyPath = arrayOf("**", "ErrorSoftFill")
+            ),
+            rememberLottieDynamicProperty(
+                property = LottieProperty.COLOR,
+                value = errorTint.toArgb(),
+                keyPath = arrayOf("**", "ErrorStroke")
+            ),
+            rememberLottieDynamicProperty(
+                property = LottieProperty.STROKE_COLOR,
+                value = errorTint.toArgb(),
+                keyPath = arrayOf("**", "ErrorStroke")
+            ),
+            rememberLottieDynamicProperty(
+                property = LottieProperty.COLOR,
+                value = errorTint.toArgb(),
+                keyPath = arrayOf("**", "AlertAccentFill")
+            ),
+            rememberLottieDynamicProperty(
+                property = LottieProperty.COLOR,
+                value = errorTint.toArgb(),
+                keyPath = arrayOf("**", "AlertAccentStroke")
+            ),
+            rememberLottieDynamicProperty(
+                property = LottieProperty.STROKE_COLOR,
+                value = errorTint.toArgb(),
+                keyPath = arrayOf("**", "AlertAccentStroke")
+            )
+        )
+
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 24.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = stringResource(R.string.error_loading_data),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            RippleButton(
-                text = stringResource(R.string.action_retry),
-                onClick = onRetry
-            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                LottieAnimation(
+                    composition = composition,
+                    iterations = LottieConstants.IterateForever,
+                    speed = 0.85f,
+                    dynamicProperties = dynamicProperties,
+                    modifier = Modifier
+                        .size(200.dp)
+                        .alpha(0.85f)
+                        .testTag("error_watermark_lottie")
+                )
+
+                Text(
+                    text = stringResource(R.string.error_loading_data),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                RippleButton(
+                    text = stringResource(R.string.action_retry),
+                    onClick = onRetry
+                )
+            }
         }
     }
 }
@@ -1172,7 +1368,7 @@ private fun LivePulseBadge(
         modifier = modifier
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(5.dp)
         ) {
@@ -1199,10 +1395,14 @@ private fun LivePulseBadge(
                 } else {
                     stringResource(R.string.detail_live_badge)
                 },
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontFeatureSettings = "tnum"
+                ),
                 color = liveColor,
-                maxLines = 1
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -1236,7 +1436,8 @@ private fun RealTimePeriodChip(
 
     Box(
         modifier = modifier
-            .size(width = width, height = height)
+            .height(height)
+            .widthIn(min = width)
             .clip(RoundedCornerShape(8.dp))
             .background(
                 if (isActive) accentColor else MaterialTheme.colorScheme.background
@@ -1252,7 +1453,8 @@ private fun RealTimePeriodChip(
                     )
                 }
             )
-            .clickable(onClickLabel = stringResource(R.string.detail_rt_toggle_cd), onClick = onClick),
+            .clickable(onClickLabel = stringResource(R.string.detail_rt_toggle_cd), onClick = onClick)
+            .padding(horizontal = 6.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(

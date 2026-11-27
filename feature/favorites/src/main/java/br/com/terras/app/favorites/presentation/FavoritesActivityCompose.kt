@@ -1,35 +1,33 @@
 package br.com.terras.app.favorites.presentation
 
 import android.annotation.SuppressLint
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -46,6 +44,13 @@ import br.com.terras.app.dsm.ui.component.RippleButton
 import br.com.terras.app.dsm.ui.component.StickyHeaderView
 import br.com.terras.app.dsm.ui.component.sortWithMarketState
 import br.com.terras.app.dsm.ui.theme.DSMTheme
+import com.airbnb.lottie.LottieProperty
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.airbnb.lottie.compose.rememberLottieDynamicProperties
+import com.airbnb.lottie.compose.rememberLottieDynamicProperty
 import br.com.terras.app.favorites.domain.model.CoinVO
 import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesIntent
 import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Error
@@ -61,7 +66,6 @@ fun FavoriteActivityCompose(
 ) {
     val coinsListState by viewModel.coins.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
-    var showDialog by remember(coinsListState) { mutableStateOf(coinsListState is Error) }
 
     if (showTopBar) {
         Scaffold(
@@ -73,8 +77,6 @@ fun FavoriteActivityCompose(
                 coinsListState = coinsListState,
                 isRefreshing = isRefreshing,
                 topPadding = innerPadding.calculateTopPadding(),
-                showDialog = showDialog,
-                onDismissError = { showDialog = false },
                 onRefresh = { viewModel.handleIntent(FavoritesIntent.Refresh) },
                 onItemClick = onItemClick
             )
@@ -84,8 +86,6 @@ fun FavoriteActivityCompose(
             coinsListState = coinsListState,
             isRefreshing = isRefreshing,
             topPadding = 0.dp,
-            showDialog = showDialog,
-            onDismissError = { showDialog = false },
             onRefresh = { viewModel.handleIntent(FavoritesIntent.Refresh) },
             onItemClick = onItemClick
         )
@@ -97,8 +97,6 @@ private fun FavoritesContentBody(
     coinsListState: FavoritesViewModel.FavoritesState,
     isRefreshing: Boolean,
     topPadding: Dp,
-    showDialog: Boolean,
-    onDismissError: () -> Unit,
     onRefresh: () -> Unit,
     onItemClick: (String) -> Unit
 ) {
@@ -145,13 +143,7 @@ private fun FavoritesContentBody(
                         )
                     }
                 }
-                is Error -> {
-                    OnFavoritesEmpty()
-                    OnCoinsListError(
-                        showDialog = showDialog,
-                        onDismissRequest = onDismissError
-                    )
-                }
+                is Error -> OnFavoritesEmpty()
             }
         }
     }
@@ -174,27 +166,77 @@ private fun OnFavoritesLoading() {
 
 @Composable
 private fun OnFavoritesEmpty() {
-    Column(
+    val composition by rememberLottieComposition(
+        LottieCompositionSpec.RawRes(R.raw.favorites_empty_avatar)
+    )
+    val watermarkBaseArgb = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
+    val watermarkAccentArgb = MaterialTheme.colorScheme.scrim.toArgb()
+    val dynamicProperties = rememberLottieDynamicProperties(
+        rememberLottieDynamicProperty(
+            property = LottieProperty.COLOR,
+            value = watermarkBaseArgb,
+            keyPath = arrayOf("**", "AvatarFill")
+        ),
+        rememberLottieDynamicProperty(
+            property = LottieProperty.COLOR,
+            value = watermarkBaseArgb,
+            keyPath = arrayOf("**", "AvatarSoftFill")
+        ),
+        rememberLottieDynamicProperty(
+            property = LottieProperty.COLOR,
+            value = watermarkBaseArgb,
+            keyPath = arrayOf("**", "AvatarStroke")
+        ),
+        rememberLottieDynamicProperty(
+            property = LottieProperty.STROKE_COLOR,
+            value = watermarkBaseArgb,
+            keyPath = arrayOf("**", "AvatarStroke")
+        ),
+        rememberLottieDynamicProperty(
+            property = LottieProperty.COLOR,
+            value = watermarkAccentArgb,
+            keyPath = arrayOf("**", "AccentFill")
+        ),
+        rememberLottieDynamicProperty(
+            property = LottieProperty.STROKE_COLOR,
+            value = watermarkAccentArgb,
+            keyPath = arrayOf("**", "AccentStroke")
+        )
+    )
+    val emptyContentDescription = stringResource(R.string.favorites_empty_avatar_cd)
+
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp, vertical = 32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(start = 24.dp, end = 24.dp, top = 16.dp, bottom = 96.dp)
+            .semantics(mergeDescendants = true) {
+                contentDescription = emptyContentDescription
+            }
+            .testTag("favorites_empty_watermark"),
+        contentAlignment = Alignment.Center
     ) {
-        Icon(
-            painter = painterResource(id = R.drawable.star_24dp),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.inversePrimary,
-            modifier = Modifier
-                .size(40.dp)
-                .padding(bottom = 12.dp)
-        )
-        Text(
-            text = stringResource(R.string.favorites_empty_message),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.surface,
-            textAlign = TextAlign.Center
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                speed = 0.85f,
+                dynamicProperties = dynamicProperties,
+                modifier = Modifier
+                    .size(216.dp)
+                    .alpha(0.28f)
+                    .testTag("favorites_empty_lottie")
+            )
+            Text(
+                text = stringResource(R.string.favorites_empty_message),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.56f),
+                textAlign = TextAlign.Center
+            )
+        }
     }
 }
 
@@ -231,25 +273,7 @@ private fun OnCoinsListSuccess(
     }
 }
 
-@Composable
-private fun OnCoinsListError(
-    showDialog: Boolean,
-    onDismissRequest: () -> Unit
-) {
-    if (showDialog.not()) return
 
-    AlertDialog(
-        onDismissRequest = onDismissRequest,
-        containerColor = MaterialTheme.colorScheme.primary,
-        titleContentColor = MaterialTheme.colorScheme.surface,
-        textContentColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
-        title = { Text(text = stringResource(R.string.dialog_alert_title)) },
-        text = { Text(text = stringResource(R.string.error_loading_data)) },
-        confirmButton = {
-            RippleButton(text = stringResource(R.string.dialog_alert_acknowledge), onClick = onDismissRequest)
-        }
-    )
-}
 
 @ThemePreviews
 @Composable

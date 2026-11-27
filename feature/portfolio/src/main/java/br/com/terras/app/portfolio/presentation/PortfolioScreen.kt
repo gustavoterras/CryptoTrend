@@ -44,13 +44,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -59,6 +63,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.airbnb.lottie.LottieProperty
+import com.airbnb.lottie.compose.LottieAnimation
+import com.airbnb.lottie.compose.LottieCompositionSpec
+import com.airbnb.lottie.compose.LottieConstants
+import com.airbnb.lottie.compose.rememberLottieComposition
+import com.airbnb.lottie.compose.rememberLottieDynamicProperties
+import com.airbnb.lottie.compose.rememberLottieDynamicProperty
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -338,20 +349,71 @@ private fun PortfolioEmptyView(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Box(
+        val composition by rememberLottieComposition(
+            LottieCompositionSpec.RawRes(R.raw.portfolio_empty_yield)
+        )
+        val watermarkBaseArgb = MaterialTheme.colorScheme.onSurfaceVariant.toArgb()
+        val watermarkAccentArgb = MaterialTheme.colorScheme.scrim.toArgb()
+        val dynamicProperties = rememberLottieDynamicProperties(
+            rememberLottieDynamicProperty(
+                property = LottieProperty.COLOR,
+                value = watermarkBaseArgb,
+                keyPath = arrayOf("**", "YieldBaseFill")
+            ),
+            rememberLottieDynamicProperty(
+                property = LottieProperty.COLOR,
+                value = watermarkBaseArgb,
+                keyPath = arrayOf("**", "YieldSoftFill")
+            ),
+            rememberLottieDynamicProperty(
+                property = LottieProperty.COLOR,
+                value = watermarkBaseArgb,
+                keyPath = arrayOf("**", "YieldBaseStroke")
+            ),
+            rememberLottieDynamicProperty(
+                property = LottieProperty.STROKE_COLOR,
+                value = watermarkBaseArgb,
+                keyPath = arrayOf("**", "YieldBaseStroke")
+            ),
+            rememberLottieDynamicProperty(
+                property = LottieProperty.COLOR,
+                value = watermarkAccentArgb,
+                keyPath = arrayOf("**", "YieldAccentFill")
+            ),
+            rememberLottieDynamicProperty(
+                property = LottieProperty.COLOR,
+                value = watermarkAccentArgb,
+                keyPath = arrayOf("**", "YieldAccentStroke")
+            ),
+            rememberLottieDynamicProperty(
+                property = LottieProperty.STROKE_COLOR,
+                value = watermarkAccentArgb,
+                keyPath = arrayOf("**", "YieldAccentStroke")
+            )
+        )
+        val emptyContentDescription = stringResource(R.string.portfolio_empty_animation_cd)
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .widthIn(max = 460.dp)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = emptyContentDescription
+                }
+                .testTag("portfolio_empty_watermark"),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            LottieAnimation(
+                composition = composition,
+                iterations = LottieConstants.IterateForever,
+                speed = 0.85f,
+                dynamicProperties = dynamicProperties,
                 modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_portfolio_24dp),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.scrim,
-                    modifier = Modifier.size(30.dp)
-                )
-            }
+                    .size(200.dp)
+                    .alpha(0.28f)
+                    .testTag("portfolio_empty_lottie")
+            )
 
             Text(
                 text = stringResource(R.string.portfolio_empty_title),
@@ -364,36 +426,28 @@ private fun PortfolioEmptyView(
             Text(
                 text = stringResource(R.string.portfolio_empty_description),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            Button(
+            androidx.compose.material3.FloatingActionButton(
                 onClick = onAddFirstOperation,
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.scrim,
-                    contentColor = Color.White
-                ),
+                containerColor = MaterialTheme.colorScheme.scrim,
+                contentColor = Color.White,
+                shape = CircleShape,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(50.dp)
+                    .size(64.dp)
                     .testTag("portfolio_empty_cta")
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.size(8.dp))
-                Text(
-                    text = stringResource(R.string.portfolio_empty_cta),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    imageVector = androidx.compose.material.icons.Icons.Filled.Add,
+                    contentDescription = stringResource(R.string.portfolio_empty_cta),
+                    modifier = Modifier.size(28.dp)
                 )
             }
+        }
         }
     }
 }

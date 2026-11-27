@@ -34,6 +34,7 @@ import br.com.terras.app.database.portfolio.PortfolioTransactionRecord
 import br.com.terras.app.database.portfolio.PortfolioTransactionType
 import io.mockk.coEvery
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -106,8 +107,13 @@ private class FakeCoinbaseOrderBookService : CoinbaseOrderBookService {
     var lastRequestedSymbol: String? = null
     var lastMultiplierFlow: StateFlow<OrderBookMultiplier>? = null
     var pairAvailable: Boolean = true
+    var availabilityCalls: Int = 0
+    var pendingAvailability: CompletableDeferred<Boolean>? = null
 
-    override suspend fun isPairAvailable(coinSymbol: String): Boolean = pairAvailable
+    override suspend fun isPairAvailable(coinSymbol: String): Boolean {
+        availabilityCalls++
+        return pendingAvailability?.await() ?: pairAvailable
+    }
 
     override fun observeOrderBook(
         coinSymbol: String,
@@ -487,7 +493,7 @@ class DetailViewModelTest {
             viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleOrderBookExpanded(true))
             Assert.assertEquals(OrderBookUiState.Loading("BTC-USD"), awaitItem())
             Assert.assertEquals("BTC", orderBookService.lastRequestedSymbol)
-            Assert.assertEquals(OrderBookMultiplier.X1, orderBookService.lastMultiplierFlow?.value)
+            Assert.assertEquals(OrderBookMultiplier.DEFAULT, orderBookService.lastMultiplierFlow?.value)
 
             viewModel.handleIntent(DetailViewModel.DetailIntent.SelectOrderBookMultiplier(OrderBookMultiplier.X100))
             Assert.assertEquals(OrderBookMultiplier.X100, orderBookService.lastMultiplierFlow?.value)
@@ -514,6 +520,33 @@ class DetailViewModelTest {
             Assert.assertEquals(OrderBookUiState.Hidden, awaitItem())
             viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail("unlisted"))
             expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `WHEN LoadDetail runs THEN detail remains Loading until sequential order book check completes`() = runBlocking {
+        val availabilityGate = CompletableDeferred<Boolean>()
+        orderBookService.pendingAvailability = availabilityGate
+        val detailResult = mockCoinDetailVOStub.copy(symbol = "btc")
+        coEvery { userCase.getDetailById("bitcoin") } returns Result.success(detailResult)
+
+        viewModel.orderBookState.test {
+            Assert.assertEquals(OrderBookUiState.Hidden, awaitItem())
+
+            viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail("bitcoin"))
+
+            Assert.assertEquals(Loading, viewModel.detail.value)
+            Assert.assertEquals(1, orderBookService.availabilityCalls)
+
+            availabilityGate.complete(true)
+
+            Assert.assertEquals(SuccessDetail(detailResult), viewModel.detail.value)
+            Assert.assertEquals(OrderBookUiState.Collapsed("BTC-USD"), awaitItem())
+
+            viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleOrderBookExpanded(true))
+            Assert.assertEquals(OrderBookUiState.Loading("BTC-USD"), awaitItem())
+            Assert.assertEquals(1, orderBookService.availabilityCalls)
             cancelAndIgnoreRemainingEvents()
         }
     }
