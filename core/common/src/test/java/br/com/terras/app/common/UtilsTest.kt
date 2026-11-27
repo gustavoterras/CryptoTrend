@@ -33,4 +33,10 @@ class UtilsTest {
         Assert.assertEquals("$0.00", Double.NaN.formatLivePrice(Locale.US))
         Assert.assertEquals("$0.00", (-5.0).formatLivePrice(Locale.US))
     }
+
+    @Test
+    fun `WHEN called currentVsCurrency THEN maps English to usd and Portuguese to brl`() {
+        Assert.assertEquals("usd", currentVsCurrency(Locale.US))
+        Assert.assertEquals("brl", currentVsCurrency(Locale("pt", "BR")))
+    }
 }

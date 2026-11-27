@@ -152,3 +152,9 @@ fun List<Double>.downsampleSparkline(maxPoints: Int = 24): List<Double> {
         this[mappedIndex]
     }
 }
+
+fun currentVsCurrency(locale: Locale = Locale.getDefault()): String =
+    when (locale.language) {
+        "en" -> "usd"
+        else -> "brl"
+    }

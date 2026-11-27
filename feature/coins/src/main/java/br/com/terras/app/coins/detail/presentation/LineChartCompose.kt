@@ -556,7 +556,8 @@ fun LineChartCompose(
                 plotBottom = plotBottom,
                 pointFillColor = effectivePointFillColor,
                 isDark = isDark,
-                selectedMarkerId = selectedMarkerId
+                selectedMarkerId = selectedMarkerId,
+                plotTop = paddingTop
             )
 
             if (showLatestPointPulse && data.isNotEmpty()) {

@@ -10,11 +10,11 @@ import br.com.terras.app.coins.mockCoinsListResponseStub
 import br.com.terras.app.coins.mockCoinsResponseStub
 import br.com.terras.app.coins.mockGlobalMarketResponseStub
 import br.com.terras.app.coins.mockTrendingCoinsResponseStub
-import br.com.terras.app.network.cache.CachedListSnapshot
-import br.com.terras.app.network.cache.CoinGeckoSimplePriceService
-import br.com.terras.app.network.cache.ListCacheStore
-import br.com.terras.app.network.cache.SimpleCoinPrice
-import br.com.terras.app.network.cache.encodePayload
+import br.com.terras.app.database.cache.CachedListSnapshot
+import br.com.terras.app.database.cache.ListCacheStore
+import br.com.terras.app.database.cache.encodePayload
+import br.com.terras.app.coingecko.price.CoinGeckoSimplePriceService
+import br.com.terras.app.coingecko.price.SimpleCoinPrice
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -39,8 +39,6 @@ private class InMemoryCoinsListCacheStore(
     val snapshots = linkedMapOf<String, CachedListSnapshot>()
 
     override fun currentTimeMillis(): Long = nowMillis
-
-    override fun currentVsCurrency(locale: java.util.Locale): String = "brl"
 
     override suspend fun getSnapshot(cacheKey: String): CachedListSnapshot? = snapshots[cacheKey]
 
@@ -94,13 +92,22 @@ class CoinsRepositoryImplTest {
     private lateinit var cacheStore: InMemoryCoinsListCacheStore
     private lateinit var repository: CoinsRepository
 
+    private lateinit var previousLocale: java.util.Locale
+
     @get:Rule
     val mainRule = MainDispatcherRule(UnconfinedTestDispatcher())
 
     @Before
     fun setup() {
+        previousLocale = java.util.Locale.getDefault()
+        java.util.Locale.setDefault(java.util.Locale("pt", "BR"))
         cacheStore = InMemoryCoinsListCacheStore()
         repository = CoinsRepositoryImpl(services, simplePriceService, cacheStore)
+    }
+
+    @org.junit.After
+    fun tearDown() {
+        java.util.Locale.setDefault(previousLocale)
     }
 
     @Test
@@ -157,7 +164,7 @@ class CoinsRepositoryImplTest {
         )
         cacheStore.putSnapshot(
             cacheKey = "coins_market:page_1:brl",
-            category = ListCacheStore.CATEGORY_COINS_MARKET,
+            category = CoinsRepositoryImpl.CATEGORY_COINS_MARKET,
             currency = "brl",
             payloadJson = cacheStore.encodePayload(listOf(cachedCoin)),
             fetchedAtMillis = cacheStore.nowMillis - 30_000L,
@@ -182,7 +189,7 @@ class CoinsRepositoryImplTest {
         )
         cacheStore.putSnapshot(
             cacheKey = "coins_market:page_1:brl",
-            category = ListCacheStore.CATEGORY_COINS_MARKET,
+            category = CoinsRepositoryImpl.CATEGORY_COINS_MARKET,
             currency = "brl",
             payloadJson = cacheStore.encodePayload(listOf(cachedCoin)),
             fetchedAtMillis = cacheStore.nowMillis - 120_000L,
@@ -217,11 +224,11 @@ class CoinsRepositoryImplTest {
         val cachedCoin = mockCoinsResponseStub.copy(id = "bitcoin")
         cacheStore.putSnapshot(
             cacheKey = "coins_market:page_1:brl",
-            category = ListCacheStore.CATEGORY_COINS_MARKET,
+            category = CoinsRepositoryImpl.CATEGORY_COINS_MARKET,
             currency = "brl",
             payloadJson = cacheStore.encodePayload(listOf(cachedCoin)),
-            fetchedAtMillis = cacheStore.nowMillis - (ListCacheStore.COINS_LIST_TTL_MILLIS + 10_000L),
-            priceUpdatedAtMillis = cacheStore.nowMillis - (ListCacheStore.COINS_LIST_TTL_MILLIS + 10_000L)
+            fetchedAtMillis = cacheStore.nowMillis - (CoinsRepositoryImpl.COINS_LIST_TTL_MILLIS + 10_000L),
+            priceUpdatedAtMillis = cacheStore.nowMillis - (CoinsRepositoryImpl.COINS_LIST_TTL_MILLIS + 10_000L)
         )
         coEvery { services.getCoins(1) } throws RuntimeException("429 Too Many Requests")
 
@@ -234,7 +241,7 @@ class CoinsRepositoryImplTest {
     fun `WHEN forceRefresh page 1 THEN invalidates page 2 and hits API`() = runBlocking {
         cacheStore.putSnapshot(
             cacheKey = "coins_market:page_2:brl",
-            category = ListCacheStore.CATEGORY_COINS_MARKET,
+            category = CoinsRepositoryImpl.CATEGORY_COINS_MARKET,
             currency = "brl",
             payloadJson = cacheStore.encodePayload(mockCoinsListResponseStub)
         )
@@ -251,7 +258,7 @@ class CoinsRepositoryImplTest {
     fun `WHEN getGlobalMarketData cache is fresh THEN returns cached snapshot without network call`() = runBlocking {
         cacheStore.putSnapshot(
             cacheKey = "global_market:global",
-            category = ListCacheStore.CATEGORY_GLOBAL_MARKET,
+            category = CoinsRepositoryImpl.CATEGORY_GLOBAL_MARKET,
             currency = "global",
             payloadJson = cacheStore.encodePayload(mockGlobalMarketResponseStub),
             fetchedAtMillis = cacheStore.nowMillis - 60_000L
@@ -267,10 +274,10 @@ class CoinsRepositoryImplTest {
     fun `WHEN getGlobalMarketData cache expired and API fails THEN falls back to cached snapshot`() = runBlocking {
         cacheStore.putSnapshot(
             cacheKey = "global_market:global",
-            category = ListCacheStore.CATEGORY_GLOBAL_MARKET,
+            category = CoinsRepositoryImpl.CATEGORY_GLOBAL_MARKET,
             currency = "global",
             payloadJson = cacheStore.encodePayload(mockGlobalMarketResponseStub),
-            fetchedAtMillis = cacheStore.nowMillis - (ListCacheStore.GLOBAL_MARKET_TTL_MILLIS + 10_000L)
+            fetchedAtMillis = cacheStore.nowMillis - (CoinsRepositoryImpl.GLOBAL_MARKET_TTL_MILLIS + 10_000L)
         )
         coEvery { services.getGlobalMarketData() } throws RuntimeException("rate limit")
 

@@ -1,16 +1,17 @@
 package br.com.terras.app.coins.list.data
 
+import br.com.terras.app.coingecko.price.CoinGeckoSimplePriceService
+import br.com.terras.app.coingecko.price.NoOpCoinGeckoSimplePriceService
+import br.com.terras.app.common.currentVsCurrency
+import br.com.terras.app.database.cache.ListCacheStore
+import br.com.terras.app.database.cache.NoOpListCacheStore
+import br.com.terras.app.database.cache.decodeOrNull
+import br.com.terras.app.database.cache.encodePayload
 import br.com.terras.app.coins.list.data.model.CoinsResponse
 import br.com.terras.app.coins.list.data.model.FearAndGreedIndexResponse
 import br.com.terras.app.coins.list.data.model.GlobalMarketResponse
 import br.com.terras.app.coins.list.data.model.TrendingCoinsResponse
 import br.com.terras.app.coins.list.network.ApiServiceCoins
-import br.com.terras.app.network.cache.CoinGeckoSimplePriceService
-import br.com.terras.app.network.cache.ListCacheStore
-import br.com.terras.app.network.cache.NoOpCoinGeckoSimplePriceService
-import br.com.terras.app.network.cache.NoOpListCacheStore
-import br.com.terras.app.network.cache.decodeOrNull
-import br.com.terras.app.network.cache.encodePayload
 import javax.inject.Inject
 
 interface CoinsRepository {
@@ -41,7 +42,7 @@ class CoinsRepositoryImpl @Inject constructor(
 
     override suspend fun getCachedCoins(page: Int): List<CoinsResponse>? {
         val safePage = page.coerceAtLeast(1)
-        val currency = cacheStore.currentVsCurrency()
+        val currency = currentVsCurrency()
         val key = coinsMarketKey(safePage, currency)
         val snapshot = cacheStore.getSnapshot(key) ?: return null
         return cacheStore.decodeOrNull<List<CoinsResponse>>(snapshot.payloadJson)
@@ -49,14 +50,14 @@ class CoinsRepositoryImpl @Inject constructor(
 
     override suspend fun getCoins(page: Int, forceRefresh: Boolean): Result<List<CoinsResponse>> {
         val safePage = page.coerceAtLeast(1)
-        val currency = cacheStore.currentVsCurrency()
+        val currency = currentVsCurrency()
         val key = coinsMarketKey(safePage, currency)
 
         if (forceRefresh) {
             return cacheStore.singleFlight("$key:force") {
                 if (safePage == 1) {
                     cacheStore.invalidateOtherPages(
-                        category = ListCacheStore.CATEGORY_COINS_MARKET,
+                        category = CATEGORY_COINS_MARKET,
                         currency = currency,
                         keepKey = key
                     )
@@ -72,8 +73,8 @@ class CoinsRepositoryImpl @Inject constructor(
             val structuralAge = now - snapshot.fetchedAtMillis
             val priceAge = now - snapshot.priceUpdatedAtMillis
 
-            if (structuralAge <= ListCacheStore.COINS_LIST_TTL_MILLIS) {
-                if (priceAge <= ListCacheStore.PRICE_TTL_MILLIS) {
+            if (structuralAge <= COINS_LIST_TTL_MILLIS) {
+                if (priceAge <= PRICE_TTL_MILLIS) {
                     return Result.success(cachedList)
                 }
                 return overlaySimplePrices(
@@ -111,7 +112,7 @@ class CoinsRepositoryImpl @Inject constructor(
         val cached = snapshot?.let { cacheStore.decodeOrNull<TrendingCoinsResponse>(it.payloadJson) }
         if (snapshot != null && cached != null) {
             val age = cacheStore.currentTimeMillis() - snapshot.fetchedAtMillis
-            if (age <= ListCacheStore.TRENDING_TTL_MILLIS) {
+            if (age <= TRENDING_TTL_MILLIS) {
                 return Result.success(cached)
             }
             return cacheStore.singleFlight(TRENDING_CACHE_KEY) {
@@ -130,7 +131,7 @@ class CoinsRepositoryImpl @Inject constructor(
     override suspend fun getCachedCoinsByIds(ids: List<String>): List<CoinsResponse>? {
         val normalized = normalizeIds(ids)
         if (normalized.isEmpty()) return emptyList()
-        val currency = cacheStore.currentVsCurrency()
+        val currency = currentVsCurrency()
         val key = coinsByIdsKey(normalized, currency)
         val snapshot = cacheStore.getSnapshot(key) ?: return null
         return cacheStore.decodeOrNull<List<CoinsResponse>>(snapshot.payloadJson)
@@ -143,7 +144,7 @@ class CoinsRepositoryImpl @Inject constructor(
         val normalized = normalizeIds(ids)
         if (normalized.isEmpty()) return Result.success(emptyList())
 
-        val currency = cacheStore.currentVsCurrency()
+        val currency = currentVsCurrency()
         val key = coinsByIdsKey(normalized, currency)
 
         if (forceRefresh) {
@@ -158,8 +159,8 @@ class CoinsRepositoryImpl @Inject constructor(
             val now = cacheStore.currentTimeMillis()
             val structuralAge = now - snapshot.fetchedAtMillis
             val priceAge = now - snapshot.priceUpdatedAtMillis
-            if (structuralAge <= ListCacheStore.COINS_LIST_TTL_MILLIS) {
-                if (priceAge <= ListCacheStore.PRICE_TTL_MILLIS) {
+            if (structuralAge <= COINS_LIST_TTL_MILLIS) {
+                if (priceAge <= PRICE_TTL_MILLIS) {
                     return Result.success(cached)
                 }
                 return overlaySimplePrices(
@@ -194,7 +195,7 @@ class CoinsRepositoryImpl @Inject constructor(
         val cached = snapshot?.let { cacheStore.decodeOrNull<GlobalMarketResponse>(it.payloadJson) }
         if (snapshot != null && cached != null) {
             val age = cacheStore.currentTimeMillis() - snapshot.fetchedAtMillis
-            if (age <= ListCacheStore.GLOBAL_MARKET_TTL_MILLIS) {
+            if (age <= GLOBAL_MARKET_TTL_MILLIS) {
                 return Result.success(cached)
             }
             return cacheStore.singleFlight(GLOBAL_MARKET_CACHE_KEY) {
@@ -217,7 +218,7 @@ class CoinsRepositoryImpl @Inject constructor(
             val response = api.getCoins(page)
             cacheStore.putSnapshot(
                 cacheKey = key,
-                category = ListCacheStore.CATEGORY_COINS_MARKET,
+                category = CATEGORY_COINS_MARKET,
                 currency = currency,
                 payloadJson = cacheStore.encodePayload(response)
             )
@@ -238,7 +239,7 @@ class CoinsRepositoryImpl @Inject constructor(
             val response = api.getTrendingCoins()
             cacheStore.putSnapshot(
                 cacheKey = TRENDING_CACHE_KEY,
-                category = ListCacheStore.CATEGORY_TRENDING,
+                category = CATEGORY_TRENDING,
                 currency = "global",
                 payloadJson = cacheStore.encodePayload(response)
             )
@@ -262,7 +263,7 @@ class CoinsRepositoryImpl @Inject constructor(
             val response = api.getCoinsByIds(ids)
             cacheStore.putSnapshot(
                 cacheKey = key,
-                category = ListCacheStore.CATEGORY_TRENDING,
+                category = CATEGORY_TRENDING,
                 currency = currency,
                 payloadJson = cacheStore.encodePayload(response)
             )
@@ -295,7 +296,7 @@ class CoinsRepositoryImpl @Inject constructor(
             }
             cacheStore.putSnapshot(
                 cacheKey = GLOBAL_MARKET_CACHE_KEY,
-                category = ListCacheStore.CATEGORY_GLOBAL_MARKET,
+                category = CATEGORY_GLOBAL_MARKET,
                 currency = "global",
                 payloadJson = cacheStore.encodePayload(enrichedResponse)
             )
@@ -374,8 +375,16 @@ class CoinsRepositoryImpl @Inject constructor(
     private fun coinsByIdsKey(sortedIds: List<String>, currency: String): String =
         "coins_by_ids:${sortedIds.joinToString(",")}:$currency"
 
-    private companion object {
+    internal companion object {
         private const val TRENDING_CACHE_KEY = "coins_trending:global"
         private const val GLOBAL_MARKET_CACHE_KEY = "global_market:global"
+
+        internal const val CATEGORY_COINS_MARKET = "coins_market"
+        internal const val CATEGORY_TRENDING = "trending"
+        internal const val CATEGORY_GLOBAL_MARKET = "global_market"
+        internal const val COINS_LIST_TTL_MILLIS = 10 * 60_000L
+        internal const val PRICE_TTL_MILLIS = 60_000L
+        internal const val TRENDING_TTL_MILLIS = 15 * 60_000L
+        internal const val GLOBAL_MARKET_TTL_MILLIS = 30 * 60_000L
     }
 }

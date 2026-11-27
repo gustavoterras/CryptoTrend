@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application>
+        <activity android:name=".MainActivity">
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity>
+
+        <activity
+            android:name=".debug.DsmCatalogActivity"
+            android:exported="true"
+            android:label="@string/dsm_catalog_title"
+            android:theme="@style/Theme.CryptoTrend" />
+    </application>
+
+</manifest>

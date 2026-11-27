@@ -6,8 +6,8 @@ import br.com.terras.app.common.formatMoney
 import br.com.terras.app.common.formatPercentage
 import br.com.terras.app.common.toFormatDate
 import br.com.terras.app.dsm.ui.component.TrendColor
-import br.com.terras.app.network.portfolio.PortfolioTransactionRecord
-import br.com.terras.app.network.portfolio.PortfolioTransactionType
+import br.com.terras.app.database.portfolio.PortfolioTransactionRecord
+import br.com.terras.app.database.portfolio.PortfolioTransactionType
 import java.util.Locale
 import javax.inject.Inject
 import kotlin.math.abs

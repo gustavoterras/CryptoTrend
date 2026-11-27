@@ -1,13 +1,14 @@
 package br.com.terras.app.favorites.data
 
+import br.com.terras.app.coingecko.price.CoinGeckoSimplePriceService
+import br.com.terras.app.coingecko.price.NoOpCoinGeckoSimplePriceService
+import br.com.terras.app.common.currentVsCurrency
+import br.com.terras.app.database.cache.ListCacheStore
+import br.com.terras.app.database.cache.NoOpListCacheStore
+import br.com.terras.app.database.cache.decodeOrNull
+import br.com.terras.app.database.cache.encodePayload
 import br.com.terras.app.favorites.data.model.CoinsResponse
 import br.com.terras.app.favorites.network.ApiServiceFavorites
-import br.com.terras.app.network.cache.CoinGeckoSimplePriceService
-import br.com.terras.app.network.cache.ListCacheStore
-import br.com.terras.app.network.cache.NoOpCoinGeckoSimplePriceService
-import br.com.terras.app.network.cache.NoOpListCacheStore
-import br.com.terras.app.network.cache.decodeOrNull
-import br.com.terras.app.network.cache.encodePayload
 import javax.inject.Inject
 
 interface FavoritesRepository {
@@ -30,7 +31,7 @@ class FavoritesRepositoryImpl @Inject constructor(
     override suspend fun getCachedCoinsByIds(ids: List<String>): List<CoinsResponse>? {
         val normalized = normalizeIds(ids)
         if (normalized.isEmpty()) return emptyList()
-        val currency = cacheStore.currentVsCurrency()
+        val currency = currentVsCurrency()
         val key = favoritesKey(normalized, currency)
         val snapshot = cacheStore.getSnapshot(key) ?: return null
         return cacheStore.decodeOrNull<List<CoinsResponse>>(snapshot.payloadJson)
@@ -43,7 +44,7 @@ class FavoritesRepositoryImpl @Inject constructor(
         val normalized = normalizeIds(ids)
         if (normalized.isEmpty()) return Result.success(emptyList())
 
-        val currency = cacheStore.currentVsCurrency()
+        val currency = currentVsCurrency()
         val key = favoritesKey(normalized, currency)
 
         if (forceRefresh) {
@@ -58,8 +59,8 @@ class FavoritesRepositoryImpl @Inject constructor(
             val now = cacheStore.currentTimeMillis()
             val structuralAge = now - snapshot.fetchedAtMillis
             val priceAge = now - snapshot.priceUpdatedAtMillis
-            if (structuralAge <= ListCacheStore.COINS_LIST_TTL_MILLIS) {
-                if (priceAge <= ListCacheStore.PRICE_TTL_MILLIS) {
+            if (structuralAge <= FAVORITES_LIST_TTL_MILLIS) {
+                if (priceAge <= PRICE_TTL_MILLIS) {
                     return Result.success(cached)
                 }
                 return overlaySimplePrices(key, currency, cached)
@@ -84,7 +85,7 @@ class FavoritesRepositoryImpl @Inject constructor(
             val response = api.getCoinsByIds(ids.joinToString(","))
             cacheStore.putSnapshot(
                 cacheKey = key,
-                category = ListCacheStore.CATEGORY_FAVORITES,
+                category = CATEGORY_FAVORITES,
                 currency = currency,
                 payloadJson = cacheStore.encodePayload(response)
             )
@@ -139,4 +140,10 @@ class FavoritesRepositoryImpl @Inject constructor(
 
     private fun favoritesKey(sortedIds: List<String>, currency: String): String =
         "favorites:${sortedIds.joinToString(",")}:$currency"
+
+    internal companion object {
+        const val CATEGORY_FAVORITES = "favorites"
+        const val FAVORITES_LIST_TTL_MILLIS = 10 * 60_000L
+        const val PRICE_TTL_MILLIS = 60_000L
+    }
 }

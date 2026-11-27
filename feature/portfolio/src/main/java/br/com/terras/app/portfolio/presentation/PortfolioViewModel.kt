@@ -5,8 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.terras.app.common.formatCryptoQuantity
 import br.com.terras.app.cryptotrend.core.dsm.R
-import br.com.terras.app.network.portfolio.PortfolioTransactionRecord
-import br.com.terras.app.network.portfolio.PortfolioTransactionType
+import br.com.terras.app.database.portfolio.PortfolioTransactionRecord
+import br.com.terras.app.database.portfolio.PortfolioTransactionType
 import br.com.terras.app.portfolio.domain.PortfolioUseCase
 import br.com.terras.app.portfolio.domain.model.PortfolioMarketQuote
 import br.com.terras.app.portfolio.domain.model.PortfolioSnapshot

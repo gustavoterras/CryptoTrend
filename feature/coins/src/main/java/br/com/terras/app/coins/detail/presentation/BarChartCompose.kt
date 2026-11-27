@@ -611,7 +611,8 @@ fun BarChartCompose(
                     plotBottom = chartBottom,
                     pointFillColor = pointFillColor,
                     isDark = isDark,
-                    selectedMarkerId = selectedMarkerId
+                    selectedMarkerId = selectedMarkerId,
+                    plotTop = paddingTop
                 )
 
                 if (showLatestPointPulse && candles.isNotEmpty()) {

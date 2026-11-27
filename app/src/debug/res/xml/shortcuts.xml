@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="dsm_catalog"
+        android:enabled="true"
+        android:icon="@drawable/ic_dsm_catalog_shortcut"
+        android:shortcutShortLabel="@string/dsm_catalog_shortcut_short"
+        android:shortcutLongLabel="@string/dsm_catalog_shortcut_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="br.com.terras.app.cryptotrend"
+            android:targetClass="br.com.terras.app.cryptotrend.debug.DsmCatalogActivity" />
+    </shortcut>
+</shortcuts>

@@ -1,29 +1,37 @@
 package br.com.terras.app.coins.detail.presentation
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -38,7 +46,7 @@ import br.com.terras.app.coins.detail.domain.ChartTradeMarkerVO
 import br.com.terras.app.coins.detail.domain.CoinPortfolioInsightVO
 import br.com.terras.app.coins.detail.domain.model.DataPoint
 import br.com.terras.app.cryptotrend.core.dsm.R
-import br.com.terras.app.network.portfolio.PortfolioTransactionType
+import br.com.terras.app.database.portfolio.PortfolioTransactionType
 import kotlin.math.hypot
 import kotlin.math.max
 
@@ -190,13 +198,13 @@ fun DrawScope.drawTradeMarkers(
     plotBottom: Float,
     pointFillColor: Color,
     isDark: Boolean,
-    selectedMarkerId: Long? = null
+    selectedMarkerId: Long? = null,
+    plotTop: Float = 0f
 ) {
     if (positionedMarkers.isEmpty()) return
 
-    val stemDashEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f), 0f)
-    val radius = 5.5.dp.toPx()
-    val haloRadius = 7.dp.toPx()
+    val stemDashEffect = PathEffect.dashPathEffect(floatArrayOf(5f, 5f), 0f)
+    val arrowOffsetPx = 7.dp.toPx()
 
     positionedMarkers.forEach { positioned ->
         val marker = positioned.marker
@@ -206,62 +214,88 @@ fun DrawScope.drawTradeMarkers(
         val markerColor = if (isBuy) buyMarkerColor(isDark) else sellMarkerColor(isDark)
         val isSelected = selectedMarkerId != null && selectedMarkerId == marker.transactionId
 
-        if (plotBottom > cy + radius) {
+        val arrowHalfSize = if (isSelected) 6.6.dp.toPx() else 5.4.dp.toPx()
+        val minCenterY = plotTop + arrowHalfSize + 3.dp.toPx()
+        val maxCenterY = (plotBottom - arrowHalfSize - 3.dp.toPx()).coerceAtLeast(minCenterY)
+        val preferredArrowY = if (isBuy) cy + arrowOffsetPx else cy - arrowOffsetPx
+        val arrowCenterY = when {
+            isBuy && preferredArrowY > maxCenterY -> (cy - arrowOffsetPx).coerceIn(minCenterY, maxCenterY)
+            !isBuy && preferredArrowY < minCenterY -> (cy + arrowOffsetPx).coerceIn(minCenterY, maxCenterY)
+            else -> preferredArrowY.coerceIn(minCenterY, maxCenterY)
+        }
+
+        // Subtle vertical guide to the time axis starting cleanly below the marker
+        val stemStartY = if (arrowCenterY > cy) {
+            arrowCenterY + arrowHalfSize * 0.45f
+        } else {
+            cy
+        }
+        if (plotBottom > stemStartY) {
             drawLine(
-                color = markerColor.copy(alpha = if (isSelected) 0.75f else 0.42f),
-                start = Offset(cx, cy),
+                color = markerColor.copy(alpha = if (isSelected) 0.78f else 0.36f),
+                start = Offset(cx, stemStartY),
                 end = Offset(cx, plotBottom),
                 strokeWidth = if (isSelected) 1.5.dp.toPx() else 1.dp.toPx(),
                 pathEffect = stemDashEffect
             )
         }
 
-        if (isSelected) {
-            drawCircle(
-                color = markerColor.copy(alpha = 0.24f),
-                radius = radius * 2.1f,
-                center = Offset(cx, cy),
-                style = Fill
-            )
-        }
-
-        val haloTriangle = buildMarkerTrianglePath(cx, cy, haloRadius, isBuy)
-        drawPath(
-            path = haloTriangle,
-            color = pointFillColor,
-            style = Fill
+        val chevronPath = buildBadgeArrowPath(
+            cx = cx,
+            cy = arrowCenterY,
+            size = arrowHalfSize,
+            pointsUp = isBuy
         )
 
-        val trianglePath = buildMarkerTrianglePath(cx, cy, radius, isBuy)
+        // Soft shaped aura around the chevron so it pops cleanly without being large
         drawPath(
-            path = trianglePath,
+            path = chevronPath,
+            color = markerColor.copy(alpha = if (isSelected) 0.34f else 0.22f),
+            style = Stroke(
+                width = if (isSelected) 6.5.dp.toPx() else 4.5.dp.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
+        )
+
+        // High-contrast cutout outline separating the chevron from candles/lines
+        drawPath(
+            path = chevronPath,
+            color = pointFillColor,
+            style = Stroke(
+                width = 2.6.dp.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round
+            )
+        )
+
+        // Solid vibrant fill
+        drawPath(
+            path = chevronPath,
             color = markerColor,
             style = Fill
-        )
-        drawPath(
-            path = trianglePath,
-            color = pointFillColor.copy(alpha = 0.9f),
-            style = Stroke(width = 1.dp.toPx())
         )
     }
 }
 
-private fun buildMarkerTrianglePath(
+private fun buildBadgeArrowPath(
     cx: Float,
     cy: Float,
-    radius: Float,
+    size: Float,
     pointsUp: Boolean
 ): Path = Path().apply {
-    val halfWidth = radius * 0.95f
+    val halfWidth = size * 0.96f
     if (pointsUp) {
-        moveTo(cx, cy - radius)
-        lineTo(cx + halfWidth, cy + radius * 0.75f)
-        lineTo(cx - halfWidth, cy + radius * 0.75f)
+        moveTo(cx, cy - size)
+        lineTo(cx + halfWidth, cy + size * 0.78f)
+        lineTo(cx, cy + size * 0.24f)
+        lineTo(cx - halfWidth, cy + size * 0.78f)
         close()
     } else {
-        moveTo(cx, cy + radius)
-        lineTo(cx + halfWidth, cy - radius * 0.75f)
-        lineTo(cx - halfWidth, cy - radius * 0.75f)
+        moveTo(cx, cy + size)
+        lineTo(cx + halfWidth, cy - size * 0.78f)
+        lineTo(cx, cy - size * 0.24f)
+        lineTo(cx - halfWidth, cy - size * 0.78f)
         close()
     }
 }
@@ -286,8 +320,8 @@ fun ChartTradeMarkersFooter(
         minTimestampMillis = minChartTimestampMillis,
         maxTimestampMillis = maxChartTimestampMillis
     )
-    val buyCount = visibleMarkers.count { it.type == PortfolioTransactionType.BUY }
-    val sellCount = visibleMarkers.count { it.type == PortfolioTransactionType.SELL }
+    val buyMarkers = visibleMarkers.filter { it.type == PortfolioTransactionType.BUY }
+    val sellMarkers = visibleMarkers.filter { it.type == PortfolioTransactionType.SELL }
     val hiddenCount = (markers.size - visibleMarkers.size).coerceAtLeast(0)
 
     Column(
@@ -295,7 +329,7 @@ fun ChartTradeMarkersFooter(
             .fillMaxWidth()
             .padding(horizontal = 18.dp)
             .testTag("chart_trade_markers_footer"),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -303,23 +337,35 @@ fun ChartTradeMarkersFooter(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                if (buyCount > 0) {
-                    Text(
-                        text = stringResource(R.string.chart_marker_buy_count, buyCount),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = buyColor
+                if (buyMarkers.isNotEmpty()) {
+                    val isBuySelected = selectedMarker?.type == PortfolioTransactionType.BUY
+                    TradeMarkerVisualPill(
+                        label = "${stringResource(R.string.chart_marker_buy)} (${buyMarkers.size})",
+                        isBuy = true,
+                        accentColor = buyColor,
+                        isSelected = isBuySelected,
+                        onClick = {
+                            val currentIdx = buyMarkers.indexOfFirst { it.transactionId == selectedMarker?.transactionId }
+                            val next = buyMarkers[(currentIdx + 1) % buyMarkers.size]
+                            onSelectMarker(if (currentIdx >= 0 && buyMarkers.size == 1) null else next)
+                        }
                     )
                 }
-                if (sellCount > 0) {
-                    Text(
-                        text = stringResource(R.string.chart_marker_sell_count, sellCount),
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = sellColor
+                if (sellMarkers.isNotEmpty()) {
+                    val isSellSelected = selectedMarker?.type == PortfolioTransactionType.SELL
+                    TradeMarkerVisualPill(
+                        label = "${stringResource(R.string.chart_marker_sell)} (${sellMarkers.size})",
+                        isBuy = false,
+                        accentColor = sellColor,
+                        isSelected = isSellSelected,
+                        onClick = {
+                            val currentIdx = sellMarkers.indexOfFirst { it.transactionId == selectedMarker?.transactionId }
+                            val next = sellMarkers[(currentIdx + 1) % sellMarkers.size]
+                            onSelectMarker(if (currentIdx >= 0 && sellMarkers.size == 1) null else next)
+                        }
                     )
                 }
                 if (visibleMarkers.isEmpty()) {
@@ -348,35 +394,35 @@ fun ChartTradeMarkersFooter(
             } else {
                 stringResource(R.string.chart_marker_sell)
             }
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(accent.copy(alpha = 0.10f))
                     .clickable { onSelectMarker(null) }
-                    .padding(top = 2.dp)
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
                     .testTag("chart_selected_marker_callout"),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                HorizontalDivider(
-                    thickness = 1.dp,
-                    color = accent.copy(alpha = 0.45f)
+                TradeDirectionArrowIcon(
+                    pointsUp = isBuy,
+                    color = accent,
+                    modifier = Modifier.size(16.dp)
                 )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
                     Text(
-                        text = "${if (isBuy) "▲" else "▼"} $typeLabel • ${selectedMarker.quantityFormatted} @ ${selectedMarker.unitPriceFormatted}",
+                        text = "$typeLabel · ${selectedMarker.quantityFormatted} @ ${selectedMarker.unitPriceFormatted}",
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.surface,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+                        overflow = TextOverflow.Ellipsis
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = selectedMarker.dateFormatted,
                         style = MaterialTheme.typography.labelSmall,
@@ -384,8 +430,70 @@ fun ChartTradeMarkersFooter(
                         fontWeight = FontWeight.Medium
                     )
                 }
+
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = stringResource(R.string.action_close),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp)
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun TradeMarkerVisualPill(
+    label: String,
+    isBuy: Boolean,
+    accentColor: Color,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(accentColor.copy(alpha = if (isSelected) 0.24f else 0.14f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 9.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp)
+    ) {
+        TradeDirectionArrowIcon(
+            pointsUp = isBuy,
+            color = accentColor,
+            modifier = Modifier.size(11.dp)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Bold,
+            color = accentColor
+        )
+    }
+}
+
+@Composable
+internal fun TradeDirectionArrowIcon(
+    pointsUp: Boolean,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Canvas(modifier = modifier) {
+        val cx = size.width / 2f
+        val cy = size.height / 2f
+        val arrowSize = (size.minDimension / 2f) * 0.88f
+        val path = buildBadgeArrowPath(
+            cx = cx,
+            cy = cy,
+            size = arrowSize,
+            pointsUp = pointsUp
+        )
+        drawPath(
+            path = path,
+            color = color,
+            style = Fill
+        )
     }
 }
 

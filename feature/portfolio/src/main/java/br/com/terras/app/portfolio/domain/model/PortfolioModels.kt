@@ -1,7 +1,7 @@
 package br.com.terras.app.portfolio.domain.model
 
 import br.com.terras.app.dsm.ui.component.TrendColor
-import br.com.terras.app.network.portfolio.PortfolioTransactionType
+import br.com.terras.app.database.portfolio.PortfolioTransactionType
 
 data class PortfolioMarketQuote(
     val id: String,

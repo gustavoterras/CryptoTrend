@@ -1,7 +1,7 @@
 package br.com.terras.app.coins.detail.network
 
-import br.com.terras.app.network.cache.CoinGeckoSimplePriceService
-import br.com.terras.app.network.cache.SimpleCoinPrice
+import br.com.terras.app.coingecko.price.CoinGeckoSimplePriceService
+import br.com.terras.app.coingecko.price.SimpleCoinPrice
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.mockk.coEvery

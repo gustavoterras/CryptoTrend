@@ -101,6 +101,18 @@
     <string name="detail_tickers_show_less">Mostrar menos</string>
     <string name="detail_tickers_open_cd">Abrir %1$s em %2$s</string>
 
+    <!-- Order Book -->
+    <string name="detail_order_book_title">Livro de Ordens (%1$s)</string>
+    <string name="detail_order_book_live">LIVE</string>
+    <string name="detail_order_book_spread">Spread: %1$s (%2$s)</string>
+    <string name="detail_order_book_bids">Compras (Bids)</string>
+    <string name="detail_order_book_asks">Vendas (Asks)</string>
+    <string name="detail_order_book_price">Preço</string>
+    <string name="detail_order_book_amount">Qtd</string>
+    <string name="detail_order_book_expand_cd">Expandir livro de ordens</string>
+    <string name="detail_order_book_collapse_cd">Recolher livro de ordens</string>
+    <string name="detail_order_book_multiplier_cd">Selecionar fator multiplicador do livro de ordens</string>
+
     <!-- Detail About Stats -->
     <string name="detail_stat_market_cap">Capitalização de Mercado</string>
     <string name="detail_stat_fdv">FDV (Valor Total Diluído)</string>

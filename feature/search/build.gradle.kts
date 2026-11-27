@@ -33,6 +33,7 @@ android {
 dependencies {
     implementation(project(":core:dsm"))
     implementation(project(":core:network"))
+    implementation(project(":data:coingecko"))
     implementation(project(":core:common"))
     implementation(libs.dagger.hilt.core)
     ksp(libs.dagger.hilt.compiler)

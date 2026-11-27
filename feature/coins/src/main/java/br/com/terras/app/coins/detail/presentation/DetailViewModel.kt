@@ -9,8 +9,12 @@ import br.com.terras.app.coins.detail.domain.model.CoinChartDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinInsightVO
 import br.com.terras.app.coins.detail.domain.model.DataPoint
+import br.com.terras.app.coins.detail.domain.model.OrderBookMultiplier
+import br.com.terras.app.coins.detail.domain.model.OrderBookUiState
 import br.com.terras.app.coins.detail.network.CoinWebSocketService
+import br.com.terras.app.coins.detail.network.CoinbaseOrderBookService
 import br.com.terras.app.coins.detail.network.LivePriceTick
+import br.com.terras.app.coins.detail.network.OrderBookStreamEvent
 import br.com.terras.app.common.formatLivePrice
 import br.com.terras.app.common.formatPercentage
 import br.com.terras.app.common.toChartDay
@@ -19,8 +23,8 @@ import br.com.terras.app.common.toFormatDate
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.feeds.domain.FeedsUseCase
 import br.com.terras.app.feeds.domain.model.ArticleVO
-import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
-import br.com.terras.app.network.portfolio.PortfolioLocalRepository
+import br.com.terras.app.database.favorites.FavoriteCoinsLocalRepository
+import br.com.terras.app.database.portfolio.PortfolioLocalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.http.HttpStatusCode
@@ -32,9 +36,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -49,6 +57,7 @@ class DetailViewModel @Inject constructor(
     private val favoriteLocalRepository: FavoriteCoinsLocalRepository,
     private val portfolioLocalRepository: PortfolioLocalRepository,
     private val webSocketService: CoinWebSocketService,
+    private val orderBookService: CoinbaseOrderBookService,
     private val portfolioCalculator: CoinDetailPortfolioCalculator = CoinDetailPortfolioCalculator()
 ) : ViewModel() {
 
@@ -64,6 +73,8 @@ class DetailViewModel @Inject constructor(
             val coinId: String,
             val coinSymbol: String = ""
         ) : DetailIntent
+        data class ToggleOrderBookExpanded(val expanded: Boolean) : DetailIntent
+        data class SelectOrderBookMultiplier(val multiplier: OrderBookMultiplier) : DetailIntent
     }
 
     sealed interface DetailState {
@@ -120,6 +131,56 @@ class DetailViewModel @Inject constructor(
         initialValue = null
     )
 
+    private val _isOrderBookExpanded: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    private val _orderBookMultiplier: MutableStateFlow<OrderBookMultiplier> = MutableStateFlow(OrderBookMultiplier.X1)
+
+    val orderBookState: StateFlow<OrderBookUiState> = combine(
+        combine(currentCoinId, _detail) { coinId, detailState ->
+            if (coinId.isBlank()) {
+                ""
+            } else {
+                (detailState as? DetailState.SuccessDetail)?.coin?.symbol?.trim().orEmpty()
+            }
+        }.distinctUntilChanged(),
+        _isOrderBookExpanded
+    ) { symbol, isExpanded ->
+        symbol to isExpanded
+    }
+        .flatMapLatest { (symbol, isExpanded) ->
+            val cleanSymbol = symbol.trim().uppercase(Locale.US)
+            if (cleanSymbol.isEmpty()) {
+                flowOf<OrderBookUiState>(OrderBookUiState.Hidden)
+            } else {
+                flow<OrderBookUiState> {
+                    val available = orderBookService.isPairAvailable(cleanSymbol)
+                    if (!available) {
+                        emit(OrderBookUiState.Hidden)
+                        return@flow
+                    }
+                    val pairSymbol = "$cleanSymbol-USD"
+                    if (!isExpanded) {
+                        emit(OrderBookUiState.Collapsed(pairSymbol))
+                    } else {
+                        emit(OrderBookUiState.Loading(pairSymbol))
+                        orderBookService.observeOrderBook(cleanSymbol, _orderBookMultiplier)
+                            .map<OrderBookStreamEvent, OrderBookUiState> { event ->
+                                when (event) {
+                                    is OrderBookStreamEvent.Snapshot -> OrderBookUiState.Visible(event.data)
+                                    is OrderBookStreamEvent.Unavailable -> OrderBookUiState.Hidden
+                                }
+                            }
+                            .catch { emit(OrderBookUiState.Hidden) }
+                            .collect { emit(it) }
+                    }
+                }
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = OrderBookUiState.Hidden
+        )
+
     private val _chart: MutableStateFlow<DetailState> = MutableStateFlow(DetailState.Loading)
     val chart: StateFlow<DetailState> = _chart.asStateFlow()
 
@@ -156,6 +217,12 @@ class DetailViewModel @Inject constructor(
             is DetailIntent.ToggleFavorite -> toggleFavorite(intent.coinId)
             is DetailIntent.Refresh -> refreshAll(intent.id, intent.days)
             is DetailIntent.ToggleRealTime -> toggleRealTime(intent.enabled, intent.coinId, intent.coinSymbol)
+            is DetailIntent.ToggleOrderBookExpanded -> {
+                _isOrderBookExpanded.value = intent.expanded
+            }
+            is DetailIntent.SelectOrderBookMultiplier -> {
+                _orderBookMultiplier.value = intent.multiplier
+            }
         }
     }
 
@@ -174,6 +241,8 @@ class DetailViewModel @Inject constructor(
     fun getDetailById(id: String) {
         if (currentCoinId.value.isNotBlank() && currentCoinId.value != id) {
             stopRealTime()
+            _isOrderBookExpanded.value = false
+            _orderBookMultiplier.value = OrderBookMultiplier.X1
         }
         currentCoinId.value = id
         viewModelScope.launch {

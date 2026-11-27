@@ -7,9 +7,15 @@ import br.com.terras.app.coins.detail.domain.DetailUseCase
 import br.com.terras.app.coins.detail.domain.model.CoinChartDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailPricePercentageVO
 import br.com.terras.app.coins.detail.domain.model.DataPoint
+import br.com.terras.app.coins.detail.domain.model.OrderBookEntryVO
+import br.com.terras.app.coins.detail.domain.model.OrderBookMultiplier
+import br.com.terras.app.coins.detail.domain.model.OrderBookSnapshotVO
+import br.com.terras.app.coins.detail.domain.model.OrderBookUiState
 import br.com.terras.app.coins.detail.network.CoinWebSocketService
+import br.com.terras.app.coins.detail.network.CoinbaseOrderBookService
 import br.com.terras.app.coins.detail.network.LivePriceSource
 import br.com.terras.app.coins.detail.network.LivePriceTick
+import br.com.terras.app.coins.detail.network.OrderBookStreamEvent
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.Error
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.InsightsError
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.Loading
@@ -22,16 +28,17 @@ import br.com.terras.app.coins.mockCoinInsightVOStub
 import br.com.terras.app.common.formatLivePrice
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.feeds.domain.FeedsUseCase
-import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
-import br.com.terras.app.network.portfolio.PortfolioLocalRepository
-import br.com.terras.app.network.portfolio.PortfolioTransactionRecord
-import br.com.terras.app.network.portfolio.PortfolioTransactionType
+import br.com.terras.app.database.favorites.FavoriteCoinsLocalRepository
+import br.com.terras.app.database.portfolio.PortfolioLocalRepository
+import br.com.terras.app.database.portfolio.PortfolioTransactionRecord
+import br.com.terras.app.database.portfolio.PortfolioTransactionType
 import io.mockk.coEvery
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Assert
@@ -94,6 +101,24 @@ private class FakeCoinWebSocketService : CoinWebSocketService {
     }
 }
 
+private class FakeCoinbaseOrderBookService : CoinbaseOrderBookService {
+    val eventsFlow = MutableSharedFlow<OrderBookStreamEvent>(replay = 1, extraBufferCapacity = 16)
+    var lastRequestedSymbol: String? = null
+    var lastMultiplierFlow: StateFlow<OrderBookMultiplier>? = null
+    var pairAvailable: Boolean = true
+
+    override suspend fun isPairAvailable(coinSymbol: String): Boolean = pairAvailable
+
+    override fun observeOrderBook(
+        coinSymbol: String,
+        multiplier: StateFlow<OrderBookMultiplier>
+    ): Flow<OrderBookStreamEvent> {
+        lastRequestedSymbol = coinSymbol
+        lastMultiplierFlow = multiplier
+        return eventsFlow
+    }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
     private val userCase: DetailUseCase = mockk(relaxed = true)
@@ -101,6 +126,7 @@ class DetailViewModelTest {
     private lateinit var favoriteLocalRepository: FakeDetailFavoriteLocalRepository
     private lateinit var portfolioLocalRepository: FakeDetailPortfolioLocalRepository
     private lateinit var webSocketService: FakeCoinWebSocketService
+    private lateinit var orderBookService: FakeCoinbaseOrderBookService
 
     private lateinit var viewModel: DetailViewModel
 
@@ -112,6 +138,7 @@ class DetailViewModelTest {
         favoriteLocalRepository = FakeDetailFavoriteLocalRepository()
         portfolioLocalRepository = FakeDetailPortfolioLocalRepository()
         webSocketService = FakeCoinWebSocketService()
+        orderBookService = FakeCoinbaseOrderBookService()
         coEvery { feedsUseCase.getFeeds(any()) } returns Result.success(emptyList())
         viewModel = DetailViewModel(
             useCase = userCase,
@@ -119,6 +146,7 @@ class DetailViewModelTest {
             favoriteLocalRepository = favoriteLocalRepository,
             portfolioLocalRepository = portfolioLocalRepository,
             webSocketService = webSocketService,
+            orderBookService = orderBookService,
             portfolioCalculator = CoinDetailPortfolioCalculator()
         )
     }
@@ -432,5 +460,61 @@ class DetailViewModelTest {
 
         viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart("bitcoin", 7))
         Assert.assertFalse(viewModel.isRealTimeActive.value)
+    }
+
+    @Test
+    fun `WHEN coin loads THEN orderBook starts Collapsed and shows Loading before Visible on expand`() = runBlocking {
+        coEvery {
+            userCase.getDetailById("bitcoin")
+        } returns Result.success(mockCoinDetailVOStub.copy(symbol = "btc"))
+
+        val sampleSnapshot = OrderBookSnapshotVO(
+            pairSymbol = "BTC-USD",
+            bids = listOf(OrderBookEntryVO(65000.0, "$65,000.00", 1.0, "1.000", 1.0, 1.0f)),
+            asks = listOf(OrderBookEntryVO(65010.0, "$65,010.00", 0.5, "0.5000", 0.5, 0.5f)),
+            spreadAbsolute = 10.0,
+            spreadAbsoluteFormatted = "$10.00",
+            spreadPercentageFormatted = "0.02%",
+            isLive = true
+        )
+
+        viewModel.orderBookState.test {
+            Assert.assertEquals(OrderBookUiState.Hidden, awaitItem())
+
+            viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail("bitcoin"))
+            Assert.assertEquals(OrderBookUiState.Collapsed("BTC-USD"), awaitItem())
+
+            viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleOrderBookExpanded(true))
+            Assert.assertEquals(OrderBookUiState.Loading("BTC-USD"), awaitItem())
+            Assert.assertEquals("BTC", orderBookService.lastRequestedSymbol)
+            Assert.assertEquals(OrderBookMultiplier.X1, orderBookService.lastMultiplierFlow?.value)
+
+            viewModel.handleIntent(DetailViewModel.DetailIntent.SelectOrderBookMultiplier(OrderBookMultiplier.X100))
+            Assert.assertEquals(OrderBookMultiplier.X100, orderBookService.lastMultiplierFlow?.value)
+
+            orderBookService.eventsFlow.tryEmit(OrderBookStreamEvent.Snapshot(sampleSnapshot))
+            val visible = awaitItem()
+            Assert.assertTrue(visible is OrderBookUiState.Visible)
+            Assert.assertEquals("BTC-USD", (visible as OrderBookUiState.Visible).snapshot.pairSymbol)
+
+            orderBookService.eventsFlow.tryEmit(OrderBookStreamEvent.Unavailable)
+            Assert.assertEquals(OrderBookUiState.Hidden, awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `WHEN pair is not available on Coinbase THEN orderBookState remains Hidden`() = runBlocking {
+        orderBookService.pairAvailable = false
+        coEvery {
+            userCase.getDetailById("unlisted")
+        } returns Result.success(mockCoinDetailVOStub.copy(symbol = "xyz"))
+
+        viewModel.orderBookState.test {
+            Assert.assertEquals(OrderBookUiState.Hidden, awaitItem())
+            viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail("unlisted"))
+            expectNoEvents()
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 }

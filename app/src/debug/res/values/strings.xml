@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dsm_catalog_shortcut_short">DSM Catalog</string>
+    <string name="dsm_catalog_shortcut_long">DSM Component Catalog</string>
+    <string name="dsm_catalog_title">DSM Catalog</string>
+    <string name="dsm_catalog_debug_badge">DEBUG</string>
+    <string name="dsm_catalog_back_cd">Back</string>
+    <string name="dsm_catalog_theme_cd">Toggle light or dark theme preview</string>
+    <string name="dsm_catalog_theme_dark">Dark</string>
+    <string name="dsm_catalog_theme_light">Light</string>
+
+    <string name="dsm_cat_all">All</string>
+    <string name="dsm_cat_tokens">Tokens</string>
+    <string name="dsm_cat_navigation">Navigation</string>
+    <string name="dsm_cat_controls">Controls</string>
+    <string name="dsm_cat_charts">Charts</string>
+    <string name="dsm_cat_lists">Lists &amp; States</string>
+
+    <string name="dsm_sec_colors">Color Tokens &amp; Trend Palette</string>
+    <string name="dsm_sec_typography">Typography Scale (Avenir Next)</string>
+    <string name="dsm_sec_sticky_header">StickyHeaderView</string>
+    <string name="dsm_sec_bottom_nav">FloatBottomNavigation</string>
+    <string name="dsm_sec_buttons">RippleButton</string>
+    <string name="dsm_sec_segmented">SegmentedControl</string>
+    <string name="dsm_sec_animated_actions">Animated Action Buttons</string>
+    <string name="dsm_sec_sort_bar">MarketSortBar</string>
+    <string name="dsm_sec_donut">AllocationDonutChart</string>
+    <string name="dsm_sec_sparkline">SparklineChartView &amp; TrendColor</string>
+    <string name="dsm_sec_coin_item">CoinListItemView</string>
+    <string name="dsm_sec_shimmer">CoinListItemShimmerRow &amp; ShimmerEffect</string>
+    <string name="dsm_sec_pull_refresh">PullToRefreshWrapper</string>
+    <string name="dsm_sec_webview">WebViewScreen</string>
+
+    <string name="dsm_action_toggle_collapse">Collapsed: %1$s</string>
+    <string name="dsm_action_simulate_refresh">Simulate refresh</string>
+    <string name="dsm_action_open_webview">Preview WebViewScreen</string>
+    <string name="dsm_action_favorite_col">Favorite column: %1$s</string>
+    <string name="dsm_action_shimmer_on">Shimmer active: %1$s</string>
+    <string name="dsm_state_on">ON</string>
+    <string name="dsm_state_off">OFF</string>
+    <string name="dsm_label_selected">Selected: %1$s</string>
+    <string name="dsm_label_clicks">Clicks: %1$d</string>
+    <string name="dsm_label_sort_state">Sort: %1$s (%2$s)</string>
+    <string name="dsm_label_sort_none">Default</string>
+    <string name="dsm_label_pull_hint">Pull down inside this area or tap the button to test PullToRefreshWrapper</string>
+    <string name="dsm_label_webview_hint">Embedded AndroidView WebView with system bar insets</string>
+    <string name="dsm_snack_coin_clicked">Tapped %1$s</string>
+</resources>

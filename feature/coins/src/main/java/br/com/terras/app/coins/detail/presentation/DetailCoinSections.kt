@@ -81,7 +81,7 @@ internal fun PriceChangePeriodStrip(
             modifier = Modifier
                 .horizontalScroll(rememberScrollState())
                 .widthIn(min = maxWidth)
-                .padding(horizontal = 18.dp, vertical = 4.dp)
+                .padding(horizontal = 18.dp)
         ) {
             allPeriods.forEach { item ->
                 PriceChangeStatColumn(item = item)
@@ -96,10 +96,9 @@ private fun PriceChangeStatColumn(
 ) {
     Column(
         modifier = Modifier
-            .padding(vertical = 2.dp)
             .testTag("price_change_item_${item.priceChangeTime}"),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(
             text = item.priceChangeTime,

@@ -87,6 +87,8 @@ import br.com.terras.app.coins.detail.domain.model.CoinDetailPricePercentageVO
 import br.com.terras.app.coins.detail.domain.model.CoinDetailVO
 import br.com.terras.app.coins.detail.domain.model.CoinInsightVO
 import br.com.terras.app.coins.detail.domain.model.DataPoint
+import br.com.terras.app.coins.detail.domain.model.OrderBookMultiplier
+import br.com.terras.app.coins.detail.domain.model.OrderBookUiState
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.InsightsError
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.Loading
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessChart
@@ -122,6 +124,7 @@ fun DetailActivityCompose(
     val lastUpdatedAtMillis by viewModel.lastUpdatedAtMillis.collectAsStateWithLifecycle()
     val refreshErrorMessage by viewModel.refreshErrorMessage.collectAsStateWithLifecycle()
     val isRealTimeActive by viewModel.isRealTimeActive.collectAsStateWithLifecycle()
+    val orderBookState by viewModel.orderBookState.collectAsStateWithLifecycle()
     val activeDays = (chartDetailState as? SuccessChart)?.days ?: DaysOfChart.DAY.value
     val loadedCoinName = (coinDetailState as? SuccessDetail)?.coin?.name
 
@@ -147,6 +150,7 @@ fun DetailActivityCompose(
             newsState = newsState,
             insightsState = insightsState,
             portfolioInsight = portfolioInsight,
+            orderBookState = orderBookState,
             isRefreshing = isRefreshing,
             lastUpdatedAtMillis = lastUpdatedAtMillis,
             refreshErrorMessage = refreshErrorMessage,
@@ -176,6 +180,12 @@ fun DetailActivityCompose(
             onToggleFavorite = {
                 viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleFavorite(id))
             },
+            onToggleOrderBook = { expanded ->
+                viewModel.handleIntent(DetailViewModel.DetailIntent.ToggleOrderBookExpanded(expanded))
+            },
+            onSelectOrderBookMultiplier = { multiplier ->
+                viewModel.handleIntent(DetailViewModel.DetailIntent.SelectOrderBookMultiplier(multiplier))
+            },
             onNavigateToPortfolio = onNavigateToPortfolio
         ) { days ->
             viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart(id, days))
@@ -201,6 +211,7 @@ fun OnCoinDetailSuccess(
     newsState: DetailViewModel.DetailState,
     insightsState: DetailViewModel.DetailState,
     portfolioInsight: CoinPortfolioInsightVO? = null,
+    orderBookState: OrderBookUiState = OrderBookUiState.Hidden,
     isRefreshing: Boolean = false,
     lastUpdatedAtMillis: Long? = null,
     refreshErrorMessage: String? = null,
@@ -212,6 +223,8 @@ fun OnCoinDetailSuccess(
     isRealTimeActive: Boolean = false,
     onToggleRealTime: (Boolean) -> Unit = {},
     onToggleFavorite: () -> Unit = {},
+    onToggleOrderBook: (Boolean) -> Unit = {},
+    onSelectOrderBookMultiplier: (OrderBookMultiplier) -> Unit = {},
     onNavigateToPortfolio: () -> Unit = {},
     selectedDaysOfChart: (Int) -> Unit
 ) {
@@ -609,11 +622,37 @@ fun OnCoinDetailSuccess(
                 }
             }
 
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 18.dp),
-                thickness = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
+            val hasPeriodChanges = state.coin.priceChangePercentageList.isNotEmpty() ||
+                state.coin.extraPriceChangePercentageList.isNotEmpty()
+            if (hasPeriodChanges) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 18.dp),
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+
+                    PriceChangePeriodStrip(
+                        primaryPeriods = state.coin.priceChangePercentageList,
+                        extraPeriods = state.coin.extraPriceChangePercentageList
+                    )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(horizontal = 18.dp),
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                }
+            } else {
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
 
             if (portfolioInsight != null) {
                 CoinPortfolioSummaryCard(
@@ -628,16 +667,19 @@ fun OnCoinDetailSuccess(
                 )
             }
 
-            PriceChangePeriodStrip(
-                primaryPeriods = state.coin.priceChangePercentageList,
-                extraPeriods = state.coin.extraPriceChangePercentageList
-            )
+            if (orderBookState !is OrderBookUiState.Hidden) {
+                OrderBookSection(
+                    state = orderBookState,
+                    onToggleExpand = onToggleOrderBook,
+                    onSelectMultiplier = onSelectOrderBookMultiplier
+                )
 
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 18.dp),
-                thickness = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
+                HorizontalDivider(
+                    modifier = Modifier.padding(horizontal = 18.dp),
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
+                )
+            }
 
             state.coin.sentiment?.let { sentiment ->
                 CommunitySentimentSection(sentiment = sentiment)

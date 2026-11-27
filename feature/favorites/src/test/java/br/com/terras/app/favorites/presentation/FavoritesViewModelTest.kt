@@ -9,7 +9,7 @@ import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesInte
 import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Error
 import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Loading
 import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Success
-import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
+import br.com.terras.app.database.favorites.FavoriteCoinsLocalRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk

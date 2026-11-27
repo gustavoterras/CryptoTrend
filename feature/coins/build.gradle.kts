@@ -35,6 +35,8 @@ dependencies {
     // implementation(libs.firebase.ai)
     implementation(project(":core:dsm"))
     implementation(project(":core:network"))
+    implementation(project(":core:database"))
+    implementation(project(":data:coingecko"))
     implementation(project(":core:common"))
     implementation(project(":core:navigation"))
     implementation(project(":feature:feeds"))

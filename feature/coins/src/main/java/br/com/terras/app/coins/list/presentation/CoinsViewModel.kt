@@ -8,8 +8,8 @@ import br.com.terras.app.coins.list.domain.model.CoinVO
 import br.com.terras.app.coins.list.domain.model.GlobalMarketVO
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.feeds.domain.FeedsUseCase
-import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
-import br.com.terras.app.network.refresh.DataRefreshCoordinator
+import br.com.terras.app.database.favorites.FavoriteCoinsLocalRepository
+import br.com.terras.app.common.refresh.DataRefreshCoordinator
 import br.com.terras.app.search.domain.SearchUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job

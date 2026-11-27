@@ -1,14 +1,14 @@
 package br.com.terras.app.favorites.data
 
+import br.com.terras.app.coingecko.price.CoinGeckoSimplePriceService
+import br.com.terras.app.coingecko.price.SimpleCoinPrice
+import br.com.terras.app.database.cache.CachedListSnapshot
+import br.com.terras.app.database.cache.ListCacheStore
+import br.com.terras.app.database.cache.encodePayload
 import br.com.terras.app.favorites.MainDispatcherRule
 import br.com.terras.app.favorites.mockCoinsListResponseStub
 import br.com.terras.app.favorites.mockCoinsResponseStub
 import br.com.terras.app.favorites.network.ApiServiceFavorites
-import br.com.terras.app.network.cache.CachedListSnapshot
-import br.com.terras.app.network.cache.CoinGeckoSimplePriceService
-import br.com.terras.app.network.cache.ListCacheStore
-import br.com.terras.app.network.cache.SimpleCoinPrice
-import br.com.terras.app.network.cache.encodePayload
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -34,8 +34,6 @@ private class InMemoryFavoritesCacheStore(
     val snapshots = linkedMapOf<String, CachedListSnapshot>()
 
     override fun currentTimeMillis(): Long = nowMillis
-
-    override fun currentVsCurrency(locale: Locale): String = "brl"
 
     override suspend fun getSnapshot(cacheKey: String): CachedListSnapshot? = snapshots[cacheKey]
 
@@ -81,13 +79,22 @@ class FavoritesRepositoryImplTest {
     private lateinit var cacheStore: InMemoryFavoritesCacheStore
     private lateinit var repository: FavoritesRepository
 
+    private lateinit var previousLocale: Locale
+
     @get:Rule
     val mainRule = MainDispatcherRule(UnconfinedTestDispatcher())
 
     @Before
     fun setup() {
+        previousLocale = Locale.getDefault()
+        Locale.setDefault(Locale("pt", "BR"))
         cacheStore = InMemoryFavoritesCacheStore()
         repository = FavoritesRepositoryImpl(services, simplePriceService, cacheStore)
+    }
+
+    @org.junit.After
+    fun tearDown() {
+        Locale.setDefault(previousLocale)
     }
 
     @Test
@@ -110,7 +117,7 @@ class FavoritesRepositoryImplTest {
         val cachedEthereum = mockCoinsResponseStub.copy(id = "ethereum", price = 15_000.0, priceChangePercentage = -0.5)
         cacheStore.putSnapshot(
             cacheKey = "favorites:bitcoin,ethereum:brl",
-            category = ListCacheStore.CATEGORY_FAVORITES,
+            category = FavoritesRepositoryImpl.CATEGORY_FAVORITES,
             currency = "brl",
             payloadJson = cacheStore.encodePayload(listOf(cachedBitcoin, cachedEthereum)),
             fetchedAtMillis = cacheStore.nowMillis - 90_000L,

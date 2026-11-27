@@ -75,7 +75,7 @@ import br.com.terras.app.dsm.ui.component.StickyHeaderView
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.dsm.ui.component.portfolioChartPalette
 import br.com.terras.app.dsm.ui.theme.DSMTheme
-import br.com.terras.app.network.portfolio.PortfolioTransactionType
+import br.com.terras.app.database.portfolio.PortfolioTransactionType
 import br.com.terras.app.portfolio.domain.model.PortfolioHoldingVO
 import br.com.terras.app.portfolio.domain.model.PortfolioSummaryVO
 import br.com.terras.app.portfolio.domain.model.PortfolioTransactionVO

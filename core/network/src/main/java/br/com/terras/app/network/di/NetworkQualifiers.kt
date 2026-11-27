@@ -4,20 +4,8 @@ import javax.inject.Qualifier
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
-annotation class CoinGeckoClient
+annotation class DefaultHttpClient
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
-annotation class CoinWebSocketClient
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class NewsApiClient
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class CoinGeckoBaseUrl
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
-annotation class NewsApiBaseUrl
+annotation class WebSocketHttpClient

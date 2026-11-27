@@ -1,7 +1,7 @@
 package br.com.terras.app.coins.detail.network
 
-import br.com.terras.app.network.cache.CoinGeckoSimplePriceService
-import br.com.terras.app.network.di.CoinWebSocketClient
+import br.com.terras.app.coingecko.price.CoinGeckoSimplePriceService
+import br.com.terras.app.network.di.WebSocketHttpClient
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.websocket.Frame
@@ -61,7 +61,7 @@ private class WebSocketRejectedException(message: String) : RuntimeException(mes
 
 @Singleton
 class CoinWebSocketServiceImpl @Inject constructor(
-    @CoinWebSocketClient private val wsClient: HttpClient,
+    @WebSocketHttpClient private val wsClient: HttpClient,
     private val simplePriceService: CoinGeckoSimplePriceService,
     private val json: Json
 ) : CoinWebSocketService {

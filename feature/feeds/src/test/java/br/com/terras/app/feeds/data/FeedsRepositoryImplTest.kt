@@ -4,9 +4,9 @@ import br.com.terras.app.feeds.MainDispatcherRule
 import br.com.terras.app.feeds.getDateFrom
 import br.com.terras.app.feeds.mockFeedsResponseStub
 import br.com.terras.app.feeds.network.ApiServicesFeeds
-import br.com.terras.app.network.cache.CachedListSnapshot
-import br.com.terras.app.network.cache.ListCacheStore
-import br.com.terras.app.network.cache.encodePayload
+import br.com.terras.app.database.cache.CachedListSnapshot
+import br.com.terras.app.database.cache.ListCacheStore
+import br.com.terras.app.database.cache.encodePayload
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -104,7 +104,7 @@ class FeedsRepositoryImplTest {
 
         cacheStore.putSnapshot(
             cacheKey = key,
-            category = ListCacheStore.CATEGORY_FEEDS,
+            category = FeedsRepositoryImpl.CATEGORY_FEEDS,
             currency = language.lowercase(),
             payloadJson = cacheStore.encodePayload(mockFeedsResponseStub),
             fetchedAtMillis = cacheStore.nowMillis - 120_000L
@@ -125,7 +125,7 @@ class FeedsRepositoryImplTest {
 
         cacheStore.putSnapshot(
             cacheKey = key,
-            category = ListCacheStore.CATEGORY_FEEDS,
+            category = FeedsRepositoryImpl.CATEGORY_FEEDS,
             currency = language.lowercase(),
             payloadJson = cacheStore.encodePayload(mockFeedsResponseStub),
             fetchedAtMillis = cacheStore.nowMillis - 10_000L

@@ -1,11 +1,11 @@
 package br.com.terras.app.feeds.data
 
+import br.com.terras.app.database.cache.ListCacheStore
+import br.com.terras.app.database.cache.NoOpListCacheStore
+import br.com.terras.app.database.cache.decodeOrNull
+import br.com.terras.app.database.cache.encodePayload
 import br.com.terras.app.feeds.data.model.FeedsResponse
 import br.com.terras.app.feeds.network.ApiServicesFeeds
-import br.com.terras.app.network.cache.ListCacheStore
-import br.com.terras.app.network.cache.NoOpListCacheStore
-import br.com.terras.app.network.cache.decodeOrNull
-import br.com.terras.app.network.cache.encodePayload
 import javax.inject.Inject
 
 interface FeedsRepository {
@@ -68,7 +68,7 @@ class FeedsRepositoryImpl @Inject constructor(
         val cached = snapshot?.let { cacheStore.decodeOrNull<FeedsResponse>(it.payloadJson) }
         if (snapshot != null && cached != null) {
             val age = cacheStore.currentTimeMillis() - snapshot.fetchedAtMillis
-            if (age <= ListCacheStore.FEEDS_TTL_MILLIS) {
+            if (age <= FEEDS_TTL_MILLIS) {
                 return Result.success(cached)
             }
             return cacheStore.singleFlight(key) {
@@ -92,7 +92,7 @@ class FeedsRepositoryImpl @Inject constructor(
             val response = api.getFeeds(query, fromDate, language)
             cacheStore.putSnapshot(
                 cacheKey = key,
-                category = ListCacheStore.CATEGORY_FEEDS,
+                category = CATEGORY_FEEDS,
                 currency = language.lowercase(),
                 payloadJson = cacheStore.encodePayload(response)
             )
@@ -108,4 +108,9 @@ class FeedsRepositoryImpl @Inject constructor(
 
     private fun feedsKey(query: String, fromDate: String, language: String): String =
         "feeds:${query.trim().lowercase()}:${language.trim().lowercase()}:$fromDate"
+
+    internal companion object {
+        const val CATEGORY_FEEDS = "feeds"
+        const val FEEDS_TTL_MILLIS = 15 * 60_000L
+    }
 }

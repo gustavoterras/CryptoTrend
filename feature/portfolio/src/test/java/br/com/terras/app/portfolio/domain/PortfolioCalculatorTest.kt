@@ -1,8 +1,8 @@
 package br.com.terras.app.portfolio.domain
 
 import br.com.terras.app.dsm.ui.component.TrendColor
-import br.com.terras.app.network.portfolio.PortfolioTransactionRecord
-import br.com.terras.app.network.portfolio.PortfolioTransactionType
+import br.com.terras.app.database.portfolio.PortfolioTransactionRecord
+import br.com.terras.app.database.portfolio.PortfolioTransactionType
 import br.com.terras.app.portfolio.domain.model.PortfolioMarketQuote
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

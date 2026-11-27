@@ -109,6 +109,8 @@ dependencies {
     implementation(project(":core:common"))
     implementation(project(":core:navigation"))
     implementation(project(":core:network"))
+    implementation(project(":core:database"))
+    implementation(project(":data:coingecko"))
     implementation(project(":feature:favorites"))
     implementation(project(":feature:feeds"))
     implementation(project(":feature:coins"))
@@ -116,6 +118,8 @@ dependencies {
     implementation(project(":feature:portfolio"))
 
     kover(project(":core:common"))
+    kover(project(":core:database"))
+    kover(project(":data:coingecko"))
     "kover"(project(":feature:favorites"))
     kover(project(":feature:feeds"))
     kover(project(":feature:coins"))

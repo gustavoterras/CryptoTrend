@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.terras.app.favorites.domain.FavoritesUseCase
 import br.com.terras.app.favorites.domain.model.CoinVO
-import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
+import br.com.terras.app.database.favorites.FavoriteCoinsLocalRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

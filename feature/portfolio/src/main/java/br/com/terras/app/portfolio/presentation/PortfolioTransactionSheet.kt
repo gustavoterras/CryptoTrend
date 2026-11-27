@@ -72,7 +72,7 @@ import br.com.terras.app.common.formatMoney
 import br.com.terras.app.common.toFormatDate
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.component.TrendColor
-import br.com.terras.app.network.portfolio.PortfolioTransactionType
+import br.com.terras.app.database.portfolio.PortfolioTransactionType
 import br.com.terras.app.portfolio.domain.model.SelectableCoinVO
 import br.com.terras.app.portfolio.presentation.PortfolioViewModel.CoinPickerState
 import br.com.terras.app.portfolio.presentation.PortfolioViewModel.PortfolioIntent

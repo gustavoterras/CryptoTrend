@@ -1,7 +1,7 @@
 package br.com.terras.app.search.di
 
-import br.com.terras.app.network.di.CoinGeckoBaseUrl
-import br.com.terras.app.network.di.CoinGeckoClient
+import br.com.terras.app.coingecko.di.CoinGeckoBaseUrl
+import br.com.terras.app.coingecko.di.CoinGeckoClient
 import br.com.terras.app.search.network.ApiServiceSearch
 import dagger.Module
 import dagger.Provides

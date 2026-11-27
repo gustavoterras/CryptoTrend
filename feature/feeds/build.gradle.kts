@@ -25,14 +25,27 @@ android {
         jvmTarget = "17"
     }
 
+    buildTypes {
+        release {
+            buildConfigField("String", "BASE_API_URL_NEWS", "\"https://newsapi.org/\"")
+            buildConfigField("String", "API_TOKEN_NEWS", "\"51c3f7779ef94707a83682d131d0e48d\"")
+        }
+        debug {
+            buildConfigField("String", "BASE_API_URL_NEWS", "\"https://newsapi.org/\"")
+            buildConfigField("String", "API_TOKEN_NEWS", "\"51c3f7779ef94707a83682d131d0e48d\"")
+        }
+    }
+
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
 dependencies {
     implementation(project(":core:dsm"))
     implementation(project(":core:network"))
+    implementation(project(":core:database"))
     implementation(project(":core:common"))
     implementation(libs.dagger.hilt.core)
     ksp(libs.dagger.hilt.compiler)

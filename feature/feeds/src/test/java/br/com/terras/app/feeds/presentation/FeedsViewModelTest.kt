@@ -6,7 +6,7 @@ import br.com.terras.app.feeds.domain.FeedsUseCase
 import br.com.terras.app.feeds.mockArticlesVOStub
 import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsIntent
 import br.com.terras.app.feeds.presentation.FeedsViewModel.FeedsState
-import br.com.terras.app.network.refresh.DataRefreshCoordinator
+import br.com.terras.app.common.refresh.DataRefreshCoordinator
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk

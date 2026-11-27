@@ -14,8 +14,8 @@ import br.com.terras.app.coins.mockCoinsVOListStub
 import br.com.terras.app.coins.mockGlobalMarketVOStub
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.feeds.domain.FeedsUseCase
-import br.com.terras.app.network.favorites.FavoriteCoinsLocalRepository
-import br.com.terras.app.network.refresh.DataRefreshCoordinator
+import br.com.terras.app.database.favorites.FavoriteCoinsLocalRepository
+import br.com.terras.app.common.refresh.DataRefreshCoordinator
 import br.com.terras.app.search.domain.SearchUseCase
 import br.com.terras.app.search.domain.model.CoinVO as SearchCoinVO
 import io.mockk.coEvery

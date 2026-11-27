@@ -43,6 +43,7 @@ androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscree
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockkVersion"}
 coroutines = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutinesVersion"}
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutinesVersion" }
 core-testing = { group = "androidx.arch.core", name = "core-testing", version.ref = "coreTestingVersion"}
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbineVersion"}
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

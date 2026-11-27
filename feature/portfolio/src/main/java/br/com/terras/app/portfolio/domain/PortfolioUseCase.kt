@@ -1,7 +1,7 @@
 package br.com.terras.app.portfolio.domain
 
-import br.com.terras.app.network.portfolio.PortfolioLocalRepository
-import br.com.terras.app.network.portfolio.PortfolioTransactionRecord
+import br.com.terras.app.database.portfolio.PortfolioLocalRepository
+import br.com.terras.app.database.portfolio.PortfolioTransactionRecord
 import br.com.terras.app.portfolio.data.PortfolioMarketRepository
 import br.com.terras.app.portfolio.domain.model.PortfolioMarketQuote
 import br.com.terras.app.portfolio.domain.model.PortfolioSnapshot

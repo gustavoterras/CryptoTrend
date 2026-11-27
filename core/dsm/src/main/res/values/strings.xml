@@ -101,6 +101,18 @@
     <string name="detail_tickers_show_less">Show less</string>
     <string name="detail_tickers_open_cd">Open %1$s on %2$s</string>
 
+    <!-- Order Book -->
+    <string name="detail_order_book_title">Order Book (%1$s)</string>
+    <string name="detail_order_book_live">LIVE</string>
+    <string name="detail_order_book_spread">Spread: %1$s (%2$s)</string>
+    <string name="detail_order_book_bids">Bids</string>
+    <string name="detail_order_book_asks">Asks</string>
+    <string name="detail_order_book_price">Price</string>
+    <string name="detail_order_book_amount">Amount</string>
+    <string name="detail_order_book_expand_cd">Expand order book</string>
+    <string name="detail_order_book_collapse_cd">Collapse order book</string>
+    <string name="detail_order_book_multiplier_cd">Select order book multiplier</string>
+
     <!-- Detail About Stats -->
     <string name="detail_stat_market_cap">Market Cap</string>
     <string name="detail_stat_fdv">FDV (Fully Diluted)</string>

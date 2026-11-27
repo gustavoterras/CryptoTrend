@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.terras.app.feeds.domain.FeedsUseCase
 import br.com.terras.app.feeds.domain.model.ArticleVO
-import br.com.terras.app.network.refresh.DataRefreshCoordinator
+import br.com.terras.app.common.refresh.DataRefreshCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
