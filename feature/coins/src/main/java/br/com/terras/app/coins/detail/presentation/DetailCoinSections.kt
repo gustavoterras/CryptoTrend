@@ -42,6 +42,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -57,6 +59,8 @@ import br.com.terras.app.coins.detail.domain.model.CoinDetailTickerVO
 import br.com.terras.app.coins.detail.domain.model.TickerTrustLevel
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.component.TrendColor
+import br.com.terras.app.dsm.ui.theme.MoneyFontFamily
+import br.com.terras.app.dsm.ui.theme.asMoneyStyle
 
 @Composable
 internal fun PriceChangePeriodStrip(
@@ -563,8 +567,25 @@ internal fun WhereToTradeSection(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            val volumeText = stringResource(R.string.detail_tickers_volume, ticker.volume24h)
+                            val volumeAnnotated = remember(volumeText, ticker.volume24h) {
+                                buildAnnotatedString {
+                                    append(volumeText)
+                                    val idx = volumeText.indexOf(ticker.volume24h)
+                                    if (idx >= 0) {
+                                        addStyle(
+                                            SpanStyle(
+                                                fontFamily = MoneyFontFamily,
+                                                fontFeatureSettings = "tnum"
+                                            ),
+                                            idx,
+                                            idx + ticker.volume24h.length
+                                        )
+                                    }
+                                }
+                            }
                             Text(
-                                text = stringResource(R.string.detail_tickers_volume, ticker.volume24h),
+                                text = volumeAnnotated,
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -584,7 +605,7 @@ internal fun WhereToTradeSection(
                     ) {
                         Text(
                             text = ticker.lastPrice,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodyMedium.asMoneyStyle(),
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.surface,
                             maxLines = 1

@@ -7,12 +7,12 @@ import br.com.terras.app.coins.list.domain.model.CoinVO
 import br.com.terras.app.coins.list.domain.model.FearAndGreedSentiment
 import br.com.terras.app.coins.list.domain.model.GlobalMarketVO
 import br.com.terras.app.common.downsampleSparkline
-import br.com.terras.app.common.formatAxisMoney
 import br.com.terras.app.common.formatCompactCount
 import br.com.terras.app.common.formatCompactMoney
 import br.com.terras.app.common.formatDominancePercentage
 import br.com.terras.app.common.formatMoney
 import br.com.terras.app.common.formatPercentage
+import br.com.terras.app.common.formatShortMoney
 import br.com.terras.app.dsm.ui.component.TrendColor
 import java.util.Locale
 import javax.inject.Inject
@@ -59,7 +59,7 @@ class CoinsMapperImpl @Inject constructor() : CoinsMapper {
                     val hasPrice = item.data?.price != null
                     val hasChange = item.data?.priceChangePercentage24h?.isNotEmpty() == true
                     val formattedVolume = when {
-                        rawVolume > 0.0 -> rawVolume.formatAxisMoney(Locale.US)
+                        rawVolume > 0.0 -> rawVolume.formatShortMoney(Locale.US)
                         !item.data?.totalVolume.isNullOrBlank() -> item.data?.totalVolume.orEmpty()
                         else -> ""
                     }
@@ -214,7 +214,7 @@ class CoinsMapperImpl @Inject constructor() : CoinsMapper {
 
     private fun mapMarketCoin(response: CoinsResponse): CoinVO {
         val rawVolume = response.totalVolume ?: 0.0
-        val formattedVolume = rawVolume.takeIf { it > 0.0 }?.formatAxisMoney().orEmpty()
+        val formattedVolume = rawVolume.takeIf { it > 0.0 }?.formatShortMoney().orEmpty()
         return CoinVO(
             id = response.id,
             symbol = response.symbol.uppercase(),

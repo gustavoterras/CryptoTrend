@@ -1,10 +1,15 @@
 package br.com.terras.app.favorites.presentation
 
 import app.cash.turbine.test
+import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.favorites.MainDispatcherRule
 import br.com.terras.app.favorites.domain.FavoritesUseCase
 import br.com.terras.app.favorites.mockCoinVOStub
 import br.com.terras.app.favorites.mockCoinsVOListStub
+import br.com.terras.app.favorites.network.FavoriteLiveTicker
+import br.com.terras.app.favorites.network.FavoriteTickerBatchEvent
+import br.com.terras.app.favorites.network.FavoriteTickerTarget
+import br.com.terras.app.favorites.network.FavoritesTickerBatchService
 import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesIntent
 import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Error
 import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Loading
@@ -15,6 +20,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
@@ -35,11 +41,27 @@ private class FakeFavoriteCoinsLocalRepository(
     override suspend fun removeFavorite(coinId: String) = Unit
 }
 
+private class FakeFavoritesTickerBatchService : FavoritesTickerBatchService {
+    val events = MutableSharedFlow<FavoriteTickerBatchEvent>(extraBufferCapacity = 16)
+    var lastObservedTargets: List<FavoriteTickerTarget> = emptyList()
+    var subscriptionCount: Int = 0
+
+    override fun observeTickerBatch(
+        targets: List<FavoriteTickerTarget>,
+        vsCurrency: String
+    ): Flow<FavoriteTickerBatchEvent> {
+        subscriptionCount++
+        lastObservedTargets = targets
+        return events
+    }
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class FavoritesViewModelTest {
     private val userCase: FavoritesUseCase = mockk(relaxed = true)
     private val favoriteIdsFlow = MutableStateFlow<List<String>>(emptyList())
     private lateinit var favoriteLocalRepository: FavoriteCoinsLocalRepository
+    private lateinit var tickerBatchService: FakeFavoritesTickerBatchService
 
     private lateinit var viewModel: FavoritesViewModel
 
@@ -49,7 +71,8 @@ class FavoritesViewModelTest {
     @Before
     fun setup() {
         favoriteLocalRepository = FakeFavoriteCoinsLocalRepository(favoriteIdsFlow)
-        viewModel = FavoritesViewModel(userCase, favoriteLocalRepository)
+        tickerBatchService = FakeFavoritesTickerBatchService()
+        viewModel = FavoritesViewModel(userCase, favoriteLocalRepository, tickerBatchService)
     }
 
     @Test
@@ -124,5 +147,43 @@ class FavoritesViewModelTest {
         coVerify(exactly = 1) { userCase.getCoinsByIds(ids, forceRefresh = true) }
         Assert.assertEquals(Success(mockCoinsVOListStub), viewModel.coins.value)
         Assert.assertFalse(viewModel.isRefreshing.value)
+    }
+
+    @Test
+    fun `WHEN live stream is active and ticker_batch emits updates THEN updates matching coin price and live state`() = runBlocking {
+        val bitcoin = mockCoinVOStub.copy(
+            id = "bitcoin",
+            symbol = "BTC",
+            name = "Bitcoin",
+            rawPrice = 80000.0,
+            rawPriceChangePercentage = 1.0,
+            trendColor = TrendColor.UP
+        )
+        coEvery { userCase.getCoinsByIds(listOf("bitcoin")) } returns Result.success(listOf(bitcoin))
+
+        favoriteIdsFlow.value = listOf("bitcoin")
+        Assert.assertEquals(0, tickerBatchService.subscriptionCount)
+
+        viewModel.handleIntent(FavoritesIntent.SetLiveStreamActive(true))
+        Assert.assertEquals(1, tickerBatchService.subscriptionCount)
+        Assert.assertEquals(listOf(FavoriteTickerTarget("bitcoin", "BTC")), tickerBatchService.lastObservedTargets)
+
+        tickerBatchService.events.emit(FavoriteTickerBatchEvent.Connected(1))
+        Assert.assertTrue(viewModel.isLiveTickerConnected.value)
+
+        tickerBatchService.events.emit(
+            FavoriteTickerBatchEvent.Tick(
+                FavoriteLiveTicker(coinId = "bitcoin", price = 82500.0, change24h = -2.4)
+            )
+        )
+
+        val updatedState = viewModel.coins.value as Success
+        val updatedCoin = updatedState.coinsList.single()
+        Assert.assertEquals(82500.0, updatedCoin.rawPrice, 0.001)
+        Assert.assertEquals(-2.4, updatedCoin.rawPriceChangePercentage, 0.001)
+        Assert.assertEquals(TrendColor.DOWN, updatedCoin.trendColor)
+
+        viewModel.handleIntent(FavoritesIntent.SetLiveStreamActive(false))
+        Assert.assertFalse(viewModel.isLiveTickerConnected.value)
     }
 }

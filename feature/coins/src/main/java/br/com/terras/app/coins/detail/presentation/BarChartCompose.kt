@@ -78,6 +78,8 @@ import br.com.terras.app.common.formatMoney
 import br.com.terras.app.common.formatPercentage
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
+import br.com.terras.app.dsm.ui.theme.MoneyFontFamily
+import br.com.terras.app.dsm.ui.theme.asMoneyStyle
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -215,11 +217,22 @@ fun BarChartCompose(
             fontWeight = FontWeight.Medium
         )
     }
+    val yAxisTextStyle = remember(axisLabelColor) {
+        TextStyle(
+            color = axisLabelColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+            fontFamily = MoneyFontFamily,
+            fontFeatureSettings = "tnum"
+        )
+    }
     val calloutTextStyle = remember(calloutColor) {
         TextStyle(
             color = calloutColor,
             fontSize = 11.5.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            fontFamily = MoneyFontFamily,
+            fontFeatureSettings = "tnum"
         )
     }
 
@@ -229,9 +242,9 @@ fun BarChartCompose(
             (allCandlesMin + (allCandlesMax - allCandlesMin) * fraction).formatAxisMoney()
         }
     }
-    val maxYLabelWidthPx = remember(rightReferenceLabels, axisTextStyle) {
+    val maxYLabelWidthPx = remember(rightReferenceLabels, yAxisTextStyle) {
         rightReferenceLabels.maxOfOrNull { label ->
-            textMeasurer.measure(text = label, style = axisTextStyle).size.width
+            textMeasurer.measure(text = label, style = yAxisTextStyle).size.width
         }?.toFloat() ?: 0f
     }
 
@@ -350,7 +363,7 @@ fun BarChartCompose(
     }
 
     val yLabelLayouts = yTickLabels.map { label ->
-        textMeasurer.measure(text = label, style = axisTextStyle)
+        textMeasurer.measure(text = label, style = yAxisTextStyle)
     }
     val xLabelLayouts = remember(candles, xTickIndices, axisTextStyle) {
         xTickIndices.mapNotNull { index ->
@@ -769,10 +782,10 @@ fun BarChartCompose(
                             color = cardBorderColor,
                             modifier = Modifier.padding(vertical = 1.dp)
                         )
-                        CandleInfoRow(label = stringResource(R.string.chart_label_open), value = currentCandle.open.formatMoney(), labelColor = labelColor, valueColor = valueColor)
-                        CandleInfoRow(label = stringResource(R.string.chart_label_high), value = currentCandle.high.formatMoney(), labelColor = labelColor, valueColor = valueColor)
-                        CandleInfoRow(label = stringResource(R.string.chart_label_low), value = currentCandle.low.formatMoney(), labelColor = labelColor, valueColor = valueColor)
-                        CandleInfoRow(label = stringResource(R.string.chart_label_close), value = currentCandle.close.formatMoney(), labelColor = labelColor, valueColor = valueColor)
+                        CandleInfoRow(label = stringResource(R.string.chart_label_open), value = currentCandle.open.formatMoney(), labelColor = labelColor, valueColor = valueColor, isMonetary = true)
+                        CandleInfoRow(label = stringResource(R.string.chart_label_high), value = currentCandle.high.formatMoney(), labelColor = labelColor, valueColor = valueColor, isMonetary = true)
+                        CandleInfoRow(label = stringResource(R.string.chart_label_low), value = currentCandle.low.formatMoney(), labelColor = labelColor, valueColor = valueColor, isMonetary = true)
+                        CandleInfoRow(label = stringResource(R.string.chart_label_close), value = currentCandle.close.formatMoney(), labelColor = labelColor, valueColor = valueColor, isMonetary = true)
                         CandleInfoRow(
                             label = stringResource(R.string.chart_label_change),
                             value = variation.formatPercentage(),
@@ -793,7 +806,8 @@ private fun CandleInfoRow(
     value: String,
     labelColor: Color,
     valueColor: Color,
-    isBold: Boolean = false
+    isBold: Boolean = false,
+    isMonetary: Boolean = false
 ) {
     Row(
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -811,7 +825,11 @@ private fun CandleInfoRow(
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.labelMedium,
+            style = if (isMonetary) {
+                MaterialTheme.typography.labelMedium.asMoneyStyle()
+            } else {
+                MaterialTheme.typography.labelMedium
+            },
             fontWeight = if (isBold) FontWeight.Bold else FontWeight.SemiBold,
             color = valueColor,
             fontSize = 9.5.sp

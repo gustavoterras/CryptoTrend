@@ -20,12 +20,11 @@ import br.com.terras.app.coins.detail.domain.model.DataPoint
 import br.com.terras.app.coins.detail.domain.model.MarketChartDataPoint
 import br.com.terras.app.coins.detail.domain.model.TickerTrustLevel
 import br.com.terras.app.common.formatAxisMoney
-import br.com.terras.app.common.formatCompactCount
-import br.com.terras.app.common.formatCompactMoney
 import br.com.terras.app.common.formatDominancePercentage
 import br.com.terras.app.common.formatLivePrice
-import br.com.terras.app.common.formatMoney
 import br.com.terras.app.common.formatPercentage
+import br.com.terras.app.common.formatShortMoney
+import br.com.terras.app.common.formatShortNumber
 import br.com.terras.app.common.toChartAxisTime
 import br.com.terras.app.common.toChartDay
 import br.com.terras.app.common.toChartHour
@@ -71,7 +70,7 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
         }
 
         val marketDataList = buildList {
-            marketData.marketCap?.getCurrentPriceByLocale()?.let {
+            marketData.marketCap?.getShortMoneyByLocale()?.let {
                 add("Market Cap" to it)
             }
             fdvFormatted?.let {
@@ -80,7 +79,7 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
             tvlFormatted?.let {
                 add("TVL" to it)
             }
-            marketData.totalVolume?.getCurrentPriceByLocale()?.let {
+            marketData.totalVolume?.getShortMoneyByLocale()?.let {
                 add("Trading Volume 24h" to it)
             }
             marketData.high24h?.getCurrentPriceByLocale()?.let {
@@ -90,13 +89,13 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
                 add("Lowest Price 24h" to it)
             }
             marketData.circulatingSupply?.takeIf { it > 0.0 }?.let {
-                add("Available Supply" to it.formatMoney())
+                add("Available Supply" to it.formatShortNumber(currentLocale))
             }
             marketData.totalSupply?.takeIf { it > 0.0 }?.let {
-                add("Total Supply" to it.formatMoney())
+                add("Total Supply" to it.formatShortNumber(currentLocale))
             }
             marketData.maxSupply?.takeIf { it > 0.0 }?.let {
-                add("Max Supply" to it.formatMoney())
+                add("Max Supply" to it.formatShortNumber(currentLocale))
             }
             marketData.athValue?.getCurrentPriceByLocale()?.let {
                 add("All-Time High Price" to it)
@@ -126,7 +125,7 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
                 add("Block Time" to it)
             }
             response.watchlistPortfolioUsers?.takeIf { it > 0 }?.let {
-                add("Watchlist Users" to it.formatCompactCount(currentLocale))
+                add("Watchlist Users" to it.toDouble().formatShortNumber(currentLocale))
             }
             marketData.lastUpdated?.takeIf { it.isNotBlank() }?.let { rawDate ->
                 runCatching { rawDate.toFormatDate() }.getOrNull()?.let {
@@ -218,7 +217,8 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
             downLabel = down.formatDominancePercentage(locale),
             watchlistUsersLabel = response.watchlistPortfolioUsers
                 ?.takeIf { it > 0 }
-                ?.formatCompactCount(locale)
+                ?.toDouble()
+                ?.formatShortNumber(locale)
         )
     }
 
@@ -362,7 +362,7 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
                     preferredLocale = locale,
                     fallbackAmount = ticker.volume
                 )
-                val volumeFormatted = volValue?.takeIf { it > 0.0 }?.formatCompactMoney(volLocale) ?: "-"
+                val volumeFormatted = volValue?.takeIf { it > 0.0 }?.formatShortMoney(volLocale) ?: "-"
 
                 val spreadLabel = ticker.bidAskSpreadPercentage
                     ?.takeIf { it >= 0.0 }
@@ -469,7 +469,7 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
 
     private fun Map<String, Double?>?.formatCurrencyAmount(locale: Locale): String? {
         val (amount, targetLocale) = resolveEntryByLocale(locale) ?: return null
-        return amount.formatMoney(targetLocale)
+        return amount.formatShortMoney(targetLocale)
     }
 
     private fun String.formatGenesisDate(locale: Locale): String? {
@@ -501,6 +501,10 @@ class DetailMapperImpl @Inject constructor() : DetailMapper {
 
     private fun CoinValue.getCurrentPriceByLocale(): String {
         return getRawPriceByLocale().formatLivePrice()
+    }
+
+    private fun CoinValue.getShortMoneyByLocale(): String {
+        return getRawPriceByLocale().formatShortMoney()
     }
 
     private fun CoinDate.getCurrentDateByLocale(): String {

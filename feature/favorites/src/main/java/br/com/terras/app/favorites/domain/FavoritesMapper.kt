@@ -1,9 +1,9 @@
 package br.com.terras.app.favorites.domain
 
 import br.com.terras.app.common.downsampleSparkline
-import br.com.terras.app.common.formatAxisMoney
 import br.com.terras.app.common.formatMoney
 import br.com.terras.app.common.formatPercentage
+import br.com.terras.app.common.formatShortMoney
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.favorites.data.model.CoinsResponse
 import br.com.terras.app.favorites.domain.model.CoinVO
@@ -17,7 +17,7 @@ class FavoritesMapperImpl @Inject constructor() : FavoritesMapper {
     override fun toCoins(response: List<CoinsResponse>): List<CoinVO> {
         return response.map {
             val rawVolume = it.totalVolume ?: 0.0
-            val formattedVolume = rawVolume.takeIf { vol -> vol > 0.0 }?.formatAxisMoney().orEmpty()
+            val formattedVolume = rawVolume.takeIf { vol -> vol > 0.0 }?.formatShortMoney().orEmpty()
             CoinVO(
                 id = it.id,
                 symbol = it.symbol.uppercase(),

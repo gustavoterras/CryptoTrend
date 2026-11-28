@@ -1,8 +1,10 @@
 package br.com.terras.app.dsm.ui.component
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -27,6 +29,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,8 +56,11 @@ import androidx.compose.ui.unit.sp
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
+import br.com.terras.app.dsm.ui.theme.MoneyFontFamily
+import br.com.terras.app.dsm.ui.theme.asMoneyStyle
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalGlideComposeApi::class)
 @Composable
@@ -67,17 +77,50 @@ fun CoinListItemView(
     sparklinePrices: List<Double> = emptyList(),
     quoteCurrency: String = stringResource(R.string.currency_quote_code),
     isFavorite: Boolean = false,
+    rawPrice: Double? = null,
+    rawPriceChangePercentage: Double? = null,
+    animatePriceFlash: Boolean = false,
+    animatePriceOdometer: Boolean = false,
     onItemClick: (String) -> Unit
 ) {
     val isDark = isSystemInDarkTheme()
+    val upFlashColor = MaterialTheme.colorScheme.scrim
+    val downFlashColor = if (isDark) Color(0xFFFF6B63) else Color(0xFFE04838)
     val sparklineColor = when (trendColor) {
-        TrendColor.DOWN -> if (isDark) Color(0xFFFF6B63) else Color(0xFFE04838)
-        TrendColor.UP -> MaterialTheme.colorScheme.scrim
+        TrendColor.DOWN -> downFlashColor
+        TrendColor.UP -> upFlashColor
         TrendColor.FLAT, TrendColor.NONE -> MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     val titleColor = MaterialTheme.colorScheme.surface
     val subtitleColor = MaterialTheme.colorScheme.onSurfaceVariant
+
+    var priceFlashColor by remember(coinId) { mutableStateOf<Color?>(null) }
+    var lastObservedPrice by remember(coinId) { mutableStateOf<Double?>(null) }
+
+    LaunchedEffect(rawPrice, animatePriceFlash) {
+        val current = rawPrice
+        val previous = lastObservedPrice
+        if (animatePriceFlash && current != null && current.isFinite()) {
+            if (previous != null && current != previous) {
+                priceFlashColor = if (current > previous) upFlashColor else downFlashColor
+                lastObservedPrice = current
+                delay(750L)
+                priceFlashColor = null
+            } else {
+                lastObservedPrice = current
+            }
+        } else {
+            lastObservedPrice = current
+            priceFlashColor = null
+        }
+    }
+
+    val animatedPriceColor by animateColorAsState(
+        targetValue = priceFlashColor ?: titleColor,
+        animationSpec = tween(durationMillis = if (priceFlashColor != null) 140 else 550),
+        label = "coinRowPriceFlashColor"
+    )
 
     Row(
         modifier = Modifier
@@ -178,14 +221,29 @@ fun CoinListItemView(
                                 modifier = Modifier.testTag("coin_rank_$coinId")
                             )
                         }
-                        val volumeOrName = when {
-                            hasVolume -> "Vol $coinVolume"
-                            coinName.isNotBlank() -> coinName
-                            else -> ""
-                        }
-                        if (volumeOrName.isNotEmpty()) {
+                        if (hasVolume) {
                             Text(
-                                text = volumeOrName,
+                                text = buildAnnotatedString {
+                                    append("Vol ")
+                                    withStyle(
+                                        SpanStyle(
+                                            fontFamily = MoneyFontFamily,
+                                            fontFeatureSettings = "tnum"
+                                        )
+                                    ) {
+                                        append(coinVolume)
+                                    }
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = subtitleColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        } else if (coinName.isNotBlank()) {
+                            Text(
+                                text = coinName,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Normal,
@@ -227,14 +285,14 @@ fun CoinListItemView(
             verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             if (!coinPrice.isNullOrEmpty()) {
-                Text(
+                OdometerText(
                     text = coinPrice,
-                    style = MaterialTheme.typography.bodyLarge,
+                    rawValue = rawPrice,
+                    animateChanges = animatePriceOdometer,
+                    style = MaterialTheme.typography.bodyLarge.asMoneyStyle(),
                     fontSize = 14.5.sp,
                     fontWeight = FontWeight.Bold,
-                    color = titleColor,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    color = animatedPriceColor,
                     textAlign = TextAlign.End
                 )
             }
@@ -243,6 +301,8 @@ fun CoinListItemView(
                 TrendChangeBadge(
                     coinId = coinId,
                     percentageText = coinPriceChancePercentage.orEmpty(),
+                    rawPercentage = rawPriceChangePercentage,
+                    animateOdometer = animatePriceOdometer,
                     trendColor = trendColor
                 )
             }
@@ -254,6 +314,8 @@ fun CoinListItemView(
 private fun TrendChangeBadge(
     coinId: String,
     percentageText: String,
+    rawPercentage: Double?,
+    animateOdometer: Boolean,
     trendColor: TrendColor
 ) {
     val hasBadgeBackground = trendColor != TrendColor.NONE
@@ -281,15 +343,14 @@ private fun TrendChangeBadge(
                 )
             }
             if (percentageText.isNotEmpty()) {
-                Text(
+                OdometerText(
                     text = percentageText,
+                    rawValue = rawPercentage,
+                    animateChanges = animateOdometer,
                     style = MaterialTheme.typography.labelMedium,
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = contentColor,
-                    maxLines = 1,
-                    softWrap = false,
-                    overflow = TextOverflow.Ellipsis,
                     textAlign = TextAlign.End
                 )
             }

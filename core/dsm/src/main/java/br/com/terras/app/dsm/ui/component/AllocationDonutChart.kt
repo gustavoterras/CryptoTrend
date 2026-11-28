@@ -59,6 +59,7 @@ import androidx.compose.ui.unit.dp
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
+import br.com.terras.app.dsm.ui.theme.asMoneyStyle
 import kotlin.math.PI
 import kotlin.math.atan2
 import kotlin.math.hypot
@@ -261,7 +262,7 @@ fun AllocationDonutChart(
                         )
                         Text(
                             text = slice.valueText,
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelMedium.asMoneyStyle(),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
@@ -275,7 +276,7 @@ fun AllocationDonutChart(
                         )
                         Text(
                             text = totalValueText,
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleMedium.asMoneyStyle(),
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.surface,
                             maxLines = 1,
@@ -349,7 +350,7 @@ fun AllocationDonutChart(
                     ) {
                         Text(
                             text = slice.valueText,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodySmall.asMoneyStyle(),
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(

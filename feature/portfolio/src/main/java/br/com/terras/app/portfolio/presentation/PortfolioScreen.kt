@@ -78,6 +78,8 @@ import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.component.AllocationDonutChart
 import br.com.terras.app.dsm.ui.component.AllocationSlice
+import br.com.terras.app.dsm.ui.theme.MoneyFontFamily
+import br.com.terras.app.dsm.ui.theme.asMoneyStyle
 import br.com.terras.app.dsm.ui.component.AnimatedAddFab
 import br.com.terras.app.dsm.ui.component.PullToRefreshWrapper
 import br.com.terras.app.dsm.ui.component.RippleButton
@@ -681,19 +683,23 @@ private fun OfflineQuotesBanner(onRetry: () -> Unit) {
 
 @Composable
 private fun PortfolioSummaryHeader(summary: PortfolioSummaryVO) {
-    Row(
+    val balanceFontSize = when {
+        summary.totalValueFormatted.length >= 18 -> 28.sp
+        summary.totalValueFormatted.length >= 15 -> 31.sp
+        summary.totalValueFormatted.length >= 12 -> 34.sp
+        else -> 36.sp
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 18.dp, vertical = 14.dp)
             .testTag("portfolio_summary_card"),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Column(
-            modifier = Modifier
-                .weight(1.1f)
-                .padding(end = 10.dp),
-            verticalArrangement = Arrangement.spacedBy(5.dp)
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(
                 text = stringResource(R.string.portfolio_summary_total_balance),
@@ -702,20 +708,42 @@ private fun PortfolioSummaryHeader(summary: PortfolioSummaryVO) {
             )
             Text(
                 text = summary.totalValueFormatted,
-                fontSize = 26.sp,
+                style = MaterialTheme.typography.headlineLarge.asMoneyStyle(),
+                fontSize = balanceFontSize,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.surface,
                 maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth()
             )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
             Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = "24h ${summary.change24hValueFormatted}",
+                    text = buildAnnotatedString {
+                        append("24h ")
+                        withStyle(
+                            SpanStyle(
+                                fontFamily = MoneyFontFamily,
+                                fontFeatureSettings = "tnum"
+                            )
+                        ) {
+                            append(summary.change24hValueFormatted)
+                        }
+                    },
                     style = MaterialTheme.typography.bodySmall,
-                    fontSize = 12.sp,
+                    fontSize = 12.5.sp,
                     fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -725,33 +753,34 @@ private fun PortfolioSummaryHeader(summary: PortfolioSummaryVO) {
                 Text(
                     text = "(${summary.change24hPercentageFormatted})",
                     style = MaterialTheme.typography.bodySmall,
-                    fontSize = 12.sp,
+                    fontSize = 12.5.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = summary.change24hTrend.textColor,
                     maxLines = 1
                 )
             }
-        }
 
-        Column(
-            modifier = Modifier.weight(0.95f),
-            verticalArrangement = Arrangement.spacedBy(5.dp)
-        ) {
-            PortfolioStatRow(
-                label = stringResource(R.string.portfolio_summary_total_pnl),
-                value = "${summary.totalPnLFormatted} (${summary.unrealizedPnLPercentageFormatted})",
-                valueColor = summary.totalPnLTrend.textColor
-            )
-            PortfolioStatRow(
-                label = stringResource(R.string.portfolio_summary_invested),
-                value = summary.totalInvestedFormatted,
-                valueColor = MaterialTheme.colorScheme.surface
-            )
-            PortfolioStatRow(
-                label = stringResource(R.string.portfolio_summary_realized),
-                value = summary.realizedPnLFormatted,
-                valueColor = summary.realizedPnLTrend.textColor
-            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                PortfolioStatRow(
+                    label = stringResource(R.string.portfolio_summary_total_pnl),
+                    value = "${summary.totalPnLFormatted} (${summary.unrealizedPnLPercentageFormatted})",
+                    valueColor = summary.totalPnLTrend.textColor,
+                    moneySubstring = summary.totalPnLFormatted
+                )
+                PortfolioStatRow(
+                    label = stringResource(R.string.portfolio_summary_invested),
+                    value = summary.totalInvestedFormatted,
+                    valueColor = MaterialTheme.colorScheme.surface
+                )
+                PortfolioStatRow(
+                    label = stringResource(R.string.portfolio_summary_realized),
+                    value = summary.realizedPnLFormatted,
+                    valueColor = summary.realizedPnLTrend.textColor
+                )
+            }
         }
     }
 }
@@ -760,7 +789,8 @@ private fun PortfolioSummaryHeader(summary: PortfolioSummaryVO) {
 private fun PortfolioStatRow(
     label: String,
     value: String,
-    valueColor: Color
+    valueColor: Color,
+    moneySubstring: String? = null
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -774,19 +804,51 @@ private fun PortfolioStatRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1
         )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.labelSmall,
-            fontSize = 11.5.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = valueColor,
-            maxLines = 1,
-            textAlign = TextAlign.End,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .weight(1f, fill = false)
-                .padding(start = 6.dp)
-        )
+        if (moneySubstring != null) {
+            val annotatedValue = remember(value, moneySubstring) {
+                buildAnnotatedString {
+                    append(value)
+                    val idx = value.indexOf(moneySubstring)
+                    if (idx >= 0) {
+                        addStyle(
+                            SpanStyle(
+                                fontFamily = MoneyFontFamily,
+                                fontFeatureSettings = "tnum"
+                            ),
+                            idx,
+                            idx + moneySubstring.length
+                        )
+                    }
+                }
+            }
+            Text(
+                text = annotatedValue,
+                style = MaterialTheme.typography.labelSmall,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = valueColor,
+                maxLines = 1,
+                textAlign = TextAlign.End,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .padding(start = 6.dp)
+            )
+        } else {
+            Text(
+                text = value,
+                style = MaterialTheme.typography.labelSmall.asMoneyStyle(),
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = valueColor,
+                maxLines = 1,
+                textAlign = TextAlign.End,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .padding(start = 6.dp)
+            )
+        }
     }
 }
 
@@ -848,7 +910,17 @@ private fun HoldingRow(
                 )
                 val avgPrefix = stringResource(R.string.portfolio_holding_avg_prefix)
                 Text(
-                    text = "${holding.quantityFormatted} ${holding.symbol} • $avgPrefix ${holding.averageBuyPriceFormatted}",
+                    text = buildAnnotatedString {
+                        append("${holding.quantityFormatted} ${holding.symbol} • $avgPrefix ")
+                        withStyle(
+                            SpanStyle(
+                                fontFamily = MoneyFontFamily,
+                                fontFeatureSettings = "tnum"
+                            )
+                        ) {
+                            append(holding.averageBuyPriceFormatted)
+                        }
+                    },
                     style = MaterialTheme.typography.labelMedium,
                     fontSize = 11.5.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -867,7 +939,7 @@ private fun HoldingRow(
         ) {
             Text(
                 text = holding.currentValueFormatted,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyLarge.asMoneyStyle(),
                 fontSize = 14.5.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.surface,
@@ -876,7 +948,17 @@ private fun HoldingRow(
                 textAlign = TextAlign.End
             )
             Text(
-                text = "${holding.unrealizedPnLFormatted} (${holding.unrealizedPnLPercentageFormatted})",
+                text = buildAnnotatedString {
+                    withStyle(
+                        SpanStyle(
+                            fontFamily = MoneyFontFamily,
+                            fontFeatureSettings = "tnum"
+                        )
+                    ) {
+                        append(holding.unrealizedPnLFormatted)
+                    }
+                    append(" (${holding.unrealizedPnLPercentageFormatted})")
+                },
                 style = MaterialTheme.typography.labelMedium,
                 fontSize = 11.5.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -987,7 +1069,17 @@ private fun TransactionHistoryRow(
                     )
                 }
                 Text(
-                    text = "${transaction.quantityFormatted} × ${transaction.unitPriceFormatted}",
+                    text = buildAnnotatedString {
+                        append("${transaction.quantityFormatted} × ")
+                        withStyle(
+                            SpanStyle(
+                                fontFamily = MoneyFontFamily,
+                                fontFeatureSettings = "tnum"
+                            )
+                        ) {
+                            append(transaction.unitPriceFormatted)
+                        }
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     fontSize = 11.5.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1015,7 +1107,7 @@ private fun TransactionHistoryRow(
         ) {
             Text(
                 text = transaction.totalValueFormatted,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyMedium.asMoneyStyle(),
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.surface,
                 maxLines = 1

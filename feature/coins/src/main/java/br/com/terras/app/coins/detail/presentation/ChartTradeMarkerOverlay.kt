@@ -1,5 +1,7 @@
 package br.com.terras.app.coins.detail.presentation
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -23,6 +25,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,8 +46,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import br.com.terras.app.coins.detail.domain.ChartTradeMarkerVO
@@ -47,6 +58,9 @@ import br.com.terras.app.coins.detail.domain.CoinPortfolioInsightVO
 import br.com.terras.app.coins.detail.domain.model.DataPoint
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.database.portfolio.PortfolioTransactionType
+import br.com.terras.app.dsm.ui.component.OdometerText
+import br.com.terras.app.dsm.ui.theme.MoneyFontFamily
+import br.com.terras.app.dsm.ui.theme.asMoneyStyle
 import kotlin.math.hypot
 import kotlin.math.max
 
@@ -416,7 +430,17 @@ fun ChartTradeMarkersFooter(
                     verticalArrangement = Arrangement.spacedBy(1.dp)
                 ) {
                     Text(
-                        text = "$typeLabel · ${selectedMarker.quantityFormatted} @ ${selectedMarker.unitPriceFormatted}",
+                        text = buildAnnotatedString {
+                            append("$typeLabel · ${selectedMarker.quantityFormatted} @ ")
+                            withStyle(
+                                SpanStyle(
+                                    fontFamily = MoneyFontFamily,
+                                    fontFeatureSettings = "tnum"
+                                )
+                            ) {
+                                append(selectedMarker.unitPriceFormatted)
+                            }
+                        },
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.surface,
@@ -563,7 +587,45 @@ fun CoinPortfolioSummaryCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.Bottom
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            val isDark = isSystemInDarkTheme()
+            val upFlashColor = MaterialTheme.colorScheme.scrim
+            val downFlashColor = if (isDark) Color(0xFFFF6B63) else Color(0xFFE04838)
+            val defaultPnLColor = insight.totalPnLTrend.textColor
+            var pnlFlashColor by remember(insight.coinId) {
+                mutableStateOf<Color?>(null)
+            }
+            var lastObservedPnL by remember(insight.coinId) {
+                mutableStateOf<Double?>(null)
+            }
+
+            LaunchedEffect(insight.rawTotalPnL) {
+                val current = insight.rawTotalPnL
+                val previous = lastObservedPnL
+                if (current.isFinite()) {
+                    if (previous != null && current != previous) {
+                        pnlFlashColor = if (current > previous) upFlashColor else downFlashColor
+                        lastObservedPnL = current
+                        delay(750L)
+                        pnlFlashColor = null
+                    } else {
+                        lastObservedPnL = current
+                    }
+                }
+            }
+
+            val animatedPnLColor by animateColorAsState(
+                targetValue = pnlFlashColor ?: defaultPnLColor,
+                animationSpec = tween(durationMillis = if (pnlFlashColor != null) 140 else 550),
+                label = "portfolioTotalPnLFlashColor"
+            )
+            val totalPnLFontSize = if (insight.totalPnLFormatted.length >= 14) 20.sp else 22.sp
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 Text(
                     text = stringResource(R.string.detail_portfolio_total_pnl),
                     style = MaterialTheme.typography.labelMedium,
@@ -573,14 +635,19 @@ fun CoinPortfolioSummaryCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Text(
+                    OdometerText(
                         text = insight.totalPnLFormatted,
-                        fontSize = 22.sp,
+                        rawValue = insight.rawTotalPnL,
+                        animateChanges = true,
+                        style = MaterialTheme.typography.titleLarge.asMoneyStyle(),
+                        fontSize = totalPnLFontSize,
                         fontWeight = FontWeight.Bold,
-                        color = insight.totalPnLTrend.textColor
+                        color = animatedPnLColor
                     )
-                    Text(
+                    OdometerText(
                         text = "(${insight.totalPnLPercentageFormatted})",
+                        rawValue = insight.rawTotalPnLPercentage,
+                        animateChanges = true,
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = insight.totalPnLTrend.textColor
@@ -607,7 +674,11 @@ fun CoinPortfolioSummaryCard(
                     } else {
                         stringResource(R.string.detail_portfolio_closed_position)
                     },
-                    style = MaterialTheme.typography.titleMedium,
+                    style = if (insight.hasOpenPosition) {
+                        MaterialTheme.typography.titleMedium.asMoneyStyle()
+                    } else {
+                        MaterialTheme.typography.titleMedium
+                    },
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.surface
                 )
@@ -629,14 +700,16 @@ fun CoinPortfolioSummaryCard(
                     name = stringResource(R.string.detail_portfolio_avg_price),
                     value = insight.averageBuyPriceFormatted,
                     showDivider = false,
-                    verticalPadding = 0.dp
+                    verticalPadding = 0.dp,
+                    isMonetary = true
                 )
                 if (insight.hasRealizedPnL) {
                     SectionInfoItem(
                         name = stringResource(R.string.detail_portfolio_realized_pnl_full),
                         value = insight.realizedPnLFormatted,
                         showDivider = false,
-                        verticalPadding = 0.dp
+                        verticalPadding = 0.dp,
+                        isMonetary = true
                     )
                 }
             } else {
@@ -644,7 +717,8 @@ fun CoinPortfolioSummaryCard(
                     name = stringResource(R.string.detail_portfolio_realized_pnl_short),
                     value = insight.realizedPnLFormatted,
                     showDivider = false,
-                    verticalPadding = 0.dp
+                    verticalPadding = 0.dp,
+                    isMonetary = true
                 )
                 SectionInfoItem(
                     name = stringResource(R.string.detail_portfolio_recorded_trades),

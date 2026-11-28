@@ -36,7 +36,9 @@ data class CoinPortfolioInsightVO(
     val unrealizedPnLFormatted: String,
     val realizedPnLFormatted: String,
     val hasRealizedPnL: Boolean,
-    val tradeMarkers: List<ChartTradeMarkerVO>
+    val tradeMarkers: List<ChartTradeMarkerVO>,
+    val rawTotalPnL: Double = 0.0,
+    val rawTotalPnLPercentage: Double = 0.0
 )
 
 class CoinDetailPortfolioCalculator @Inject constructor() {
@@ -136,7 +138,9 @@ class CoinDetailPortfolioCalculator @Inject constructor() {
             unrealizedPnLFormatted = unrealizedPnL.formatSignedMoney(locale),
             realizedPnLFormatted = realizedPnL.formatSignedMoney(locale),
             hasRealizedPnL = abs(realizedPnL) > VALUE_EPSILON,
-            tradeMarkers = markers
+            tradeMarkers = markers,
+            rawTotalPnL = totalPnL,
+            rawTotalPnLPercentage = pnLPct
         )
     }
 

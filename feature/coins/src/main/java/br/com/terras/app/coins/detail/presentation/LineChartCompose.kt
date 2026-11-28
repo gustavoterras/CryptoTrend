@@ -57,6 +57,7 @@ import br.com.terras.app.common.formatAxisMoney
 import br.com.terras.app.common.formatMoney
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
+import br.com.terras.app.dsm.ui.theme.MoneyFontFamily
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -121,12 +122,23 @@ fun LineChartCompose(
             fontWeight = FontWeight.Medium
         )
     }
+    val yAxisTextStyle = remember(axisLabelColor) {
+        TextStyle(
+            color = axisLabelColor,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Medium,
+            fontFamily = MoneyFontFamily,
+            fontFeatureSettings = "tnum"
+        )
+    }
     val calloutLabelColor = colorScheme.surface
     val calloutTextStyle = remember(calloutLabelColor) {
         TextStyle(
             color = calloutLabelColor,
             fontSize = 11.5.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            fontFamily = MoneyFontFamily,
+            fontFeatureSettings = "tnum"
         )
     }
 
@@ -138,9 +150,9 @@ fun LineChartCompose(
             (overallMin + (overallMax - overallMin) * fraction).formatAxisMoney()
         }
     }
-    val maxYLabelWidthPx = remember(rightReferenceLabels, axisTextStyle) {
+    val maxYLabelWidthPx = remember(rightReferenceLabels, yAxisTextStyle) {
         rightReferenceLabels.maxOfOrNull { label ->
-            textMeasurer.measure(text = label, style = axisTextStyle).size.width
+            textMeasurer.measure(text = label, style = yAxisTextStyle).size.width
         }?.toFloat() ?: 0f
     }
 
@@ -270,7 +282,7 @@ fun LineChartCompose(
     }
 
     val yLabelLayouts = yTickLabels.map { label ->
-        textMeasurer.measure(text = label, style = axisTextStyle)
+        textMeasurer.measure(text = label, style = yAxisTextStyle)
     }
     val xLabelLayouts = remember(data, xTickIndices, axisTextStyle) {
         xTickIndices.mapNotNull { index ->

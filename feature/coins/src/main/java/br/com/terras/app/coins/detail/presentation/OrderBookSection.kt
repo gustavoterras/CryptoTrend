@@ -49,7 +49,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -65,6 +67,8 @@ import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.component.ShimmerEffect
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.dsm.ui.theme.DSMTheme
+import br.com.terras.app.dsm.ui.theme.MoneyFontFamily
+import br.com.terras.app.dsm.ui.theme.asMoneyStyle
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -181,12 +185,29 @@ private fun OrderBookContent(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val spreadText = stringResource(
+                R.string.detail_order_book_spread,
+                snapshot.spreadAbsoluteFormatted,
+                snapshot.spreadPercentageFormatted
+            )
+            val spreadAnnotated = remember(spreadText, snapshot.spreadAbsoluteFormatted) {
+                buildAnnotatedString {
+                    append(spreadText)
+                    val idx = spreadText.indexOf(snapshot.spreadAbsoluteFormatted)
+                    if (idx >= 0) {
+                        addStyle(
+                            SpanStyle(
+                                fontFamily = MoneyFontFamily,
+                                fontFeatureSettings = "tnum"
+                            ),
+                            idx,
+                            idx + snapshot.spreadAbsoluteFormatted.length
+                        )
+                    }
+                }
+            }
             Text(
-                text = stringResource(
-                    R.string.detail_order_book_spread,
-                    snapshot.spreadAbsoluteFormatted,
-                    snapshot.spreadPercentageFormatted
-                ),
+                text = spreadAnnotated,
                 style = MaterialTheme.typography.labelMedium.merge(
                     TextStyle(fontFeatureSettings = "tnum")
                 ),
@@ -201,10 +222,22 @@ private fun OrderBookContent(
 
             if (snapshot.availableMultipliers.isNotEmpty()) {
                 Box {
-                    val selectedLabel = if (snapshot.selectedStepFormatted.isNotBlank()) {
-                        "${snapshot.selectedMultiplier.label} (${snapshot.selectedStepFormatted})"
-                    } else {
-                        snapshot.selectedMultiplier.label
+                    val selectedLabel = remember(snapshot.selectedMultiplier, snapshot.selectedStepFormatted) {
+                        buildAnnotatedString {
+                            append(snapshot.selectedMultiplier.label)
+                            if (snapshot.selectedStepFormatted.isNotBlank()) {
+                                append(" (")
+                                pushStyle(
+                                    SpanStyle(
+                                        fontFamily = MoneyFontFamily,
+                                        fontFeatureSettings = "tnum"
+                                    )
+                                )
+                                append(snapshot.selectedStepFormatted)
+                                pop()
+                                append(")")
+                            }
+                        }
                     }
                     Row(
                         modifier = Modifier
@@ -248,7 +281,17 @@ private fun OrderBookContent(
                             DropdownMenuItem(
                                 text = {
                                     Text(
-                                        text = "${option.multiplier.label} · ${option.stepFormatted}",
+                                        text = buildAnnotatedString {
+                                            append("${option.multiplier.label} · ")
+                                            pushStyle(
+                                                SpanStyle(
+                                                    fontFamily = MoneyFontFamily,
+                                                    fontFeatureSettings = "tnum"
+                                                )
+                                            )
+                                            append(option.stepFormatted)
+                                            pop()
+                                        },
                                         style = MaterialTheme.typography.labelLarge.merge(
                                             TextStyle(fontFeatureSettings = "tnum")
                                         ),
@@ -688,9 +731,7 @@ private fun OrderBookBidRow(
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = entry.priceFormatted,
-                style = MaterialTheme.typography.bodySmall.merge(
-                    TextStyle(fontFeatureSettings = "tnum")
-                ),
+                style = MaterialTheme.typography.bodySmall.asMoneyStyle(),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = priceColor,
@@ -737,9 +778,7 @@ private fun OrderBookAskRow(
         ) {
             Text(
                 text = entry.priceFormatted,
-                style = MaterialTheme.typography.bodySmall.merge(
-                    TextStyle(fontFeatureSettings = "tnum")
-                ),
+                style = MaterialTheme.typography.bodySmall.asMoneyStyle(),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = priceColor,

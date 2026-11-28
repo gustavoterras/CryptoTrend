@@ -73,6 +73,7 @@ import br.com.terras.app.coins.list.domain.model.GlobalMarketVO
 import br.com.terras.app.coins.list.presentation.CoinsViewModel.GlobalMarketState
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.component.ShimmerEffect
+import br.com.terras.app.dsm.ui.theme.asMoneyStyle
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 import kotlinx.coroutines.CoroutineScope
@@ -574,7 +575,7 @@ private fun MarketCapSection(
         ) {
             Text(
                 text = data.totalMarketCap,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleSmall.asMoneyStyle(),
                 fontSize = 11.5.sp,
                 letterSpacing = (-0.3).sp,
                 fontWeight = FontWeight.Bold,
@@ -620,7 +621,7 @@ private fun VolumeSection(
     ) {
         Text(
             text = data.totalVolume24h,
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleSmall.asMoneyStyle(),
             fontSize = 11.5.sp,
             letterSpacing = (-0.3).sp,
             fontWeight = FontWeight.Bold,

@@ -15,6 +15,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -32,6 +33,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
@@ -40,10 +44,14 @@ import br.com.terras.app.dsm.ui.component.CoinListItemView
 import br.com.terras.app.dsm.ui.component.MarketSortBar
 import br.com.terras.app.dsm.ui.component.MarketSortState
 import br.com.terras.app.dsm.ui.component.PullToRefreshWrapper
-import br.com.terras.app.dsm.ui.component.RippleButton
 import br.com.terras.app.dsm.ui.component.StickyHeaderView
 import br.com.terras.app.dsm.ui.component.sortWithMarketState
 import br.com.terras.app.dsm.ui.theme.DSMTheme
+import br.com.terras.app.favorites.domain.model.CoinVO
+import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesIntent
+import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Error
+import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Loading
+import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Success
 import com.airbnb.lottie.LottieProperty
 import com.airbnb.lottie.compose.LottieAnimation
 import com.airbnb.lottie.compose.LottieCompositionSpec
@@ -51,11 +59,6 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.airbnb.lottie.compose.rememberLottieDynamicProperties
 import com.airbnb.lottie.compose.rememberLottieDynamicProperty
-import br.com.terras.app.favorites.domain.model.CoinVO
-import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesIntent
-import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Error
-import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Loading
-import br.com.terras.app.favorites.presentation.FavoritesViewModel.FavoritesState.Success
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
@@ -66,6 +69,26 @@ fun FavoriteActivityCompose(
 ) {
     val coinsListState by viewModel.coins.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val isLiveTickerConnected by viewModel.isLiveTickerConnected.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> viewModel.handleIntent(FavoritesIntent.SetLiveStreamActive(true))
+                Lifecycle.Event.ON_STOP -> viewModel.handleIntent(FavoritesIntent.SetLiveStreamActive(false))
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            viewModel.handleIntent(FavoritesIntent.SetLiveStreamActive(true))
+        }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.handleIntent(FavoritesIntent.SetLiveStreamActive(false))
+        }
+    }
 
     if (showTopBar) {
         Scaffold(
@@ -76,6 +99,7 @@ fun FavoriteActivityCompose(
             FavoritesContentBody(
                 coinsListState = coinsListState,
                 isRefreshing = isRefreshing,
+                isLiveTickerConnected = isLiveTickerConnected,
                 topPadding = innerPadding.calculateTopPadding(),
                 onRefresh = { viewModel.handleIntent(FavoritesIntent.Refresh) },
                 onItemClick = onItemClick
@@ -85,6 +109,7 @@ fun FavoriteActivityCompose(
         FavoritesContentBody(
             coinsListState = coinsListState,
             isRefreshing = isRefreshing,
+            isLiveTickerConnected = isLiveTickerConnected,
             topPadding = 0.dp,
             onRefresh = { viewModel.handleIntent(FavoritesIntent.Refresh) },
             onItemClick = onItemClick
@@ -96,6 +121,7 @@ fun FavoriteActivityCompose(
 private fun FavoritesContentBody(
     coinsListState: FavoritesViewModel.FavoritesState,
     isRefreshing: Boolean,
+    isLiveTickerConnected: Boolean,
     topPadding: Dp,
     onRefresh: () -> Unit,
     onItemClick: (String) -> Unit
@@ -139,6 +165,7 @@ private fun FavoritesContentBody(
                     } else {
                         OnCoinsListSuccess(
                             coinsList = sortedCoins,
+                            animatePriceFlash = isLiveTickerConnected,
                             onItemClick = onItemClick
                         )
                     }
@@ -243,6 +270,7 @@ private fun OnFavoritesEmpty() {
 @Composable
 private fun OnCoinsListSuccess(
     coinsList: List<CoinVO>,
+    animatePriceFlash: Boolean,
     onItemClick: (String) -> Unit
 ) {
     LazyColumn(
@@ -253,8 +281,11 @@ private fun OnCoinsListSuccess(
         ),
         modifier = Modifier.fillMaxSize()
     ) {
-        items(coinsList.size) {
-            coinsList[it].run {
+        items(
+            count = coinsList.size,
+            key = { index -> coinsList[index].id }
+        ) { index ->
+            coinsList[index].run {
                 CoinListItemView(
                     coinId = id,
                     coinPosition = marketCapRank,
@@ -266,14 +297,16 @@ private fun OnCoinsListSuccess(
                     trendColor = trendColor,
                     coinVolume = volume,
                     sparklinePrices = sparklinePrices,
+                    rawPrice = rawPrice,
+                    rawPriceChangePercentage = rawPriceChangePercentage,
+                    animatePriceFlash = animatePriceFlash,
+                    animatePriceOdometer = true,
                     onItemClick = onItemClick
                 )
             }
         }
     }
 }
-
-
 
 @ThemePreviews
 @Composable

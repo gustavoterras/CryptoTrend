@@ -194,4 +194,21 @@ class CoinsMapperImplTest {
         Assert.assertEquals("", mapped.first().marketCapRank)
         Assert.assertEquals(1.25, mapped.first().rawPrice, 0.001)
     }
+
+    @Test
+    fun `WHEN toCoins maps large volume THEN shortens display volume while preserving rawVolume`() {
+        val originalLocale = Locale.getDefault()
+        try {
+            Locale.setDefault(Locale.US)
+            val mapped = mapper.toCoins(
+                listOf(
+                    mockCoinsResponseStub.copy(totalVolume = 42_500_000_000.0)
+                )
+            )
+            Assert.assertEquals("$42.5B", mapped.single().volume)
+            Assert.assertEquals(42_500_000_000.0, mapped.single().rawVolume, 0.001)
+        } finally {
+            Locale.setDefault(originalLocale)
+        }
+    }
 }

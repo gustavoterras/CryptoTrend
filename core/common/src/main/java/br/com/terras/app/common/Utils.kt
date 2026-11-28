@@ -101,6 +101,46 @@ fun Double.formatCompactMoney(locale: Locale = Locale.getDefault()): String {
     return "$currencySymbol ${numberFormatter.format(scaled)}$suffix"
 }
 
+fun Double.formatShortMoney(locale: Locale = Locale.getDefault()): String {
+    if (!this.isFinite()) return 0.0.formatAxisMoney(locale)
+    val absValue = abs(this)
+    if (absValue < 1_000_000.0) return formatAxisMoney(locale)
+
+    val currencyFormatter = DecimalFormat.getCurrencyInstance(locale) as DecimalFormat
+    val currencySymbol = currencyFormatter.decimalFormatSymbols.currencySymbol
+
+    val (divisor, suffix) = when {
+        absValue >= 1_000_000_000_000.0 -> 1_000_000_000_000.0 to "T"
+        absValue >= 1_000_000_000.0 -> 1_000_000_000.0 to "B"
+        else -> 1_000_000.0 to "M"
+    }
+
+    val scaled = absValue / divisor
+    val symbols = DecimalFormatSymbols(locale)
+    val numberFormatter = DecimalFormat("#,##0.##", symbols)
+    val prefix = if (currencySymbol == "R$") "R$ " else currencySymbol
+    val sign = if (this < 0.0) "-" else ""
+    return "$sign$prefix${numberFormatter.format(scaled)}$suffix"
+}
+
+fun Double.formatShortNumber(locale: Locale = Locale.getDefault()): String {
+    if (!this.isFinite()) return "0"
+    val absValue = abs(this)
+    val symbols = DecimalFormatSymbols(locale)
+    if (absValue < 1_000_000.0) {
+        return DecimalFormat("#,##0.##", symbols).format(this)
+    }
+
+    val (divisor, suffix) = when {
+        absValue >= 1_000_000_000_000.0 -> 1_000_000_000_000.0 to "T"
+        absValue >= 1_000_000_000.0 -> 1_000_000_000.0 to "B"
+        else -> 1_000_000.0 to "M"
+    }
+
+    val scaled = this / divisor
+    return "${DecimalFormat("#,##0.##", symbols).format(scaled)}$suffix"
+}
+
 fun Double.formatCryptoQuantity(locale: Locale = Locale.getDefault()): String {
     val symbols = DecimalFormatSymbols(locale)
     val maxDecimals = when {

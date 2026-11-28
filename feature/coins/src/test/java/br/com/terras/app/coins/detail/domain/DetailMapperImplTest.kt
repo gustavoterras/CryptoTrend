@@ -174,4 +174,34 @@ class DetailMapperImplTest {
         Assert.assertEquals(mockCoinInsightResponseStub.relatedCoinIds, result.first().relatedCoinIds)
         Assert.assertTrue(result.first().postedAt.isNotBlank())
     }
+
+    @Test
+    fun `WHEN toCoin maps large metrics THEN formats cap volume supplies and watchlist with T B M`() {
+        val originalLocale = java.util.Locale.getDefault()
+        try {
+            java.util.Locale.setDefault(java.util.Locale.US)
+            val result = mapper.toCoin(
+                mockCoinDetailResponseStub.copy(
+                    watchlistPortfolioUsers = 2_350_000,
+                    marketData = mockCoinDetailResponseStub.marketData.copy(
+                        marketCap = br.com.terras.app.coins.detail.data.model.CoinValue(usd = 1_920_000_000_000.0),
+                        fullyDilutedValuation = mapOf("usd" to 2_100_000_000_000.0),
+                        totalVolume = br.com.terras.app.coins.detail.data.model.CoinValue(usd = 38_400_000_000.0),
+                        circulatingSupply = 19_800_000.0,
+                        maxSupply = 21_000_000.0
+                    )
+                )
+            )
+            val dataByKey = result.marketDataList.toMap()
+            Assert.assertEquals("$1.92T", dataByKey["Market Cap"])
+            Assert.assertEquals("$2.1T", dataByKey["FDV"])
+            Assert.assertEquals("$38.4B", dataByKey["Trading Volume 24h"])
+            Assert.assertEquals("19.8M", dataByKey["Available Supply"])
+            Assert.assertEquals("21M", dataByKey["Max Supply"])
+            Assert.assertEquals("2.35M", dataByKey["Watchlist Users"])
+            Assert.assertEquals("$780M", result.tickers.first().volume24h)
+        } finally {
+            java.util.Locale.setDefault(originalLocale)
+        }
+    }
 }

@@ -18,6 +18,18 @@ val avenirNextFontFamily = FontFamily(
     Font(R.font.avenir_next_italic, FontWeight.Normal, style = FontStyle.Italic)
 )
 
+val MoneyFontFamily = FontFamily(
+    Font(R.font.space_grotesk, FontWeight.Normal, FontStyle.Normal),
+    Font(R.font.space_grotesk, FontWeight.Medium, FontStyle.Normal),
+    Font(R.font.space_grotesk, FontWeight.SemiBold, FontStyle.Normal),
+    Font(R.font.space_grotesk, FontWeight.Bold, FontStyle.Normal)
+)
+
+fun TextStyle.asMoneyStyle(): TextStyle = copy(
+    fontFamily = MoneyFontFamily,
+    fontFeatureSettings = "tnum"
+)
+
 val typography = Typography(
     headlineLarge = TextStyle(
         fontFamily = avenirNextFontFamily,

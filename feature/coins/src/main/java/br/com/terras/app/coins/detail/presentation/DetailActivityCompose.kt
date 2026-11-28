@@ -6,6 +6,7 @@ import android.annotation.SuppressLint
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -19,6 +20,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -89,6 +91,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -112,11 +115,13 @@ import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.S
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.component.AnimatedFavoriteButton
+import br.com.terras.app.dsm.ui.component.OdometerText
 import br.com.terras.app.dsm.ui.component.PullToRefreshWrapper
 import br.com.terras.app.dsm.ui.component.RippleButton
 import br.com.terras.app.dsm.ui.component.SegmentedControl
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.dsm.ui.theme.DSMTheme
+import br.com.terras.app.dsm.ui.theme.asMoneyStyle
 import br.com.terras.app.feeds.domain.model.ArticleVO
 import br.com.terras.app.navigation.Screen
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
@@ -425,106 +430,155 @@ fun OnCoinDetailSuccess(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 18.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .weight(1.05f)
-                                .padding(end = 10.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Text(
-                                text = state.coin.price,
-                                style = MaterialTheme.typography.headlineMedium.copy(
-                                    fontSize = 26.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFeatureSettings = "tnum"
-                                ),
-                                color = MaterialTheme.colorScheme.surface,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(
-                                    text = referencePrice,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false)
-                                )
-                                if (change24h.isNotBlank()) {
-                                    Text(
-                                        text = "($change24h)",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = state.coin.trendColor.textColor,
-                                        maxLines = 1
-                                    )
-                                }
-                            }
-                            val statusSlotHeight = with(LocalDensity.current) { 22.sp.toDp() }.coerceAtLeast(24.dp)
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(statusSlotHeight),
-                                contentAlignment = Alignment.CenterStart
-                            ) {
-                                AnimatedContent(
-                                    targetState = isRealTimeActive,
-                                    contentAlignment = Alignment.CenterStart,
-                                    transitionSpec = {
-                                        fadeIn(
-                                            animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
-                                        ).togetherWith(
-                                            fadeOut(
-                                                animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing)
-                                            )
-                                        ).using(null)
-                                    },
-                                    label = "detailStatusBadgeTransition"
-                                ) { liveActive ->
-                                    if (liveActive) {
-                                        LivePulseBadge(
-                                            updatedTimeLabel = updatedTimeLabel,
-                                            modifier = Modifier.testTag("detail_live_badge")
-                                        )
-                                    } else if (updatedTimeLabel != null) {
-                                        Text(
-                                            text = stringResource(R.string.detail_updated_at, updatedTimeLabel),
-                                            style = MaterialTheme.typography.labelSmall.copy(
-                                                fontFeatureSettings = "tnum"
-                                            ),
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 1,
-                                            softWrap = false,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
+                        val isDark = isSystemInDarkTheme()
+                        val upFlashColor = MaterialTheme.colorScheme.scrim
+                        val downFlashColor = if (isDark) Color(0xFFFF6B63) else Color(0xFFE04838)
+                        val defaultPriceColor = MaterialTheme.colorScheme.surface
+                        var priceFlashColor by remember(state.coin.symbol, state.coin.name) {
+                            mutableStateOf<Color?>(null)
+                        }
+                        var lastObservedPrice by remember(state.coin.symbol, state.coin.name) {
+                            mutableStateOf<Double?>(null)
+                        }
+
+                        LaunchedEffect(state.coin.rawPrice) {
+                            val current = state.coin.rawPrice
+                            val previous = lastObservedPrice
+                            if (current.isFinite() && current > 0.0) {
+                                if (previous != null && current != previous) {
+                                    priceFlashColor = if (current > previous) upFlashColor else downFlashColor
+                                    lastObservedPrice = current
+                                    delay(750L)
+                                    priceFlashColor = null
+                                } else {
+                                    lastObservedPrice = current
                                 }
                             }
                         }
 
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        ChartHeaderStatRow(label = stringResource(R.string.detail_header_vol_24h), value = volume24h)
-                        ChartHeaderStatRow(label = stringResource(R.string.detail_header_high_price), value = highPrice24h)
-                        ChartHeaderStatRow(label = stringResource(R.string.detail_header_low_price), value = lowPrice24h)
+                        val animatedPriceColor by animateColorAsState(
+                            targetValue = priceFlashColor ?: defaultPriceColor,
+                            animationSpec = tween(durationMillis = if (priceFlashColor != null) 140 else 550),
+                            label = "detailPriceFlashColor"
+                        )
+                        val detailPriceFontSize = when {
+                            state.coin.price.length >= 18 -> 28.sp
+                            state.coin.price.length >= 15 -> 31.sp
+                            state.coin.price.length >= 12 -> 34.sp
+                            else -> 36.sp
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 18.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            OdometerText(
+                                text = state.coin.price,
+                                rawValue = state.coin.rawPrice,
+                                animateChanges = true,
+                                style = MaterialTheme.typography.headlineLarge.asMoneyStyle(),
+                                fontSize = detailPriceFontSize,
+                                fontWeight = FontWeight.Bold,
+                                color = animatedPriceColor
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 18.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 12.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Text(
+                                        text = referencePrice,
+                                        style = MaterialTheme.typography.bodySmall.asMoneyStyle(),
+                                        fontSize = 12.5.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f, fill = false)
+                                    )
+                                    if (change24h.isNotBlank()) {
+                                        OdometerText(
+                                            text = "($change24h)",
+                                            animateChanges = true,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontSize = 12.5.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = state.coin.trendColor.textColor
+                                        )
+                                    }
+                                }
+                                val statusSlotHeight = with(LocalDensity.current) { 22.sp.toDp() }.coerceAtLeast(24.dp)
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(statusSlotHeight),
+                                    contentAlignment = Alignment.CenterStart
+                                ) {
+                                    AnimatedContent(
+                                        targetState = isRealTimeActive,
+                                        contentAlignment = Alignment.CenterStart,
+                                        transitionSpec = {
+                                            fadeIn(
+                                                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing)
+                                            ).togetherWith(
+                                                fadeOut(
+                                                    animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing)
+                                                )
+                                            ).using(null)
+                                        },
+                                        label = "detailStatusBadgeTransition"
+                                    ) { liveActive ->
+                                        if (liveActive) {
+                                            LivePulseBadge(
+                                                updatedTimeLabel = updatedTimeLabel,
+                                                modifier = Modifier.testTag("detail_live_badge")
+                                            )
+                                        } else if (updatedTimeLabel != null) {
+                                            Text(
+                                                text = stringResource(R.string.detail_updated_at, updatedTimeLabel),
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontFeatureSettings = "tnum"
+                                                ),
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                softWrap = false,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                ChartHeaderStatRow(label = stringResource(R.string.detail_header_vol_24h), value = volume24h)
+                                ChartHeaderStatRow(label = stringResource(R.string.detail_header_high_price), value = highPrice24h)
+                                ChartHeaderStatRow(label = stringResource(R.string.detail_header_low_price), value = lowPrice24h)
+                            }
+                        }
                     }
-                }
 
                 HorizontalDivider(
                     modifier = Modifier.padding(horizontal = 18.dp),
@@ -828,7 +882,8 @@ fun OnCoinDetailSuccess(
                             showDivider = false,
                             verticalPadding = 0.dp,
                             valueColor = state.coin.marketDataTrends[pair.first]?.textColor
-                                ?: MaterialTheme.colorScheme.surface
+                                ?: MaterialTheme.colorScheme.surface,
+                            isMonetary = isMonetaryMarketDataKey(pair.first)
                         )
                     }
                 }
@@ -1166,7 +1221,7 @@ private fun ChartHeaderStatRow(
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.asMoneyStyle(),
             fontSize = 11.5.sp,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.surface,
@@ -1186,7 +1241,8 @@ fun SectionInfoItem(
     value: String,
     showDivider: Boolean,
     verticalPadding: Dp = 7.dp,
-    valueColor: Color = MaterialTheme.colorScheme.surface
+    valueColor: Color = MaterialTheme.colorScheme.surface,
+    isMonetary: Boolean = false
 ) {
     Row(
         modifier = Modifier
@@ -1205,7 +1261,11 @@ fun SectionInfoItem(
 
         Text(
             text = value,
-            style = MaterialTheme.typography.labelMedium,
+            style = if (isMonetary) {
+                MaterialTheme.typography.labelMedium.asMoneyStyle()
+            } else {
+                MaterialTheme.typography.labelMedium
+            },
             fontWeight = FontWeight.SemiBold,
             color = valueColor,
             textAlign = TextAlign.End
@@ -1477,6 +1537,18 @@ private fun RealTimePeriodChip(
             )
         }
     }
+}
+
+private fun isMonetaryMarketDataKey(rawKey: String): Boolean = when (rawKey) {
+    "Market Cap",
+    "FDV",
+    "TVL",
+    "Trading Volume 24h",
+    "Highest Price 24h",
+    "Lowest Price 24h",
+    "All-Time High Price",
+    "All-Time Low Price" -> true
+    else -> false
 }
 
 @Composable

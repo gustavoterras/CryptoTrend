@@ -74,6 +74,8 @@ class CoinDetailPortfolioCalculatorTest {
         assertEquals(PortfolioTransactionType.BUY, insight.tradeMarkers[0].type)
         assertTrue(insight.totalPnLFormatted.startsWith("+"))
         assertEquals("+33.3%", insight.totalPnLPercentageFormatted)
+        assertEquals(40000.0, insight.rawTotalPnL, 0.01)
+        assertEquals(33.333, insight.rawTotalPnLPercentage, 0.01)
     }
 
     @Test

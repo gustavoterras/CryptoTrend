@@ -61,6 +61,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -73,6 +75,8 @@ import br.com.terras.app.common.toFormatDate
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.dsm.ui.component.TypewriterSearchPlaceholder
+import br.com.terras.app.dsm.ui.theme.MoneyFontFamily
+import br.com.terras.app.dsm.ui.theme.asMoneyStyle
 import br.com.terras.app.database.portfolio.PortfolioTransactionType
 import br.com.terras.app.portfolio.domain.model.SelectableCoinVO
 import br.com.terras.app.portfolio.presentation.PortfolioViewModel.CoinPickerState
@@ -371,7 +375,7 @@ private fun PickerCoinRow(
         if (coin.currentPrice != null) {
             Text(
                 text = coin.currentPrice.formatAxisMoney(),
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelLarge.asMoneyStyle(),
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.surface
             )
@@ -429,11 +433,30 @@ private fun TransactionFormContent(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        val subtitle = coin.currentPrice?.let {
-                            stringResource(R.string.tx_current_price_label, it.formatAxisMoney())
+                        val formattedPrice = coin.currentPrice?.formatAxisMoney()
+                        val subtitleText = formattedPrice?.let {
+                            stringResource(R.string.tx_current_price_label, it)
                         } ?: coin.symbol
+                        val subtitleAnnotated = remember(subtitleText, formattedPrice) {
+                            buildAnnotatedString {
+                                append(subtitleText)
+                                if (formattedPrice != null) {
+                                    val idx = subtitleText.indexOf(formattedPrice)
+                                    if (idx >= 0) {
+                                        addStyle(
+                                            SpanStyle(
+                                                fontFamily = MoneyFontFamily,
+                                                fontFeatureSettings = "tnum"
+                                            ),
+                                            idx,
+                                            idx + formattedPrice.length
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         Text(
-                            text = subtitle,
+                            text = subtitleAnnotated,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -638,7 +661,7 @@ private fun TransactionFormContent(
                 )
                 Text(
                     text = estimatedTotal.formatMoney(),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleMedium.asMoneyStyle(),
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.surface
                 )
