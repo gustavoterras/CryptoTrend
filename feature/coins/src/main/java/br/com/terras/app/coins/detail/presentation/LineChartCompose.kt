@@ -1,5 +1,7 @@
 package br.com.terras.app.coins.detail.presentation
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -91,6 +93,19 @@ fun LineChartCompose(
     val effectiveGridLineColor = gridLineColor ?: if (isDark) Color(0x1FFFFFFF) else Color(0x140F172A)
     val effectivePointFillColor = pointFillColor ?: colorScheme.primary
     val markerHolder = remember { LineMarkerPositionHolder() }
+
+    // Animação de entrada: no carregamento inicial a linha começa flat na base e sobe verticalmente formando o gráfico
+    val enterAnim = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        enterAnim.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = 950,
+                easing = CubicBezierEasing(0.16f, 1f, 0.3f, 1f)
+            )
+        )
+    }
+    val enterProgress = enterAnim.value
 
     val transparentGraphColor = remember(key1 = graphColor) {
         graphColor.copy(alpha = 0.28f)
@@ -398,9 +413,12 @@ fun LineChartCompose(
             )
         }
 
+        val elementsAlpha = ((enterProgress - 0.45f) / 0.55f).coerceIn(0f, 1f)
+
         fun priceToY(price: Double): Float {
             val ratio = if (actualDiff <= 0.0) 0.5f else ((price - displayMin) / safeRange).toFloat()
-            return paddingTop + usableHeight * (1f - ratio)
+            val targetY = paddingTop + usableHeight * (1f - ratio)
+            return plotBottom - (plotBottom - targetY) * enterProgress
         }
 
         fun indexToX(index: Int): Float {
@@ -474,7 +492,7 @@ fun LineChartCompose(
                 )
             }
 
-            if (showDashedLine) {
+            if (showDashedLine && elementsAlpha > 0.02f) {
                 val dottedPath = Path().apply {
                     moveTo(chartLeftPx, firstY)
                     lineTo(chartRight, firstY)
@@ -482,7 +500,7 @@ fun LineChartCompose(
 
                 drawPath(
                     path = dottedPath,
-                    color = graphColor.copy(alpha = .8f),
+                    color = graphColor.copy(alpha = .8f * elementsAlpha),
                     style = Stroke(
                         width = 1.5.dp.toPx(),
                         cap = StrokeCap.Round,
@@ -491,18 +509,18 @@ fun LineChartCompose(
                 )
             }
 
-            if (showHighLowCallouts && data.isNotEmpty()) {
+            if (showHighLowCallouts && data.isNotEmpty() && elementsAlpha > 0.02f) {
                 val maxX = indexToX(maxIndex)
                 val maxY = priceToY(upperValue.y)
 
                 drawCircle(
-                    color = effectivePointFillColor,
+                    color = effectivePointFillColor.copy(alpha = elementsAlpha),
                     radius = dotRadiusPx,
                     center = Offset(maxX, maxY),
                     style = Fill
                 )
                 drawCircle(
-                    color = graphColor,
+                    color = graphColor.copy(alpha = elementsAlpha),
                     radius = dotRadiusPx,
                     center = Offset(maxX, maxY),
                     style = Stroke(width = 2.2.dp.toPx())
@@ -515,7 +533,8 @@ fun LineChartCompose(
                         .coerceAtLeast(2.dp.toPx())
                     drawText(
                         textLayoutResult = layout,
-                        topLeft = Offset(labelX, labelY)
+                        topLeft = Offset(labelX, labelY),
+                        alpha = elementsAlpha
                     )
                 }
 
@@ -524,13 +543,13 @@ fun LineChartCompose(
                     val minY = priceToY(lowerValue.y)
 
                     drawCircle(
-                        color = effectivePointFillColor,
+                        color = effectivePointFillColor.copy(alpha = elementsAlpha),
                         radius = dotRadiusPx,
                         center = Offset(minX, minY),
                         style = Fill
                     )
                     drawCircle(
-                        color = graphColor,
+                        color = graphColor.copy(alpha = elementsAlpha),
                         radius = dotRadiusPx,
                         center = Offset(minX, minY),
                         style = Stroke(width = 2.2.dp.toPx())
@@ -544,7 +563,8 @@ fun LineChartCompose(
                         val labelY = (minY + dotRadiusPx + calloutGapPx).coerceAtMost(maxLabelY)
                         drawText(
                             textLayoutResult = layout,
-                            topLeft = Offset(labelX, labelY)
+                            topLeft = Offset(labelX, labelY),
+                            alpha = elementsAlpha
                         )
                     }
                 }
@@ -563,23 +583,25 @@ fun LineChartCompose(
                 viewportRightPx = chartRight
             )
             markerHolder.items = positionedMarkers
-            drawTradeMarkers(
-                positionedMarkers = positionedMarkers,
-                plotBottom = plotBottom,
-                pointFillColor = effectivePointFillColor,
-                isDark = isDark,
-                selectedMarkerId = selectedMarkerId,
-                plotTop = paddingTop
-            )
+            if (elementsAlpha > 0.02f) {
+                drawTradeMarkers(
+                    positionedMarkers = positionedMarkers,
+                    plotBottom = plotBottom,
+                    pointFillColor = effectivePointFillColor.copy(alpha = elementsAlpha),
+                    isDark = isDark,
+                    selectedMarkerId = selectedMarkerId,
+                    plotTop = paddingTop
+                )
+            }
 
-            if (showLatestPointPulse && data.isNotEmpty()) {
+            if (showLatestPointPulse && data.isNotEmpty() && elementsAlpha > 0.02f) {
                 val latestX = indexToX(data.lastIndex)
                 val latestY = priceToY(data.last().y)
                 val haloMaxRadius = 9.5.dp.toPx()
                 val haloMinRadius = 3.5.dp.toPx()
                 if (latestX in (chartLeftPx - haloMaxRadius)..(chartRight + haloMaxRadius)) {
                     val currentHaloRadius = haloMinRadius + (haloMaxRadius - haloMinRadius) * pulseProgress
-                    val currentHaloAlpha = (1f - pulseProgress) * 0.36f
+                    val currentHaloAlpha = (1f - pulseProgress) * 0.36f * elementsAlpha
                     drawCircle(
                         color = graphColor.copy(alpha = currentHaloAlpha),
                         radius = currentHaloRadius,
@@ -587,13 +609,13 @@ fun LineChartCompose(
                         style = Fill
                     )
                     drawCircle(
-                        color = effectivePointFillColor,
+                        color = effectivePointFillColor.copy(alpha = elementsAlpha),
                         radius = 4.2.dp.toPx(),
                         center = Offset(latestX, latestY),
                         style = Fill
                     )
                     drawCircle(
-                        color = graphColor.copy(alpha = pulseCoreAlpha),
+                        color = graphColor.copy(alpha = pulseCoreAlpha * elementsAlpha),
                         radius = 3.0.dp.toPx(),
                         center = Offset(latestX, latestY),
                         style = Fill

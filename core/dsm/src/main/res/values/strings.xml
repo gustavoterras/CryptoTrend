@@ -228,4 +228,35 @@
     <string name="tx_total_label">Transaction total</string>
     <string name="tx_save_changes">Save changes</string>
     <string name="tx_confirm_operation">Confirm transaction</string>
+
+    <!-- AI Analysis (Firebase AI Logic) -->
+    <string name="ai_badge_gemini">Gemini AI</string>
+    <string name="ai_error_title">Unable to complete AI analysis</string>
+    <string name="ai_reanalyze">Re-analyze</string>
+
+    <string name="ai_chart_trigger_title">Analyze chart with AI</string>
+    <string name="ai_chart_trigger_subtitle">Trend reading, support, resistance and momentum</string>
+    <string name="ai_chart_sheet_title">AI Chart Analysis</string>
+    <string name="ai_chart_sheet_subtitle">%1$s (%2$s) • %3$s</string>
+    <string name="ai_chart_loading">Analyzing %1$s (%2$s) chart data…</string>
+    <string name="ai_chart_bias_bullish">Bullish bias</string>
+    <string name="ai_chart_bias_bearish">Bearish bias</string>
+    <string name="ai_chart_bias_neutral">Neutral / Consolidation</string>
+    <string name="ai_chart_support_levels">Support Zones</string>
+    <string name="ai_chart_resistance_levels">Resistance Zones</string>
+    <string name="ai_chart_observations">Technical Observations</string>
+    <string name="ai_chart_risk_note">Risk Note</string>
+
+    <string name="ai_portfolio_trigger_title">Analyze portfolio with AI</string>
+    <string name="ai_portfolio_trigger_subtitle">Diversification, concentration risk and P&amp;L insights</string>
+    <string name="ai_portfolio_sheet_title">AI Portfolio Analysis</string>
+    <string name="ai_portfolio_sheet_subtitle">%1$d active assets • %2$s</string>
+    <string name="ai_portfolio_loading">Evaluating holdings, allocation and P&amp;L…</string>
+    <string name="ai_portfolio_health_strong">Strong diversification</string>
+    <string name="ai_portfolio_health_balanced">Balanced</string>
+    <string name="ai_portfolio_health_concentrated">Concentrated</string>
+    <string name="ai_portfolio_health_high_risk">High concentration risk</string>
+    <string name="ai_portfolio_strengths">Highlights &amp; Strengths</string>
+    <string name="ai_portfolio_risks">Risks &amp; Concentration</string>
+    <string name="ai_portfolio_ideas">Considerations &amp; Next Steps</string>
 </resources>

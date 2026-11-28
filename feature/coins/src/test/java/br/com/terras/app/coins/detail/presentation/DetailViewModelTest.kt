@@ -25,9 +25,18 @@ import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.S
 import br.com.terras.app.coins.mockCoinChartDetailVOStub
 import br.com.terras.app.coins.mockCoinDetailVOStub
 import br.com.terras.app.coins.mockCoinInsightVOStub
+import br.com.terras.app.common.ai.AiAnalysisUiState
+import br.com.terras.app.common.ai.AiChartAnalysisReport
+import br.com.terras.app.common.ai.AiChartAnalysisRequest
+import br.com.terras.app.common.ai.AiPortfolioAnalysisReport
+import br.com.terras.app.common.ai.AiPortfolioAnalysisRequest
+import br.com.terras.app.common.ai.AiPortfolioHealth
+import br.com.terras.app.common.ai.AiTrendBias
+import br.com.terras.app.common.ai.CryptoAiAnalyzer
 import br.com.terras.app.common.formatLivePrice
 import br.com.terras.app.dsm.ui.component.TrendColor
 import br.com.terras.app.feeds.domain.FeedsUseCase
+import br.com.terras.app.feeds.domain.model.ArticleVO
 import br.com.terras.app.database.favorites.FavoriteCoinsLocalRepository
 import br.com.terras.app.database.portfolio.PortfolioLocalRepository
 import br.com.terras.app.database.portfolio.PortfolioTransactionRecord
@@ -125,6 +134,37 @@ private class FakeCoinbaseOrderBookService : CoinbaseOrderBookService {
     }
 }
 
+private class FakeDetailCryptoAiAnalyzer : CryptoAiAnalyzer {
+    var lastChartRequest: AiChartAnalysisRequest? = null
+    var chartResult: Result<AiChartAnalysisReport> = Result.success(
+        AiChartAnalysisReport(
+            headline = "Estrutura de alta",
+            trendBias = AiTrendBias.BULLISH,
+            summary = "Preço consolidando acima do suporte imediato.",
+            supportLevels = listOf("$480.00"),
+            resistanceLevels = listOf("$520.00"),
+            keyObservations = listOf("Tendência compradora no período"),
+            riskNote = "Apenas informativo."
+        )
+    )
+
+    override suspend fun analyzeChart(request: AiChartAnalysisRequest): AiChartAnalysisReport {
+        lastChartRequest = request
+        return chartResult.getOrThrow()
+    }
+
+    override suspend fun analyzePortfolio(request: AiPortfolioAnalysisRequest): AiPortfolioAnalysisReport =
+        AiPortfolioAnalysisReport(
+            headline = "Equilibrado",
+            healthRating = AiPortfolioHealth.BALANCED,
+            summary = "Resumo",
+            strengths = emptyList(),
+            risksAndConcentration = emptyList(),
+            actionableIdeas = emptyList(),
+            disclaimer = "Aviso"
+        )
+}
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class DetailViewModelTest {
     private val userCase: DetailUseCase = mockk(relaxed = true)
@@ -133,6 +173,7 @@ class DetailViewModelTest {
     private lateinit var portfolioLocalRepository: FakeDetailPortfolioLocalRepository
     private lateinit var webSocketService: FakeCoinWebSocketService
     private lateinit var orderBookService: FakeCoinbaseOrderBookService
+    private lateinit var aiAnalyzer: FakeDetailCryptoAiAnalyzer
 
     private lateinit var viewModel: DetailViewModel
 
@@ -145,6 +186,7 @@ class DetailViewModelTest {
         portfolioLocalRepository = FakeDetailPortfolioLocalRepository()
         webSocketService = FakeCoinWebSocketService()
         orderBookService = FakeCoinbaseOrderBookService()
+        aiAnalyzer = FakeDetailCryptoAiAnalyzer()
         coEvery { feedsUseCase.getFeeds(any()) } returns Result.success(emptyList())
         viewModel = DetailViewModel(
             useCase = userCase,
@@ -153,6 +195,7 @@ class DetailViewModelTest {
             portfolioLocalRepository = portfolioLocalRepository,
             webSocketService = webSocketService,
             orderBookService = orderBookService,
+            aiAnalyzer = aiAnalyzer,
             portfolioCalculator = CoinDetailPortfolioCalculator()
         )
     }
@@ -549,5 +592,50 @@ class DetailViewModelTest {
             Assert.assertEquals(1, orderBookService.availabilityCalls)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test
+    fun `WHEN AnalyzeChartWithAi succeeds THEN populates request and emits Success`() = runBlocking {
+        val sampleChart = CoinChartDetailVO(
+            chartData = listOf(
+                DataPoint("May 21", 480.0, "10:00", "$480.00", timestampMillis = 1_700_000_000_000L),
+                DataPoint("May 22", 500.0, "10:00", "$500.00", timestampMillis = 1_700_086_400_000L)
+            )
+        )
+        coEvery { userCase.getDetailById("bitcoin") } returns Result.success(
+            mockCoinDetailVOStub.copy(name = "Bitcoin", symbol = "btc", price = "$500.00", rawPrice = 500.0)
+        )
+        coEvery { userCase.getChartDetailById("bitcoin", 7) } returns Result.success(sampleChart)
+
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail("bitcoin"))
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart("bitcoin", 7))
+        viewModel.handleIntent(DetailViewModel.DetailIntent.AnalyzeChartWithAi(isBarChart = false))
+
+        val state = viewModel.aiChartAnalysis.value
+        Assert.assertTrue(state is AiAnalysisUiState.Success)
+        Assert.assertEquals("Bitcoin", aiAnalyzer.lastChartRequest?.coinName)
+        Assert.assertEquals("7D", aiAnalyzer.lastChartRequest?.timeframeLabel)
+        Assert.assertEquals(2, aiAnalyzer.lastChartRequest?.chartPointsCount)
+    }
+
+    @Test
+    fun `WHEN AnalyzeChartWithAi fails THEN propagates authentic Error message`() = runBlocking {
+        val sampleChart = CoinChartDetailVO(
+            chartData = listOf(
+                DataPoint("May 21", 480.0, "10:00", "$480.00", timestampMillis = 1_700_000_000_000L),
+                DataPoint("May 22", 500.0, "10:00", "$500.00", timestampMillis = 1_700_086_400_000L)
+            )
+        )
+        coEvery { userCase.getDetailById("bitcoin") } returns Result.success(mockCoinDetailVOStub)
+        coEvery { userCase.getChartDetailById("bitcoin", 1) } returns Result.success(sampleChart)
+        aiAnalyzer.chartResult = Result.failure(IllegalStateException("App Check attestation failed"))
+
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadDetail("bitcoin"))
+        viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart("bitcoin", 1))
+        viewModel.handleIntent(DetailViewModel.DetailIntent.AnalyzeChartWithAi(isBarChart = true))
+
+        val state = viewModel.aiChartAnalysis.value
+        Assert.assertTrue(state is AiAnalysisUiState.Error)
+        Assert.assertEquals("App Check attestation failed", (state as AiAnalysisUiState.Error).message)
     }
 }

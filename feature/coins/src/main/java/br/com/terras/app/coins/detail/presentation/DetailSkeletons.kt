@@ -383,7 +383,8 @@ private fun DetailHeaderStatsSkeleton(brush: Brush) {
 @Composable
 internal fun DetailChartSkeleton(
     modifier: Modifier = Modifier,
-    brush: Brush = ShimmerEffect()
+    brush: Brush = ShimmerEffect(),
+    showControlsPlaceholder: Boolean = true
 ) {
     val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)
 
@@ -393,60 +394,62 @@ internal fun DetailChartSkeleton(
             .testTag("detail_chart_skeleton"),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 18.dp)
-        ) {
-            val totalPeriodButtons = DaysOfChart.entries.size + 1
-            val totalButtons = totalPeriodButtons + 2
-            val spacingBetweenButtons = 4.dp
-            val minGroupGap = 10.dp
-            val extraLiveChipWidth = 14.dp
-            val totalOverhead = (spacingBetweenButtons * (totalPeriodButtons - 1)) +
-                spacingBetweenButtons +
-                minGroupGap +
-                extraLiveChipWidth
-            val buttonWidth = ((maxWidth - totalOverhead) / totalButtons)
-                .coerceIn(26.dp, 36.dp)
-            val rtChipWidth = (buttonWidth + extraLiveChipWidth).coerceIn(44.dp, 54.dp)
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        if (showControlsPlaceholder) {
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 18.dp)
             ) {
+                val totalPeriodButtons = DaysOfChart.entries.size + 1
+                val totalButtons = totalPeriodButtons + 2
+                val spacingBetweenButtons = 4.dp
+                val minGroupGap = 10.dp
+                val extraLiveChipWidth = 14.dp
+                val totalOverhead = (spacingBetweenButtons * (totalPeriodButtons - 1)) +
+                    spacingBetweenButtons +
+                    minGroupGap +
+                    extraLiveChipWidth
+                val buttonWidth = ((maxWidth - totalOverhead) / totalButtons)
+                    .coerceIn(26.dp, 36.dp)
+                val rtChipWidth = (buttonWidth + extraLiveChipWidth).coerceIn(44.dp, 54.dp)
+
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    repeat(DaysOfChart.entries.size) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        repeat(DaysOfChart.entries.size) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = buttonWidth, height = 32.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(brush)
+                            )
+                        }
                         Box(
                             modifier = Modifier
-                                .size(width = buttonWidth, height = 32.dp)
+                                .size(width = rtChipWidth, height = 32.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(brush)
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(width = rtChipWidth, height = 32.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(brush)
-                    )
-                }
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    repeat(2) {
-                        Box(
-                            modifier = Modifier
-                                .size(width = buttonWidth, height = 30.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(brush)
-                        )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        repeat(2) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = buttonWidth, height = 30.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(brush)
+                            )
+                        }
                     }
                 }
             }

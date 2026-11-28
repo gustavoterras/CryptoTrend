@@ -60,6 +60,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     packaging {
@@ -97,11 +98,12 @@ android {
 }
 
 dependencies {
-    // implementation(platform(libs.firebase.bom))
-    // implementation(libs.firebase.ai)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.ai)
     // implementation(libs.firebase.firestore)
     // implementation(libs.firebase.auth)
-    // implementation(libs.firebase.appcheck.debug)
+    implementation(libs.firebase.appcheck.recaptcha)
+    implementation(libs.firebase.appcheck.debug)
     // implementation(libs.androidx.credentials)
     // implementation(libs.androidx.credentials.play.services)
     // implementation(libs.googleid)

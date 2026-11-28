@@ -41,7 +41,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -73,13 +75,17 @@ import com.airbnb.lottie.compose.rememberLottieDynamicProperty
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import br.com.terras.app.common.ai.AiAnalysisUiState
+import br.com.terras.app.common.ai.AiPortfolioAnalysisReport
 import br.com.terras.app.common.formatMoney
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
+import br.com.terras.app.dsm.ui.component.AiAnalysisTriggerBanner
 import br.com.terras.app.dsm.ui.component.AllocationDonutChart
 import br.com.terras.app.dsm.ui.component.AllocationSlice
 import br.com.terras.app.dsm.ui.theme.MoneyFontFamily
 import br.com.terras.app.dsm.ui.theme.asMoneyStyle
+import br.com.terras.app.dsm.ui.component.AnimatedAiButton
 import br.com.terras.app.dsm.ui.component.AnimatedAddFab
 import br.com.terras.app.dsm.ui.component.PullToRefreshWrapper
 import br.com.terras.app.dsm.ui.component.RippleButton
@@ -108,12 +114,29 @@ fun PortfolioActivityCompose(
     val pickerState by viewModel.coinPickerState.collectAsStateWithLifecycle()
     val pendingDelete by viewModel.pendingDeleteTransaction.collectAsStateWithLifecycle()
     val deleteError by viewModel.deleteErrorMessage.collectAsStateWithLifecycle()
+    val aiAnalysisState by viewModel.aiPortfolioAnalysis.collectAsStateWithLifecycle()
+    var showAiSheet by remember { mutableStateOf(false) }
 
     PortfolioScreenContent(
         uiState = uiState,
         onIntent = viewModel::handleIntent,
-        onCoinClick = onCoinClick
+        onCoinClick = onCoinClick,
+        onOpenAiAnalysis = {
+            showAiSheet = true
+            viewModel.handleIntent(PortfolioIntent.AnalyzePortfolioWithAi)
+        }
     )
+
+    if (showAiSheet && uiState is PortfolioUiState.Content) {
+        val contentState = uiState as PortfolioUiState.Content
+        PortfolioAiAnalysisSheet(
+            assetCount = contentState.snapshot.summary.assetCount,
+            totalBalanceFormatted = contentState.snapshot.summary.totalValueFormatted,
+            state = aiAnalysisState,
+            onRetry = { viewModel.handleIntent(PortfolioIntent.AnalyzePortfolioWithAi) },
+            onDismiss = { showAiSheet = false }
+        )
+    }
 
     PortfolioTransactionSheet(
         editorState = editorState,
@@ -186,12 +209,20 @@ fun PortfolioActivityCompose(
 fun PortfolioScreenContent(
     uiState: PortfolioUiState,
     onIntent: (PortfolioIntent) -> Unit,
-    onCoinClick: (String) -> Unit
+    onCoinClick: (String) -> Unit,
+    onOpenAiAnalysis: () -> Unit = {}
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            StickyHeaderView()
+            StickyHeaderView(
+                trailingAction = {
+                    AnimatedAiButton(
+                        onClick = onOpenAiAnalysis,
+                        testTag = "portfolio_ai_analysis_button"
+                    )
+                }
+            )
         },
         floatingActionButton = {
             if (uiState is PortfolioUiState.Content) {
@@ -223,7 +254,8 @@ fun PortfolioScreenContent(
                         state = uiState,
                         topPadding = innerPadding.calculateTopPadding(),
                         onIntent = onIntent,
-                        onCoinClick = onCoinClick
+                        onCoinClick = onCoinClick,
+                        onOpenAiAnalysis = onOpenAiAnalysis
                     )
                 }
             }
@@ -459,7 +491,8 @@ private fun PortfolioSuccessContent(
     state: PortfolioUiState.Content,
     topPadding: Dp,
     onIntent: (PortfolioIntent) -> Unit,
-    onCoinClick: (String) -> Unit
+    onCoinClick: (String) -> Unit,
+    onOpenAiAnalysis: () -> Unit
 ) {
     val context = LocalContext.current
     val snapshot = state.snapshot
@@ -495,11 +528,6 @@ private fun PortfolioSuccessContent(
 
         item(key = "summary_header") {
             PortfolioSummaryHeader(summary = snapshot.summary)
-            HorizontalDivider(
-                modifier = Modifier.padding(horizontal = 18.dp),
-                thickness = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
         }
 
         if (allocationSlices.isNotEmpty()) {

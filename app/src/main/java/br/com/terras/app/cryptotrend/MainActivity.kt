@@ -51,6 +51,7 @@ import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import br.com.terras.app.cryptotrend.ai.configureAppCheck
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.cryptotrend.splash.SplashScreen
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
@@ -80,6 +81,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         super.onCreate(savedInstanceState)
+        configureAppCheck(this, intent)
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT)

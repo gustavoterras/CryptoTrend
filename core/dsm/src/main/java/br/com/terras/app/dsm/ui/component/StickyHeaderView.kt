@@ -26,7 +26,9 @@ import br.com.terras.app.dsm.ui.annotation.ThemePreviews
 import br.com.terras.app.dsm.ui.theme.DSMTheme
 
 @Composable
-fun StickyHeaderView() {
+fun StickyHeaderView(
+    trailingAction: @Composable (() -> Unit)? = null
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -34,7 +36,7 @@ fun StickyHeaderView() {
             .statusBarsPadding()
             .padding(horizontal = 18.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Start
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -62,6 +64,8 @@ fun StickyHeaderView() {
                 color = MaterialTheme.colorScheme.surface
             )
         }
+
+        trailingAction?.invoke()
     }
 }
 

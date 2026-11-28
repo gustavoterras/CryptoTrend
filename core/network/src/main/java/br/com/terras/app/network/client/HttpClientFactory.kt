@@ -102,7 +102,7 @@ class KtorHttpClientFactory @Inject constructor(
                 connectTimeoutMillis = spec.connectTimeoutMillis
             }
             install(WebSockets) {
-                pingInterval = spec.pingIntervalMillis
+                pingIntervalMillis = spec.pingIntervalMillis
             }
             install(ContentNegotiation) {
                 json(json)

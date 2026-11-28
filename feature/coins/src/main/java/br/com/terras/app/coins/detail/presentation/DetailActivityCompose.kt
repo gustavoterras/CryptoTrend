@@ -59,9 +59,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -112,9 +114,13 @@ import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.L
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessChart
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessDetail
 import br.com.terras.app.coins.detail.presentation.DetailViewModel.DetailState.SuccessInsights
+import br.com.terras.app.common.ai.AiAnalysisUiState
+import br.com.terras.app.common.ai.AiChartAnalysisReport
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.dsm.ui.annotation.ThemePreviews
+import br.com.terras.app.dsm.ui.component.AiAnalysisTriggerBanner
 import br.com.terras.app.dsm.ui.component.AnimatedFavoriteButton
+import br.com.terras.app.dsm.ui.component.AnimatedAiButton
 import br.com.terras.app.dsm.ui.component.OdometerText
 import br.com.terras.app.dsm.ui.component.PullToRefreshWrapper
 import br.com.terras.app.dsm.ui.component.RippleButton
@@ -145,6 +151,7 @@ fun DetailActivityCompose(
     val refreshErrorMessage by viewModel.refreshErrorMessage.collectAsStateWithLifecycle()
     val isRealTimeActive by viewModel.isRealTimeActive.collectAsStateWithLifecycle()
     val orderBookState by viewModel.orderBookState.collectAsStateWithLifecycle()
+    val aiChartAnalysis by viewModel.aiChartAnalysis.collectAsStateWithLifecycle()
     val activeDays = (chartDetailState as? SuccessChart)?.days ?: DaysOfChart.DAY.value
     val loadedCoinName = (coinDetailState as? SuccessDetail)?.coin?.name
 
@@ -227,6 +234,10 @@ fun DetailActivityCompose(
                 onSelectOrderBookMultiplier = { multiplier ->
                     viewModel.handleIntent(DetailViewModel.DetailIntent.SelectOrderBookMultiplier(multiplier))
                 },
+                aiChartAnalysisState = aiChartAnalysis,
+                onAnalyzeChartWithAi = { isBarChart ->
+                    viewModel.handleIntent(DetailViewModel.DetailIntent.AnalyzeChartWithAi(isBarChart))
+                },
                 onNavigateToPortfolio = onNavigateToPortfolio
             ) { days ->
                 viewModel.handleIntent(DetailViewModel.DetailIntent.LoadChart(id, days))
@@ -267,6 +278,8 @@ fun OnCoinDetailSuccess(
     onToggleFavorite: () -> Unit = {},
     onToggleOrderBook: (Boolean) -> Unit = {},
     onSelectOrderBookMultiplier: (OrderBookMultiplier) -> Unit = {},
+    aiChartAnalysisState: AiAnalysisUiState<AiChartAnalysisReport> = AiAnalysisUiState.Idle,
+    onAnalyzeChartWithAi: (Boolean) -> Unit = {},
     onNavigateToPortfolio: () -> Unit = {},
     selectedDaysOfChart: (Int) -> Unit
 ) {
@@ -283,6 +296,15 @@ fun OnCoinDetailSuccess(
     }
 
     var isBarChart by remember { mutableStateOf(false) }
+    var showAiChartSheet by remember { mutableStateOf(false) }
+    var currentSelectedDays by rememberSaveable { mutableIntStateOf(DaysOfChart.DAY.value) }
+
+    LaunchedEffect(chartDetailState) {
+        if (chartDetailState is SuccessChart) {
+            currentSelectedDays = chartDetailState.days
+        }
+    }
+
     var selectedTradeMarker by remember(portfolioInsight, chartDetailState) {
         mutableStateOf<ChartTradeMarkerVO?>(null)
     }
@@ -385,20 +407,33 @@ fun OnCoinDetailSuccess(
                     R.string.detail_removed_favorite,
                     state.coin.symbol.uppercase()
                 )
-                AnimatedFavoriteButton(
-                    isFavorite = isFavorite,
-                    onToggle = {
-                        val willFavorite = !isFavorite
-                        onToggleFavorite()
-                        coroutineScope.launch {
-                            snackbarHostState.currentSnackbarData?.dismiss()
-                            snackbarHostState.showSnackbar(
-                                if (willFavorite) addedFavoriteText else removedFavoriteText
-                            )
-                        }
-                    },
-                    testTag = "favorite_button"
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    AnimatedAiButton(
+                        onClick = {
+                            showAiChartSheet = true
+                            onAnalyzeChartWithAi(isBarChart)
+                        },
+                        testTag = "detail_ai_chart_button"
+                    )
+
+                    AnimatedFavoriteButton(
+                        isFavorite = isFavorite,
+                        onToggle = {
+                            val willFavorite = !isFavorite
+                            onToggleFavorite()
+                            coroutineScope.launch {
+                                snackbarHostState.currentSnackbarData?.dismiss()
+                                snackbarHostState.showSnackbar(
+                                    if (willFavorite) addedFavoriteText else removedFavoriteText
+                                )
+                            }
+                        },
+                        testTag = "favorite_button"
+                    )
+                }
             }
         )
     }) { innerPadding ->
@@ -586,6 +621,116 @@ fun OnCoinDetailSuccess(
                     color = MaterialTheme.colorScheme.outlineVariant
                 )
 
+                BoxWithConstraints(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp)
+                ) {
+                    val totalPeriodButtons = DaysOfChart.entries.size + 1
+                    val totalButtons = totalPeriodButtons + 2
+                    val spacingBetweenButtons = 4.dp
+                    val minGroupGap = 10.dp
+                    val extraLiveChipWidth = 14.dp
+                    val totalOverhead = (spacingBetweenButtons * (totalPeriodButtons - 1)) +
+                        spacingBetweenButtons +
+                        minGroupGap +
+                        extraLiveChipWidth
+                    val buttonWidth = ((maxWidth - totalOverhead) / totalButtons)
+                        .coerceIn(26.dp, 36.dp)
+                    val rtChipWidth = (buttonWidth + extraLiveChipWidth).coerceIn(44.dp, 54.dp)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            SegmentedControl(
+                                items = DaysOfChart.entries.map { day -> day.text },
+                                defaultSelectedItemIndex = if (isRealTimeActive) {
+                                    -1
+                                } else {
+                                    DaysOfChart.entries
+                                        .indexOfFirst { it.value == currentSelectedDays }
+                                        .coerceAtLeast(0)
+                                },
+                                useFixedWidth = true,
+                                itemWidth = buttonWidth,
+                                itemHeight = 32.dp,
+                                itemSpacing = spacingBetweenButtons,
+                                chipHorizontalPadding = 0.dp,
+                                chipVerticalPadding = 0.dp,
+                                textStyle = MaterialTheme.typography.labelSmall
+                            ) { index ->
+                                val selected = DaysOfChart.entries[index].value
+                                currentSelectedDays = selected
+                                selectedDaysOfChart(selected)
+                            }
+
+                            RealTimePeriodChip(
+                                isActive = isRealTimeActive,
+                                width = rtChipWidth,
+                                height = 32.dp,
+                                onClick = { onToggleRealTime(!isRealTimeActive) },
+                                modifier = Modifier.testTag("detail_rt_toggle_button")
+                            )
+                        }
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val activeToggleTint = if (MaterialTheme.colorScheme.scrim.luminance() > 0.4f) {
+                                Color(0xFF052E16)
+                            } else {
+                                Color.White
+                            }
+                            val inactiveToggleBg = Color.Transparent
+
+                            Box(
+                                modifier = Modifier
+                                    .size(width = buttonWidth, height = 32.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (isBarChart) MaterialTheme.colorScheme.scrim else inactiveToggleBg
+                                    )
+                                    .testTag("chart_type_bar_button")
+                                    .clickable { isBarChart = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_bar_chart_24dp),
+                                    contentDescription = stringResource(R.string.detail_bar_chart_cd),
+                                    tint = if (isBarChart) activeToggleTint else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            Box(
+                                modifier = Modifier
+                                    .size(width = buttonWidth, height = 32.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        if (!isBarChart) MaterialTheme.colorScheme.scrim else inactiveToggleBg
+                                    )
+                                    .testTag("chart_type_line_button")
+                                    .clickable { isBarChart = false },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_show_chart_24dp),
+                                    contentDescription = stringResource(R.string.detail_line_chart_cd),
+                                    tint = if (!isBarChart) activeToggleTint else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
                 AnimatedContent(
                     targetState = chartDetailState,
                     contentKey = { chartState ->
@@ -612,114 +757,6 @@ fun OnCoinDetailSuccess(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalArrangement = Arrangement.spacedBy(14.dp)
                             ) {
-                                BoxWithConstraints(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 18.dp)
-                                ) {
-                                    val totalPeriodButtons = DaysOfChart.entries.size + 1
-                                    val totalButtons = totalPeriodButtons + 2
-                                    val spacingBetweenButtons = 4.dp
-                                    val minGroupGap = 10.dp
-                                    val extraLiveChipWidth = 14.dp
-                                    val totalOverhead = (spacingBetweenButtons * (totalPeriodButtons - 1)) +
-                                        spacingBetweenButtons +
-                                        minGroupGap +
-                                        extraLiveChipWidth
-                                    val buttonWidth = ((maxWidth - totalOverhead) / totalButtons)
-                                        .coerceIn(26.dp, 36.dp)
-                                    val rtChipWidth = (buttonWidth + extraLiveChipWidth).coerceIn(44.dp, 54.dp)
-
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            SegmentedControl(
-                                                items = DaysOfChart.entries.map { day -> day.text },
-                                                defaultSelectedItemIndex = if (isRealTimeActive) {
-                                                    -1
-                                                } else {
-                                                    DaysOfChart.entries
-                                                        .indexOfFirst { it.value == currentChartState.days }
-                                                        .coerceAtLeast(0)
-                                                },
-                                                useFixedWidth = true,
-                                                itemWidth = buttonWidth,
-                                                itemHeight = 32.dp,
-                                                itemSpacing = spacingBetweenButtons,
-                                                chipHorizontalPadding = 0.dp,
-                                                chipVerticalPadding = 0.dp,
-                                                textStyle = MaterialTheme.typography.labelSmall
-                                            ) { index ->
-                                                selectedDaysOfChart(DaysOfChart.entries[index].value)
-                                            }
-
-                                            RealTimePeriodChip(
-                                                isActive = isRealTimeActive,
-                                                width = rtChipWidth,
-                                                height = 32.dp,
-                                                onClick = { onToggleRealTime(!isRealTimeActive) },
-                                                modifier = Modifier.testTag("detail_rt_toggle_button")
-                                            )
-                                        }
-
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(spacingBetweenButtons),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            val activeToggleTint = if (MaterialTheme.colorScheme.scrim.luminance() > 0.4f) {
-                                                Color(0xFF052E16)
-                                            } else {
-                                                Color.White
-                                            }
-                                            val inactiveToggleBg = Color.Transparent
-
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(width = buttonWidth, height = 32.dp)
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .background(
-                                                        if (isBarChart) MaterialTheme.colorScheme.scrim else inactiveToggleBg
-                                                    )
-                                                    .testTag("chart_type_bar_button")
-                                                    .clickable { isBarChart = true },
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(id = R.drawable.ic_bar_chart_24dp),
-                                                    contentDescription = stringResource(R.string.detail_bar_chart_cd),
-                                                    tint = if (isBarChart) activeToggleTint else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.size(18.dp)
-                                                )
-                                            }
-
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(width = buttonWidth, height = 32.dp)
-                                                    .clip(RoundedCornerShape(8.dp))
-                                                    .background(
-                                                        if (!isBarChart) MaterialTheme.colorScheme.scrim else inactiveToggleBg
-                                                    )
-                                                    .testTag("chart_type_line_button")
-                                                    .clickable { isBarChart = false },
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Icon(
-                                                    painter = painterResource(id = R.drawable.ic_show_chart_24dp),
-                                                    contentDescription = stringResource(R.string.detail_line_chart_cd),
-                                                    tint = if (!isBarChart) activeToggleTint else MaterialTheme.colorScheme.onSurfaceVariant,
-                                                    modifier = Modifier.size(18.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-
                                 val chartMarkers = portfolioInsight?.tradeMarkers.orEmpty()
                                 if (isBarChart) {
                                     BarChartCompose(
@@ -764,7 +801,7 @@ fun OnCoinDetailSuccess(
                             }
                         }
                         is Loading -> {
-                            DetailChartSkeleton()
+                            DetailChartSkeleton(showControlsPlaceholder = false)
                         }
                         else -> {}
                     }
@@ -1198,6 +1235,23 @@ fun OnCoinDetailSuccess(
                 }
             }
         }
+        }
+
+        if (showAiChartSheet) {
+            val activeTimeframe = if (isRealTimeActive) {
+                stringResource(R.string.detail_chart_period_rt)
+            } else {
+                val days = (chartDetailState as? SuccessChart)?.days ?: DaysOfChart.DAY.value
+                DaysOfChart.entries.firstOrNull { it.value == days }?.text ?: "${days}D"
+            }
+            DetailChartAiSheet(
+                coinName = state.coin.name,
+                coinSymbol = state.coin.symbol,
+                timeframeLabel = activeTimeframe,
+                state = aiChartAnalysisState,
+                onRetry = { onAnalyzeChartWithAi(isBarChart) },
+                onDismiss = { showAiChartSheet = false }
+            )
         }
     }
 }

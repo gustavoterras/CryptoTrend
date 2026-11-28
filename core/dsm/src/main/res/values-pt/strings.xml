@@ -228,4 +228,35 @@
     <string name="tx_total_label">Total da operação</string>
     <string name="tx_save_changes">Salvar alterações</string>
     <string name="tx_confirm_operation">Confirmar operação</string>
+
+    <!-- AI Analysis (Firebase AI Logic) -->
+    <string name="ai_badge_gemini">Gemini IA</string>
+    <string name="ai_error_title">Não foi possível concluir a análise com IA</string>
+    <string name="ai_reanalyze">Analisar novamente</string>
+
+    <string name="ai_chart_trigger_title">Analisar gráfico com IA</string>
+    <string name="ai_chart_trigger_subtitle">Leitura de tendência, suporte, resistência e momentum</string>
+    <string name="ai_chart_sheet_title">Análise Gráfica com IA</string>
+    <string name="ai_chart_sheet_subtitle">%1$s (%2$s) • %3$s</string>
+    <string name="ai_chart_loading">Analisando o gráfico de %1$s (%2$s)…</string>
+    <string name="ai_chart_bias_bullish">Viés de Alta</string>
+    <string name="ai_chart_bias_bearish">Viés de Baixa</string>
+    <string name="ai_chart_bias_neutral">Neutro / Consolidação</string>
+    <string name="ai_chart_support_levels">Zonas de Suporte</string>
+    <string name="ai_chart_resistance_levels">Zonas de Resistência</string>
+    <string name="ai_chart_observations">Observações Técnicas</string>
+    <string name="ai_chart_risk_note">Nota de Risco</string>
+
+    <string name="ai_portfolio_trigger_title">Analisar portfólio com IA</string>
+    <string name="ai_portfolio_trigger_subtitle">Diversificação, risco de concentração e desempenho</string>
+    <string name="ai_portfolio_sheet_title">Análise do Portfólio com IA</string>
+    <string name="ai_portfolio_sheet_subtitle">%1$d ativos ativos • %2$s</string>
+    <string name="ai_portfolio_loading">Avaliando ativos, alocação e P&amp;L…</string>
+    <string name="ai_portfolio_health_strong">Boa diversificação</string>
+    <string name="ai_portfolio_health_balanced">Equilibrado</string>
+    <string name="ai_portfolio_health_concentrated">Concentrado</string>
+    <string name="ai_portfolio_health_high_risk">Alta concentração</string>
+    <string name="ai_portfolio_strengths">Pontos Positivos</string>
+    <string name="ai_portfolio_risks">Riscos e Concentração</string>
+    <string name="ai_portfolio_ideas">Sugestões e Rebalanceamento</string>
 </resources>

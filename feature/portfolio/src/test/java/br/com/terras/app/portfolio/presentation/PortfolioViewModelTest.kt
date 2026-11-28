@@ -1,5 +1,13 @@
 package br.com.terras.app.portfolio.presentation
 
+import br.com.terras.app.common.ai.AiAnalysisUiState
+import br.com.terras.app.common.ai.AiChartAnalysisReport
+import br.com.terras.app.common.ai.AiChartAnalysisRequest
+import br.com.terras.app.common.ai.AiPortfolioAnalysisReport
+import br.com.terras.app.common.ai.AiPortfolioAnalysisRequest
+import br.com.terras.app.common.ai.AiPortfolioHealth
+import br.com.terras.app.common.ai.AiTrendBias
+import br.com.terras.app.common.ai.CryptoAiAnalyzer
 import br.com.terras.app.database.portfolio.PortfolioLocalRepository
 import br.com.terras.app.database.portfolio.PortfolioTransactionRecord
 import br.com.terras.app.database.portfolio.PortfolioTransactionType
@@ -105,8 +113,40 @@ class PortfolioViewModelTest {
             )
     }
 
+    private class FakePortfolioCryptoAiAnalyzer : CryptoAiAnalyzer {
+        var lastPortfolioRequest: AiPortfolioAnalysisRequest? = null
+        var portfolioResult: Result<AiPortfolioAnalysisReport> = Result.success(
+            AiPortfolioAnalysisReport(
+                headline = "Carteira concentrada em BTC",
+                healthRating = AiPortfolioHealth.CONCENTRATED,
+                summary = "100% do capital está alocado em Bitcoin.",
+                strengths = listOf("Lucro não realizado positivo"),
+                risksAndConcentration = listOf("Alta concentração em um único ativo"),
+                actionableIdeas = listOf("Avaliar diversificação gradual"),
+                disclaimer = "Análise educacional."
+            )
+        )
+
+        override suspend fun analyzeChart(request: AiChartAnalysisRequest): AiChartAnalysisReport =
+            AiChartAnalysisReport(
+                headline = "Neutro",
+                trendBias = AiTrendBias.NEUTRAL,
+                summary = "Resumo",
+                supportLevels = emptyList(),
+                resistanceLevels = emptyList(),
+                keyObservations = emptyList(),
+                riskNote = "Aviso"
+            )
+
+        override suspend fun analyzePortfolio(request: AiPortfolioAnalysisRequest): AiPortfolioAnalysisReport {
+            lastPortfolioRequest = request
+            return portfolioResult.getOrThrow()
+        }
+    }
+
     private lateinit var localRepo: FakePortfolioLocalRepository
     private lateinit var marketRepo: FakePortfolioMarketRepository
+    private lateinit var aiAnalyzer: FakePortfolioCryptoAiAnalyzer
     private lateinit var viewModel: PortfolioViewModel
 
     @Before
@@ -114,13 +154,14 @@ class PortfolioViewModelTest {
         Dispatchers.setMain(testDispatcher)
         localRepo = FakePortfolioLocalRepository()
         marketRepo = FakePortfolioMarketRepository()
+        aiAnalyzer = FakePortfolioCryptoAiAnalyzer()
         val useCase = PortfolioUseCaseImpl(
             localRepository = localRepo,
             marketRepository = marketRepo,
             searchUseCase = FakeSearchUseCase(),
             calculator = PortfolioCalculator()
         )
-        viewModel = PortfolioViewModel(useCase)
+        viewModel = PortfolioViewModel(useCase, aiAnalyzer)
     }
 
     @After
@@ -234,5 +275,55 @@ class PortfolioViewModelTest {
         val state = viewModel.uiState.value as PortfolioUiState.Content
         assertEquals(PortfolioSubTab.HISTORY, state.activeTab)
         assertEquals("bitcoin", state.selectedSliceId)
+    }
+
+    @Test
+    fun `analyzing portfolio with AI populates request and emits Success`() = runTest {
+        localRepo.insertTransaction(
+            PortfolioTransactionRecord(
+                coinId = "bitcoin",
+                coinSymbol = "BTC",
+                coinName = "Bitcoin",
+                coinImageUrl = "",
+                type = PortfolioTransactionType.BUY,
+                quantity = 0.5,
+                unitPrice = 300_000.0,
+                timestamp = 1000L
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.handleIntent(PortfolioIntent.AnalyzePortfolioWithAi)
+        advanceUntilIdle()
+
+        val aiState = viewModel.aiPortfolioAnalysis.value
+        assertTrue(aiState is AiAnalysisUiState.Success)
+        assertEquals(1, aiAnalyzer.lastPortfolioRequest?.holdings?.size)
+        assertEquals("BTC", aiAnalyzer.lastPortfolioRequest?.holdings?.first()?.symbol)
+    }
+
+    @Test
+    fun `portfolio AI failure propagates authentic Error state`() = runTest {
+        aiAnalyzer.portfolioResult = Result.failure(IllegalStateException("Network timeout"))
+        localRepo.insertTransaction(
+            PortfolioTransactionRecord(
+                coinId = "bitcoin",
+                coinSymbol = "BTC",
+                coinName = "Bitcoin",
+                coinImageUrl = "",
+                type = PortfolioTransactionType.BUY,
+                quantity = 1.0,
+                unitPrice = 250_000.0,
+                timestamp = 1000L
+            )
+        )
+        advanceUntilIdle()
+
+        viewModel.handleIntent(PortfolioIntent.AnalyzePortfolioWithAi)
+        advanceUntilIdle()
+
+        val aiState = viewModel.aiPortfolioAnalysis.value
+        assertTrue(aiState is AiAnalysisUiState.Error)
+        assertEquals("Network timeout", (aiState as AiAnalysisUiState.Error).message)
     }
 }

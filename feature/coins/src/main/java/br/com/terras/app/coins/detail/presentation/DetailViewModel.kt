@@ -15,6 +15,10 @@ import br.com.terras.app.coins.detail.network.CoinWebSocketService
 import br.com.terras.app.coins.detail.network.CoinbaseOrderBookService
 import br.com.terras.app.coins.detail.network.LivePriceTick
 import br.com.terras.app.coins.detail.network.OrderBookStreamEvent
+import br.com.terras.app.common.ai.AiAnalysisUiState
+import br.com.terras.app.common.ai.AiChartAnalysisReport
+import br.com.terras.app.common.ai.AiChartAnalysisRequest
+import br.com.terras.app.common.ai.CryptoAiAnalyzer
 import br.com.terras.app.common.formatLivePrice
 import br.com.terras.app.common.formatPercentage
 import br.com.terras.app.common.toChartDay
@@ -59,6 +63,7 @@ class DetailViewModel @Inject constructor(
     private val portfolioLocalRepository: PortfolioLocalRepository,
     private val webSocketService: CoinWebSocketService,
     private val orderBookService: CoinbaseOrderBookService,
+    private val aiAnalyzer: CryptoAiAnalyzer,
     private val portfolioCalculator: CoinDetailPortfolioCalculator = CoinDetailPortfolioCalculator()
 ) : ViewModel() {
 
@@ -76,6 +81,8 @@ class DetailViewModel @Inject constructor(
         ) : DetailIntent
         data class ToggleOrderBookExpanded(val expanded: Boolean) : DetailIntent
         data class SelectOrderBookMultiplier(val multiplier: OrderBookMultiplier) : DetailIntent
+        data class AnalyzeChartWithAi(val isBarChart: Boolean) : DetailIntent
+        data object ClearChartAiAnalysis : DetailIntent
     }
 
     sealed interface DetailState {
@@ -213,7 +220,12 @@ class DetailViewModel @Inject constructor(
     private val _isRealTimeActive: MutableStateFlow<Boolean> = MutableStateFlow(false)
     val isRealTimeActive: StateFlow<Boolean> = _isRealTimeActive.asStateFlow()
 
+    private val _aiChartAnalysis: MutableStateFlow<AiAnalysisUiState<AiChartAnalysisReport>> =
+        MutableStateFlow(AiAnalysisUiState.Idle)
+    val aiChartAnalysis: StateFlow<AiAnalysisUiState<AiChartAnalysisReport>> = _aiChartAnalysis.asStateFlow()
+
     private var webSocketJob: Job? = null
+    private var chartAiJob: Job? = null
     private var activeRealTimeCoinId: String? = null
 
     fun handleIntent(intent: DetailIntent) {
@@ -234,6 +246,11 @@ class DetailViewModel @Inject constructor(
             is DetailIntent.SelectOrderBookMultiplier -> {
                 _orderBookMultiplier.value = intent.multiplier
             }
+            is DetailIntent.AnalyzeChartWithAi -> analyzeChartWithAi(intent.isBarChart)
+            is DetailIntent.ClearChartAiAnalysis -> {
+                chartAiJob?.cancel()
+                _aiChartAnalysis.value = AiAnalysisUiState.Idle
+            }
         }
     }
 
@@ -253,6 +270,8 @@ class DetailViewModel @Inject constructor(
         val isNewCoin = currentCoinId.value.isNotBlank() && currentCoinId.value != id
         if (isNewCoin) {
             stopRealTime()
+            chartAiJob?.cancel()
+            _aiChartAnalysis.value = AiAnalysisUiState.Idle
             _isOrderBookExpanded.value = false
             _orderBookMultiplier.value = OrderBookMultiplier.DEFAULT
             _orderBookPairAvailability.value = null
@@ -404,6 +423,125 @@ class DetailViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         webSocketJob?.cancel()
+        chartAiJob?.cancel()
+    }
+
+    private fun analyzeChartWithAi(isBarChart: Boolean) {
+        val detailSuccess = _detail.value as? DetailState.SuccessDetail
+        val chartSuccess = _chart.value as? DetailState.SuccessChart
+        val points = chartSuccess?.chart?.chartData.orEmpty()
+        if (detailSuccess == null || points.isEmpty()) {
+            _aiChartAnalysis.value = AiAnalysisUiState.Error(
+                if (isPortuguese) {
+                    "Aguarde o carregamento do gráfico antes de iniciar a análise."
+                } else {
+                    "Wait for the chart data to load before starting analysis."
+                }
+            )
+            return
+        }
+
+        val coin = detailSuccess.coin
+        val locale = Locale.getDefault()
+        val timeframeLabel = if (_isRealTimeActive.value) {
+            if (isPortuguese) "Tempo Real" else "Live"
+        } else {
+            DaysOfChart.entries.firstOrNull { it.value == chartSuccess?.days }?.text
+                ?: "${chartSuccess?.days ?: 1}D"
+        }
+        val chartTypeLabel = if (isBarChart) {
+            if (isPortuguese) "Candlestick" else "Candlestick"
+        } else {
+            if (isPortuguese) "Linha" else "Line"
+        }
+
+        val sampledPoints = sampleChartPoints(points, maxCount = 24)
+        val sampledSummary = sampledPoints.joinToString(separator = "\n") { pt ->
+            val label = pt.date.ifBlank { pt.hourLabel }.ifBlank { "-" }
+            val priceText = pt.yLabel?.takeIf { it.isNotBlank() } ?: pt.y.formatLivePrice(locale)
+            "$label: $priceText"
+        }
+
+        val startPrice = points.first().y
+        val endPrice = points.last().y
+        val minPrice = points.minOf { it.y }
+        val maxPrice = points.maxOf { it.y }
+        val netChangePercent = if (startPrice > 0.0) {
+            ((endPrice - startPrice) / startPrice) * 100.0
+        } else {
+            0.0
+        }
+
+        val volume24h = coin.marketDataList.firstOrNull { it.first == "Trading Volume 24h" }?.second ?: "-"
+        val high24h = coin.marketDataList.firstOrNull { it.first == "Highest Price 24h" }?.second ?: "-"
+        val low24h = coin.marketDataList.firstOrNull { it.first == "Lowest Price 24h" }?.second ?: "-"
+        val change24h = coin.priceChangePercentageList.firstOrNull()?.priceChangeValue ?: "-"
+        val allPeriodChanges = (coin.priceChangePercentageList + coin.extraPriceChangePercentageList)
+            .map { it.priceChangeTime.uppercase(Locale.US) to it.priceChangeValue }
+
+        val orderBookSummary = (orderBookState.value as? OrderBookUiState.Visible)?.snapshot?.let { ob ->
+            val bestBid = ob.bids.firstOrNull()?.priceFormatted ?: "-"
+            val bestAsk = ob.asks.firstOrNull()?.priceFormatted ?: "-"
+            "pair=${ob.pairSymbol}, spread=${ob.spreadAbsoluteFormatted} (${ob.spreadPercentageFormatted}), bestBid=$bestBid, bestAsk=$bestAsk"
+        }
+
+        val positionSummary = portfolioInsight.value?.let { p ->
+            "holding=${p.quantityFormatted} ${p.symbol}, avgBuy=${p.averageBuyPriceFormatted}, currentValue=${p.currentValueFormatted}, totalPnL=${p.totalPnLFormatted} (${p.totalPnLPercentageFormatted})"
+        }
+
+        val request = AiChartAnalysisRequest(
+            coinId = currentCoinId.value.ifBlank { coin.symbol.lowercase(Locale.US) },
+            coinName = coin.name,
+            coinSymbol = coin.symbol,
+            currentPriceFormatted = coin.price,
+            rawPrice = coin.rawPrice,
+            timeframeLabel = timeframeLabel,
+            chartTypeLabel = chartTypeLabel,
+            change24hFormatted = change24h,
+            high24hFormatted = high24h,
+            low24hFormatted = low24h,
+            volume24hFormatted = volume24h,
+            periodChanges = allPeriodChanges,
+            chartPointsCount = points.size,
+            periodStartPriceFormatted = startPrice.formatLivePrice(locale),
+            periodEndPriceFormatted = endPrice.formatLivePrice(locale),
+            periodMinPriceFormatted = minPrice.formatLivePrice(locale),
+            periodMaxPriceFormatted = maxPrice.formatLivePrice(locale),
+            periodChangePercentFormatted = netChangePercent.formatPercentage(locale),
+            sampledPointsSummary = sampledSummary,
+            orderBookSummary = orderBookSummary,
+            portfolioPositionSummary = positionSummary,
+            languageTag = locale.language
+        )
+
+        chartAiJob?.cancel()
+        chartAiJob = viewModelScope.launch {
+            _aiChartAnalysis.value = AiAnalysisUiState.Loading
+            try {
+                val report = aiAnalyzer.analyzeChart(request)
+                _aiChartAnalysis.value = AiAnalysisUiState.Success(report)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _aiChartAnalysis.value = AiAnalysisUiState.Error(
+                    e.localizedMessage?.takeIf { it.isNotBlank() }
+                        ?: if (isPortuguese) {
+                            "Não foi possível gerar a análise do gráfico."
+                        } else {
+                            "Unable to generate chart analysis."
+                        }
+                )
+            }
+        }
+    }
+
+    private fun sampleChartPoints(points: List<DataPoint>, maxCount: Int): List<DataPoint> {
+        if (points.size <= maxCount) return points
+        val lastIdx = points.lastIndex
+        return (0 until maxCount).map { idx ->
+            val mapped = ((idx.toDouble() / (maxCount - 1)) * lastIdx).toInt().coerceIn(0, lastIdx)
+            points[mapped]
+        }.distinct()
     }
 
     internal data class ValidatedLiveTick(

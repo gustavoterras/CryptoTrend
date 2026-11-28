@@ -3,6 +3,11 @@ package br.com.terras.app.portfolio.presentation
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import br.com.terras.app.common.ai.AiAnalysisUiState
+import br.com.terras.app.common.ai.AiPortfolioAnalysisReport
+import br.com.terras.app.common.ai.AiPortfolioAnalysisRequest
+import br.com.terras.app.common.ai.AiPortfolioHoldingInput
+import br.com.terras.app.common.ai.CryptoAiAnalyzer
 import br.com.terras.app.common.formatCryptoQuantity
 import br.com.terras.app.cryptotrend.core.dsm.R
 import br.com.terras.app.database.portfolio.PortfolioTransactionRecord
@@ -13,6 +18,7 @@ import br.com.terras.app.portfolio.domain.model.PortfolioSnapshot
 import br.com.terras.app.portfolio.domain.model.PortfolioTransactionVO
 import br.com.terras.app.portfolio.domain.model.SelectableCoinVO
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,7 +35,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class PortfolioViewModel @Inject constructor(
-    private val useCase: PortfolioUseCase
+    private val useCase: PortfolioUseCase,
+    private val aiAnalyzer: CryptoAiAnalyzer
 ) : ViewModel() {
 
     enum class PortfolioSubTab(
@@ -103,6 +110,8 @@ class PortfolioViewModel @Inject constructor(
         data object DismissDeleteDialog : PortfolioIntent
         data object ConfirmDeleteTransaction : PortfolioIntent
         data object ClearDeleteError : PortfolioIntent
+        data object AnalyzePortfolioWithAi : PortfolioIntent
+        data object ClearPortfolioAiAnalysis : PortfolioIntent
     }
 
     private val _transactions = MutableStateFlow<List<PortfolioTransactionRecord>?>(null)
@@ -124,12 +133,19 @@ class PortfolioViewModel @Inject constructor(
     private val _deleteErrorMessage = MutableStateFlow<String?>(null)
     val deleteErrorMessage: StateFlow<String?> = _deleteErrorMessage.asStateFlow()
 
+    private val _aiPortfolioAnalysis = MutableStateFlow<AiAnalysisUiState<AiPortfolioAnalysisReport>>(
+        AiAnalysisUiState.Idle
+    )
+    val aiPortfolioAnalysis: StateFlow<AiAnalysisUiState<AiPortfolioAnalysisReport>> =
+        _aiPortfolioAnalysis.asStateFlow()
+
     private val isPortuguese: Boolean
         get() = Locale.getDefault().language.equals("pt", ignoreCase = true)
 
     private var lastFetchedCoinIds: Set<String> = emptySet()
     private var quotesJob: Job? = null
     private var pickerSearchJob: Job? = null
+    private var portfolioAiJob: Job? = null
 
     private data class UiMeta(
         val activeTab: PortfolioSubTab,
@@ -288,7 +304,85 @@ class PortfolioViewModel @Inject constructor(
             is PortfolioIntent.ClearDeleteError -> {
                 _deleteErrorMessage.value = null
             }
+            is PortfolioIntent.AnalyzePortfolioWithAi -> analyzePortfolioWithAi()
+            is PortfolioIntent.ClearPortfolioAiAnalysis -> {
+                portfolioAiJob?.cancel()
+                _aiPortfolioAnalysis.value = AiAnalysisUiState.Idle
+            }
         }
+    }
+
+    private fun analyzePortfolioWithAi() {
+        val content = uiState.value as? PortfolioUiState.Content
+        if (content == null) {
+            _aiPortfolioAnalysis.value = AiAnalysisUiState.Error(
+                if (isPortuguese) {
+                    "Registre pelo menos uma operação para analisar o portfólio."
+                } else {
+                    "Record at least one transaction to analyze your portfolio."
+                }
+            )
+            return
+        }
+
+        val snapshot = content.snapshot
+        val summary = snapshot.summary
+        val locale = Locale.getDefault()
+
+        val request = AiPortfolioAnalysisRequest(
+            totalBalanceFormatted = summary.totalValueFormatted,
+            totalInvestedFormatted = summary.totalInvestedFormatted,
+            totalPnLFormatted = summary.totalPnLFormatted,
+            unrealizedPnLPercentFormatted = summary.unrealizedPnLPercentageFormatted,
+            realizedPnLFormatted = summary.realizedPnLFormatted,
+            change24hFormatted = "${summary.change24hValueFormatted} (${summary.change24hPercentageFormatted})",
+            assetCount = summary.assetCount,
+            transactionCount = snapshot.transactions.size,
+            isOfflineFallback = content.isOfflineFallback,
+            holdings = snapshot.holdings.map { h ->
+                AiPortfolioHoldingInput(
+                    symbol = h.symbol,
+                    name = h.name,
+                    allocationPercent = h.allocationPercentage,
+                    investedFormatted = java.text.DecimalFormat.getCurrencyInstance(locale).format(h.investedCost),
+                    currentValueFormatted = h.currentValueFormatted,
+                    averageBuyPriceFormatted = h.averageBuyPriceFormatted,
+                    currentPriceFormatted = h.currentPriceFormatted,
+                    unrealizedPnLFormatted = h.unrealizedPnLFormatted,
+                    unrealizedPnLPercentFormatted = h.unrealizedPnLPercentageFormatted,
+                    change24hPercentFormatted = h.change24hFormatted
+                )
+            },
+            recentTransactionsSummary = snapshot.transactions.take(10).map { tx ->
+                "${tx.dateFormatted} | ${tx.type.name} ${tx.quantityFormatted} ${tx.coinSymbol} @ ${tx.unitPriceFormatted} (total ${tx.totalValueFormatted})"
+            },
+            languageTag = locale.language
+        )
+
+        portfolioAiJob?.cancel()
+        portfolioAiJob = viewModelScope.launch {
+            _aiPortfolioAnalysis.value = AiAnalysisUiState.Loading
+            try {
+                val report = aiAnalyzer.analyzePortfolio(request)
+                _aiPortfolioAnalysis.value = AiAnalysisUiState.Success(report)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _aiPortfolioAnalysis.value = AiAnalysisUiState.Error(
+                    e.localizedMessage?.takeIf { it.isNotBlank() }
+                        ?: if (isPortuguese) {
+                            "Não foi possível analisar o portfólio no momento."
+                        } else {
+                            "Unable to analyze your portfolio right now."
+                        }
+                )
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        portfolioAiJob?.cancel()
     }
 
     private fun refreshMarketQuotes(coinIds: List<String>, showRefreshingIndicator: Boolean) {
